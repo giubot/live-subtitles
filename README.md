@@ -11,6 +11,8 @@ task          # list commands
 task gen      # regenerate Go/TS code from api/openapi.yaml and palette.ts
 task check    # SPDX, spec lint, codegen drift, gofmt, go vet, tests
 task dev:server  # Go server on :8080 with live reload (air)
+task dev:web     # Vite on :5173, proxying /api and /ws to the Go server
+task dev:mock    # Prism mock API on :4010; pair with `task dev:web API=mock`
 task build    # web app + single binary in bin/livesubs
 ```
 

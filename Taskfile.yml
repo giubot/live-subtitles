@@ -11,6 +11,7 @@ vars:
   SPEC: api/openapi.yaml
   # Redocly runs through pinned npx; the other Node tools are web/ devDependencies.
   REDOCLY: npx --yes @redocly/cli@2.54.2
+  PRISM: npx --yes @stoplight/prism-cli@5.16.0
   # air stays out of go.mod: as a `go tool` it pulls in Hugo and bumps shared deps.
   AIR: go run github.com/air-verse/air@v1.67.4
   # Every file `task gen` writes; check:gen fails if regenerating changes any of them.
@@ -29,6 +30,20 @@ tasks:
     cmds:
       # P0-06 adds Vite alongside air.
       - task: dev:server
+
+  dev:web:
+    desc: 'Vite dev server with HMR on :5173 (API=mock uses the Prism mock instead of the Go server)'
+    deps: [web:install]
+    dir: web
+    env:
+      VITE_API: '{{.API | default "server"}}'
+    cmds:
+      - pnpm -s dev {{.CLI_ARGS}}
+
+  dev:mock:
+    desc: Prism mock of api/openapi.yaml on :4010 (pair with `task dev:web API=mock`)
+    cmds:
+      - '{{.PRISM}} mock {{.SPEC}} --host 0.0.0.0 --port 4010'
 
   dev:server:
     desc: Go server with live reload (air)
