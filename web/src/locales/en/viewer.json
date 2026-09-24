@@ -1,4 +1,32 @@
 {
   "sessionsTitle": "Live sessions",
-  "title": "Live captions · {{id}}"
+  "sessionsIntro": "Pick a session to follow its captions on this device.",
+  "title": "Live captions · {{id}}",
+  "allSessions": "See all sessions",
+  "noSessions": {
+    "title": "No sessions yet",
+    "body": "Sessions appear here once the organizers create them. This page refreshes on its own."
+  },
+  "state": {
+    "idle": "Not started",
+    "starting": "Starting",
+    "live": "Live",
+    "paused": "Paused",
+    "stopping": "Ending",
+    "error": "Interrupted"
+  },
+  "size": {
+    "label": "Text size",
+    "smaller": "Smaller text",
+    "larger": "Larger text"
+  },
+  "transcript": "Transcript",
+  "empty": {
+    "live": "Listening… captions appear here as soon as someone speaks.",
+    "waiting": "The session hasn’t started yet. Captions appear here when it does; keep this page open."
+  },
+  "reconnecting": "Connection lost. Reconnecting… captions you missed are filled in when it’s back.",
+  "recorded": "This session is recorded",
+  "jumpToLive": "Jump to live",
+  "retry": "Try again"
 }

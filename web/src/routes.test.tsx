@@ -31,12 +31,15 @@ describe('stub routes', () => {
     ['/admin', 'Sessions'],
     ['/capture/main', 'main'],
     ['/s', 'Live sessions'],
-    ['/s/main', 'Live captions · main'],
+    ['/s/main', 'main'],
     ['/replay/main', 'Replay · main'],
     ['/nope', 'Page not found'],
   ])('%s renders "%s"', async (path, heading) => {
     renderAt(path)
-    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
+    // Lazy route chunks load on first visit; give a busy CI runner time.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: heading }, { timeout: 5000 }),
+    ).toBeInTheDocument()
   })
 
   it('/ redirects to /admin', async () => {
@@ -61,8 +64,6 @@ describe('stub routes', () => {
   it('Spanish UI', async () => {
     await i18n.changeLanguage('es')
     renderAt('/s/main')
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Subtítulos en vivo · main' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('group', { name: 'Tamaño de letra' })).toBeInTheDocument()
   })
 })

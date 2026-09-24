@@ -1,4 +1,32 @@
 {
   "sessionsTitle": "Sesiones en vivo",
-  "title": "Subtítulos en vivo · {{id}}"
+  "sessionsIntro": "Elegí una sesión para seguir sus subtítulos en este dispositivo.",
+  "title": "Subtítulos en vivo · {{id}}",
+  "allSessions": "Ver todas las sesiones",
+  "noSessions": {
+    "title": "Todavía no hay sesiones",
+    "body": "Las sesiones aparecen acá cuando la organización las crea. Esta página se actualiza sola."
+  },
+  "state": {
+    "idle": "Sin empezar",
+    "starting": "Arrancando",
+    "live": "En vivo",
+    "paused": "En pausa",
+    "stopping": "Terminando",
+    "error": "Interrumpida"
+  },
+  "size": {
+    "label": "Tamaño de letra",
+    "smaller": "Achicar letra",
+    "larger": "Agrandar letra"
+  },
+  "transcript": "Transcripción",
+  "empty": {
+    "live": "Escuchando… los subtítulos aparecen acá apenas alguien habla.",
+    "waiting": "La sesión todavía no empezó. Los subtítulos aparecen acá cuando empiece; dejá esta página abierta."
+  },
+  "reconnecting": "Se perdió la conexión. Reconectando… los subtítulos que te perdiste se completan cuando vuelve.",
+  "recorded": "Esta sesión se graba",
+  "jumpToLive": "Ir al vivo",
+  "retry": "Reintentar"
 }
