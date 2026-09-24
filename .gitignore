@@ -1,0 +1,79 @@
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+.history/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.enc
+
+# Go
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.*
+/tmp/
+go.work.sum
+# air live reload
+.air/
+build-errors.log
+
+# Node / web
+node_modules/
+web/dist/
+web/.vite/
+web/coverage/
+web/test-results/
+web/playwright-report/
+web/blob-report/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.eslintcache
+.stylelintcache
+
+# Runtime data (SQLite, recordings, local CA, downloaded models)
+/data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+/models/
+*.gguf
+*.bin
+
+# Test audio downloaded by scripts/fetch-test-audio.sh (small committed fixtures live in testdata/audio/fixtures/)
+testdata/audio/*
+!testdata/audio/fixtures/
+
+# Python helpers
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+*.log
+logs/
