@@ -215,6 +215,38 @@
         "why": "This session isn't fed by a file right now.",
         "fix": "Nothing to stop. To stop browser capture, stop the session."
       }
+    },
+    "capture": {
+      "insecure": {
+        "title": "This page can’t use the microphone",
+        "why": "Browsers only allow audio capture on https:// addresses or on http://localhost.",
+        "fix": "Open the capture link on the server computer itself (http://localhost:8080/…), or set up HTTPS for remote capture stations."
+      },
+      "permission_denied": {
+        "title": "Microphone access was blocked",
+        "why": "The browser or the operating system denied this page access to audio inputs.",
+        "fix": "Allow the microphone in the browser’s address bar (and in the system privacy settings), then start again."
+      },
+      "no_device": {
+        "title": "No audio input found",
+        "why": "This computer has no microphone or line input the browser can see.",
+        "fix": "Plug in the audio interface or mixer cable, then start again."
+      },
+      "device_busy": {
+        "title": "The audio input is busy",
+        "why": "Another program or browser tab is using it, or the system couldn’t open it.",
+        "fix": "Close other programs that use the input, or pick another one, then start again."
+      },
+      "device_lost": {
+        "title": "The audio input went away",
+        "why": "It was unplugged, or the browser stopped sharing it.",
+        "fix": "Plug it back in or pick another input, then start again."
+      },
+      "failed": {
+        "title": "Audio capture couldn’t start",
+        "why": "The browser failed to set up audio processing.",
+        "fix": "Reload the page and start again. If it keeps failing, try an up-to-date Chrome, Edge, Firefox or Safari."
+      }
     }
   }
 }

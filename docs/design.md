@@ -75,6 +75,7 @@ Build on MUI but override its defaults so it doesn't look like stock Material:
 - **Inputs**: label above (never placeholder-as-label), helper text below with reserved height so errors don't shift layout, and error text replacing the helper with `aria-invalid`. Secrets are write-only fields showing the masked hint (`••••3f9a`).
 - **Tooltip**: `enterDelay={800}` on hover and `0` on focus.
 - **Icons**: one set only, `@mui/icons-material` **Outlined**, 20 px, `aria-hidden` when next to text.
+- **Notice**: a warning that isn't a failure ("The input is clipping. Lower the mixer's output a little."), on `warn-soft` with an amber Outlined icon and `role="status"`. Failures with an error code use `ErrorAlert`.
 - **Level meter**: a 24-segment bar that is `ok` → `warn-fill` near the top → `danger` at clipping, with `role="meter"`.
 - **Snackbar**: only for failures and effects the user can't see. Success is silent where the result is already visible.
 

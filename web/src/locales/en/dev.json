@@ -60,7 +60,8 @@
     "closeHint": "Close",
     "moveHint": "Move",
     "qrHint": "Follow the captions",
-    "trackError": "This session has no track in that language."
+    "trackError": "This session has no track in that language.",
+    "notice": "Clipping twice in the last minute. Lower the mixer’s output a little."
   },
   "primitives": {
     "intro": "Hover and active are live: point at or press any control. The other states are pinned below.",

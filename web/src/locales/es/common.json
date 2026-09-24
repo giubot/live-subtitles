@@ -215,6 +215,38 @@
         "why": "Esta sesión no está recibiendo audio de un archivo ahora.",
         "fix": "No hay nada que detener. Para cortar la captura del navegador, detené la sesión."
       }
+    },
+    "capture": {
+      "insecure": {
+        "title": "Esta página no puede usar el micrófono",
+        "why": "Los navegadores solo permiten capturar audio en direcciones https:// o en http://localhost.",
+        "fix": "Abrí el enlace de captura en la misma computadora del servidor (http://localhost:8080/…), o configurá HTTPS para puestos de captura remotos."
+      },
+      "permission_denied": {
+        "title": "Se bloqueó el acceso al micrófono",
+        "why": "El navegador o el sistema operativo le negó a esta página el acceso a las entradas de audio.",
+        "fix": "Permití el micrófono desde la barra de direcciones del navegador (y en la configuración de privacidad del sistema), y volvé a empezar."
+      },
+      "no_device": {
+        "title": "No se encontró ninguna entrada de audio",
+        "why": "Esta computadora no tiene un micrófono o una entrada de línea que el navegador pueda ver.",
+        "fix": "Conectá la placa de audio o el cable de la consola, y volvé a empezar."
+      },
+      "device_busy": {
+        "title": "La entrada de audio está ocupada",
+        "why": "Otro programa o pestaña la está usando, o el sistema no la pudo abrir.",
+        "fix": "Cerrá los otros programas que usan la entrada, o elegí otra, y volvé a empezar."
+      },
+      "device_lost": {
+        "title": "Se perdió la entrada de audio",
+        "why": "Se desconectó, o el navegador dejó de compartirla.",
+        "fix": "Volvé a conectarla o elegí otra entrada, y volvé a empezar."
+      },
+      "failed": {
+        "title": "No se pudo iniciar la captura de audio",
+        "why": "El navegador no pudo preparar el procesamiento de audio.",
+        "fix": "Recargá la página y volvé a empezar. Si sigue fallando, probá con Chrome, Edge, Firefox o Safari actualizados."
+      }
     }
   }
 }

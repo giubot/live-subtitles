@@ -1,3 +1,44 @@
 {
-  "title": "Captura de audio · {{id}}"
+  "title": "Captura de audio · {{id}}",
+  "status": {
+    "off": "Sin enviar",
+    "closed": "Sin enviar",
+    "opening": "Abriendo entrada",
+    "connecting": "Conectando",
+    "ready": "Enviando",
+    "reconnecting": "Reconectando",
+    "replaced": "Reemplazada"
+  },
+  "session": {
+    "idle": "La sesión no empezó. El audio igual llega al servidor; los subtítulos arrancan cuando un admin inicia la sesión.",
+    "starting": "La sesión está arrancando.",
+    "live": "La sesión está en vivo: este audio se convierte en subtítulos.",
+    "paused": "La sesión está en pausa. El audio llega al servidor pero no se transcribe.",
+    "stopping": "La sesión se está deteniendo.",
+    "error": "La sesión se detuvo con un error. El panel de admin dice por qué."
+  },
+  "device": {
+    "label": "Entrada de audio",
+    "default": "Entrada predeterminada",
+    "help": "Se recuerda en esta computadora.",
+    "locked": "Los nombres de las entradas aparecen cuando permitís el acceso al micrófono."
+  },
+  "meter": {
+    "label": "Nivel",
+    "readout": "{{value}} dBFS · 16 kHz mono",
+    "silent": "Silencio · 16 kHz mono"
+  },
+  "notice": {
+    "noToken": "Este enlace no tiene token de captura, así que el servidor no va a aceptar el audio. Abrí el enlace de captura desde el panel de admin.",
+    "clipping": "La entrada está saturando. Bajá un poco la salida de la consola.",
+    "silent": "No llega sonido al servidor. Revisá que la salida de la consola esté arriba y que esté elegida la entrada correcta.",
+    "reconnecting": "Se cortó la conexión con el servidor. Se guardan los últimos segundos de audio y se envían cuando vuelve. Si sigue así, revisá la red o pedile al admin un enlace de captura nuevo.",
+    "replaced": "Otra página de captura tomó esta sesión, y solo una puede enviar a la vez."
+  },
+  "action": {
+    "start": "Empezar a enviar",
+    "stop": "Dejar de enviar",
+    "takeOver": "Enviar de nuevo desde esta página"
+  },
+  "hint": "Dejá esta página abierta. La pantalla no se apaga mientras envía."
 }

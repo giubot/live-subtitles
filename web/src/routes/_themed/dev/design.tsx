@@ -29,6 +29,7 @@ import { ErrorAlert } from '../../../components/ErrorAlert'
 import { KbdHint } from '../../../components/KbdHint'
 import { LanguagePicker } from '../../../components/LanguagePicker'
 import { LevelMeter } from '../../../components/LevelMeter'
+import { Notice } from '../../../components/Notice'
 import { Panel } from '../../../components/Panel'
 import { QrCode } from '../../../components/QrCode'
 import { Stat } from '../../../components/Stat'
@@ -487,6 +488,9 @@ function Primitives() {
           </State>
           <State label={t('state.unknown')}>
             <ErrorAlert error={{ code: 'whisper.timeout', message: 'timeout' }} />
+          </State>
+          <State label="Notice">
+            <Notice>{t('sample.notice')}</Notice>
           </State>
         </Gallery>
       </Section>

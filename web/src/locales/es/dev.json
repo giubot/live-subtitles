@@ -60,7 +60,8 @@
     "closeHint": "Cerrar",
     "moveHint": "Moverse",
     "qrHint": "Seguí los subtítulos",
-    "trackError": "Esta sesión no tiene subtítulos en ese idioma."
+    "trackError": "Esta sesión no tiene subtítulos en ese idioma.",
+    "notice": "Saturó dos veces en el último minuto. Bajá un poco la salida de la consola."
   },
   "primitives": {
     "intro": "Hover y presionado se ven en vivo: pasá el mouse o apretá cualquier control. Los otros estados están fijos abajo.",

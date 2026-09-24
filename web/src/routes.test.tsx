@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -7,12 +7,17 @@ import i18n from './i18n'
 import { routeTree } from './routeTree.gen'
 
 function renderAt(path: string) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [path] }),
-    context: { queryClient: new QueryClient() },
+    context: { queryClient },
   })
-  render(<RouterProvider router={router} />)
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
   return router
 }
 
@@ -24,7 +29,7 @@ describe('stub routes', () => {
   it.each([
     ['/setup', 'Set up Live Subtitles'],
     ['/admin', 'Sessions'],
-    ['/capture/main', 'Audio capture · main'],
+    ['/capture/main', 'main'],
     ['/s', 'Live sessions'],
     ['/s/main', 'Live captions · main'],
     ['/replay/main', 'Replay · main'],

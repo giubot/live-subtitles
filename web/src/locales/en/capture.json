@@ -1,3 +1,44 @@
 {
-  "title": "Audio capture · {{id}}"
+  "title": "Audio capture · {{id}}",
+  "status": {
+    "off": "Not sending",
+    "closed": "Not sending",
+    "opening": "Opening input",
+    "connecting": "Connecting",
+    "ready": "Sending",
+    "reconnecting": "Reconnecting",
+    "replaced": "Taken over"
+  },
+  "session": {
+    "idle": "The session hasn’t started. Audio still reaches the server; captions begin when an admin starts the session.",
+    "starting": "The session is starting.",
+    "live": "The session is live: this audio becomes captions.",
+    "paused": "The session is paused. Audio reaches the server but isn’t transcribed.",
+    "stopping": "The session is stopping.",
+    "error": "The session stopped with an error. The admin dashboard says why."
+  },
+  "device": {
+    "label": "Audio input",
+    "default": "Default input",
+    "help": "Remembered on this computer.",
+    "locked": "Input names appear once you allow microphone access."
+  },
+  "meter": {
+    "label": "Level",
+    "readout": "{{value}} dBFS · 16 kHz mono",
+    "silent": "Silence · 16 kHz mono"
+  },
+  "notice": {
+    "noToken": "This link has no capture token, so the server won’t accept the audio. Open the capture link from the admin dashboard.",
+    "clipping": "The input is clipping. Lower the mixer’s output a little.",
+    "silent": "No sound is reaching the server. Check that the mixer’s output is up and the right input is selected.",
+    "reconnecting": "The connection to the server dropped. The last few seconds of audio are kept and sent when it’s back. If this lasts, check the network, or ask the admin for a new capture link.",
+    "replaced": "Another capture page took over this session, and only one can send at a time."
+  },
+  "action": {
+    "start": "Start sending",
+    "stop": "Stop sending",
+    "takeOver": "Send from this page again"
+  },
+  "hint": "Keep this page open. The screen stays on while it sends."
 }
