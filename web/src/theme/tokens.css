@@ -1,0 +1,224 @@
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench (app shell) · theme: Cobalt (app-adapted, + dark scheme)
+ * nav: N3 side-rail + N13 inline ⌘K (admin) · none (audience surfaces) · footer: none (app)
+ * tone: technical · anchor hue: 256 (cobalt) · fonts: Space Grotesk / Atkinson Hyperlegible Next / Atkinson Hyperlegible Mono
+ * contrast: every text pair ≥ 4.5:1, UI boundaries ≥ 3:1, light + dark (see design.md § Contrast)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Source of truth for colour, type, space, radius, motion and z-index.
+ * - Light is the default. Dark applies with [data-theme="dark"], or with
+ *   [data-theme="system"] (or no attribute) when the OS prefers dark.
+ * - MUI's palette needs sRGB values: web/src/theme/palette.ts mirrors these
+ *   colours in hex. Change a colour HERE first, then regenerate palette.ts.
+ * - Caption surfaces (stage, overlay) have their own presets below and never
+ *   follow the UI theme.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Surfaces ───────────────────────────────────────────── */
+  --color-paper:        oklch(98.5% 0.004 250);  /* page */
+  --color-paper-2:      oklch(96.6% 0.006 252);  /* side rail, sunken wells, table header */
+  --color-paper-3:      oklch(93.8% 0.009 254);  /* hover fill, selected-neutral */
+  --color-rule:         oklch(90%   0.010 255);  /* hairlines between regions */
+  --color-rule-2:       oklch(80%   0.014 256);  /* panel borders, dividers that must read */
+  --color-control:      oklch(62%   0.020 257);  /* input / checkbox / outlined-button boundary (≥ 3:1) */
+
+  /* ── Text ───────────────────────────────────────────────── */
+  --color-ink:          oklch(23%   0.020 258);  /* headings, captions (final) */
+  --color-ink-2:        oklch(33%   0.020 257);  /* body */
+  --color-neutral:      oklch(42%   0.020 257);  /* secondary body */
+  --color-muted:        oklch(50%   0.020 257);  /* meta, helper text, interim captions */
+
+  /* ── Accent: cobalt signal (≤ 5 % of any view) ──────────── */
+  --color-accent:       oklch(55%   0.200 258);  /* primary button fill, active nav tick, links */
+  --color-accent-hover: oklch(49%   0.190 259);
+  --color-accent-ink:   oklch(98.5% 0.004 250);  /* text on accent fill */
+  --color-accent-text:  oklch(50%   0.180 258);  /* accent-coloured text on paper */
+  --color-accent-soft:  oklch(94.5% 0.024 256);  /* selected row / active nav background */
+  --color-focus:        oklch(55%   0.200 258);  /* 2px ring, 2px offset */
+
+  /* ── Status (always paired with an icon or label) ───────── */
+  --color-live:         oklch(56%   0.210 25);   /* on-air tally: LIVE chip + dot */
+  --color-live-ink:     oklch(98.5% 0.004 250);
+  --color-ok:           oklch(50%   0.130 150);
+  --color-warn:         oklch(52%   0.110 70);   /* text/icon amber on paper */
+  --color-warn-fill:    oklch(80%   0.140 80);   /* meter "hot" zone, never behind text */
+  --color-danger:       oklch(52%   0.200 27);
+  --color-ok-soft:      oklch(95%   0.030 150);
+  --color-warn-soft:    oklch(95.5% 0.035 85);
+  --color-danger-soft:  oklch(95.5% 0.025 27);
+
+  /* ── Graphite band: the one dark surface in light mode ──── */
+  --color-graphite:     oklch(22%   0.016 260);  /* URL/token cards, overlay + stage previews */
+  --color-graphite-ink: oklch(94%   0.006 255);
+  --color-graphite-rule:oklch(32%   0.018 260);
+
+  /* ── Caption presets (independent of UI theme) ──────────── */
+  --stage-bg-dark:      oklch(12%   0.010 258);
+  --stage-fg-white:     oklch(97%   0.004 250);
+  --stage-fg-yellow:    oklch(90%   0.170 100);
+  --stage-bg-light:     oklch(98%   0.004 250);
+  --stage-fg-black:     oklch(18%   0.020 258);
+  --stage-fg-secondary: oklch(72%   0.012 256);  /* second language in dual mode */
+  --overlay-fg:         oklch(98.5% 0.004 250);
+  --overlay-outline:    oklch(12%   0.010 258);
+  --overlay-box:        oklch(12%   0.010 258 / 0.62);
+
+  /* ── Type ───────────────────────────────────────────────── */
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body:    "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    "Atkinson Hyperlegible Mono Variable", "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", monospace;
+
+  /* 1.25 major-third scale from 16px. App screens use ≤ 5 sizes each. */
+  --text-xs:   0.75rem;    /* 12px — mono labels only (uppercase, tracked) */
+  --text-sm:   0.875rem;   /* 14px — meta, table cells, helper */
+  --text-base: 1rem;       /* 16px — body, controls */
+  --text-md:   1.25rem;    /* 20px — panel titles */
+  --text-lg:   1.5625rem;  /* 25px — page titles */
+  --text-xl:   1.9531rem;  /* 31px — wizard step titles */
+  --text-2xl:  2.4414rem;  /* 39px — setup welcome */
+  /* Caption sizes */
+  --text-caption:       clamp(1.25rem, 1rem + 1.2vw, 1.75rem);   /* phone viewer */
+  --text-caption-stage: clamp(2.5rem, 1rem + 4.6vw, 5.5rem);     /* projector */
+
+  --leading-tight:   1.15;
+  --leading-body:    1.55;
+  --leading-caption: 1.35;
+  --tracking-display: -0.02em;
+  --tracking-label:    0.06em;
+
+  --weight-body:    400;
+  --weight-strong:  700;
+  --weight-display: 600;
+  --weight-caption: 500;
+
+  /* ── Space: 4-pt scale ──────────────────────────────────── */
+  --space-3xs: 0.125rem;  /*  2 */
+  --space-2xs: 0.25rem;   /*  4 */
+  --space-xs:  0.5rem;    /*  8 */
+  --space-sm:  0.75rem;   /* 12 */
+  --space-md:  1rem;      /* 16 */
+  --space-lg:  1.5rem;    /* 24 */
+  --space-xl:  2.5rem;    /* 40 */
+  --space-2xl: 4rem;      /* 64 */
+  --space-3xl: 6rem;      /* 96 */
+
+  /* ── Shape ──────────────────────────────────────────────── */
+  --rule-hair:    1px;
+  --rule-fine:    2px;
+  --radius-chip:  4px;
+  --radius-input: 6px;    /* buttons + inputs: "drawn with a ruler", never pills */
+  --radius-card:  10px;   /* panels, dialogs */
+  --shadow-lift:  0 1px 2px oklch(23% 0.02 258 / 0.06);   /* the only shadow: menus, dialogs */
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  --rail-width:     15rem;
+  --content-max:    80rem;
+  --measure:        65ch;
+  --control-height: 2.5rem;   /* 40px; 48px under (pointer: coarse) */
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long:  420ms;
+
+  /* ── Z-index (named, never freestyle) ───────────────────── */
+  --z-base:     1;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-modal:    400;
+  --z-toast:    500;
+  --z-tooltip:  600;
+}
+
+/* ── Dark scheme ─────────────────────────────────────────────
+ * Same hue anchor; only lightness/chroma move. Raised surfaces get lighter.
+ * Body weight drops to 350 to compensate for light-on-dark optical weight. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper:        oklch(16.5% 0.014 258);
+  --color-paper-2:      oklch(19.5% 0.016 258);
+  --color-paper-3:      oklch(23.5% 0.018 258);
+  --color-rule:         oklch(29%   0.018 258);
+  --color-rule-2:       oklch(37%   0.020 258);
+  --color-control:      oklch(55%   0.020 257);
+
+  --color-ink:          oklch(95%   0.006 255);
+  --color-ink-2:        oklch(87%   0.008 255);
+  --color-neutral:      oklch(79%   0.012 255);
+  --color-muted:        oklch(70%   0.016 256);
+
+  --color-accent:       oklch(70%   0.150 256);
+  --color-accent-hover: oklch(76%   0.120 256);
+  --color-accent-ink:   oklch(16.5% 0.014 258);
+  --color-accent-text:  oklch(76%   0.120 256);
+  --color-accent-soft:  oklch(27%   0.050 258);
+  --color-focus:        oklch(76%   0.120 256);
+
+  --color-live:         oklch(66%   0.200 25);
+  --color-live-ink:     oklch(14%   0.012 258);
+  --color-ok:           oklch(74%   0.150 150);
+  --color-warn:         oklch(80%   0.140 80);
+  --color-warn-fill:    oklch(80%   0.140 80);
+  --color-danger:       oklch(70%   0.180 27);
+  --color-ok-soft:      oklch(24%   0.040 150);
+  --color-warn-soft:    oklch(25%   0.040 80);
+  --color-danger-soft:  oklch(25%   0.040 27);
+
+  --color-graphite:     oklch(12.5% 0.012 260);
+  --color-graphite-ink: oklch(94%   0.006 255);
+  --color-graphite-rule:oklch(26%   0.016 260);
+
+  --weight-body:  350;
+  --shadow-lift:  0 0 0 1px oklch(37% 0.02 258);   /* on dark, a hairline instead of a shadow (no glow) */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+    --color-paper:        oklch(16.5% 0.014 258);
+    --color-paper-2:      oklch(19.5% 0.016 258);
+    --color-paper-3:      oklch(23.5% 0.018 258);
+    --color-rule:         oklch(29%   0.018 258);
+    --color-rule-2:       oklch(37%   0.020 258);
+    --color-control:      oklch(55%   0.020 257);
+    --color-ink:          oklch(95%   0.006 255);
+    --color-ink-2:        oklch(87%   0.008 255);
+    --color-neutral:      oklch(79%   0.012 255);
+    --color-muted:        oklch(70%   0.016 256);
+    --color-accent:       oklch(70%   0.150 256);
+    --color-accent-hover: oklch(76%   0.120 256);
+    --color-accent-ink:   oklch(16.5% 0.014 258);
+    --color-accent-text:  oklch(76%   0.120 256);
+    --color-accent-soft:  oklch(27%   0.050 258);
+    --color-focus:        oklch(76%   0.120 256);
+    --color-live:         oklch(66%   0.200 25);
+    --color-live-ink:     oklch(14%   0.012 258);
+    --color-ok:           oklch(74%   0.150 150);
+    --color-warn:         oklch(80%   0.140 80);
+    --color-warn-fill:    oklch(80%   0.140 80);
+    --color-danger:       oklch(70%   0.180 27);
+    --color-ok-soft:      oklch(24%   0.040 150);
+    --color-warn-soft:    oklch(25%   0.040 80);
+    --color-danger-soft:  oklch(25%   0.040 27);
+    --color-graphite:     oklch(12.5% 0.012 260);
+    --color-graphite-ink: oklch(94%   0.006 255);
+    --color-graphite-rule:oklch(26%   0.016 260);
+    --weight-body:  350;
+    --shadow-lift:  0 0 0 1px oklch(37% 0.02 258);
+  }
+}
+
+@media (pointer: coarse) {
+  :root { --control-height: 3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-micro: 0ms; --dur-short: 150ms; --dur-long: 150ms; }
+}

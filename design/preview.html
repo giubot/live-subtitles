@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Subtitles · Design system</title>
+<meta name="description" content="Palette, type, components and every app surface of Live Subtitles, in light and dark.">
+<!-- Preview only. The app self-hosts these via @fontsource-variable (edge nodes may be offline). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Atkinson+Hyperlegible+Next:wght@350;400;500;700&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../web/src/theme/tokens.css">
+<style>
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench (app shell) · theme: Cobalt (app-adapted) · nav: N3 + N13 · footer: none
+ * Hallmark · pre-emit critique: P5 H4 E4 S5 R5 V4
+ * Preview page only. Every colour/font below references a token from tokens.css. */
+
+html, body { overflow-x: clip; }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink-2);
+  font-family: var(--font-body);
+  font-weight: var(--weight-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: var(--weight-display); color: var(--color-ink);
+  letter-spacing: var(--tracking-display); line-height: var(--leading-tight); margin: 0; font-style: normal;
+  overflow-wrap: anywhere; min-width: 0; }
+p { margin: 0; max-width: var(--measure); }
+.mono { font-family: var(--font-mono); }
+.label { font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-muted); }
+.num { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: var(--rule-fine) solid var(--color-focus); outline-offset: 2px; }
+
+/* ── Doc chrome ─────────────────────────────────────────── */
+.doc-bar { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; align-items: center; gap: var(--space-md);
+  padding: var(--space-sm) clamp(var(--space-md), 4vw, var(--space-xl)); background: var(--color-paper);
+  border-bottom: var(--rule-hair) solid var(--color-rule); flex-wrap: wrap; }
+.doc-bar__title { font: 600 var(--text-md)/1.2 var(--font-display); color: var(--color-ink); letter-spacing: var(--tracking-display); white-space: nowrap; }
+.doc-bar__title span { color: var(--color-muted); font-weight: 500; }
+.doc-bar__spacer { flex: 1; }
+.doc { max-width: var(--content-max); margin: 0 auto; padding: var(--space-xl) clamp(var(--space-md), 4vw, var(--space-xl)) var(--space-3xl);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3xl); }
+.sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); min-width: 0; }
+.sec__head { display: grid; gap: var(--space-xs); }
+.sec__head h2 { font-size: var(--text-xl); }
+.sec__head p { color: var(--color-neutral); }
+.sample-note { color: var(--color-muted); font-size: var(--text-sm); }
+
+/* ── Segmented control (theme switch, language switch) ──── */
+.seg { display: inline-flex; border: var(--rule-hair) solid var(--color-control); border-radius: var(--radius-input); overflow: hidden; }
+.seg button { font: 500 var(--text-sm)/1 var(--font-body); color: var(--color-ink-2); background: transparent; border: 0;
+  padding: 0 var(--space-sm); min-height: 2rem; cursor: pointer; white-space: nowrap;
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
+.seg button + button { border-inline-start: var(--rule-hair) solid var(--color-rule-2); }
+@media (hover: hover) { .seg button:hover { background: var(--color-paper-3); } }
+.seg button[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-accent-text); font-weight: 700; }
+.seg button:focus-visible { outline-offset: -2px; }
+
+/* ── Palette ────────────────────────────────────────────── */
+.swatch-groups { display: grid; gap: var(--space-xl); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 60rem) { .swatch-groups { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
+.swatch-group { display: grid; gap: var(--space-sm); align-content: start; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: var(--space-xs); }
+.sw { border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-input); overflow: hidden; background: var(--color-paper); }
+.sw__chip { height: 3.25rem; border-bottom: var(--rule-hair) solid var(--color-rule); }
+.sw__meta { padding: var(--space-xs); display: grid; gap: var(--space-3xs); }
+.sw__name { font: 500 var(--text-xs)/1.3 var(--font-mono); color: var(--color-ink); }
+.sw__role { font-size: var(--text-xs); color: var(--color-muted); line-height: 1.3; }
+
+/* ── Type specimen ──────────────────────────────────────── */
+.type-rows { display: grid; border-top: var(--rule-hair) solid var(--color-rule); }
+.type-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); padding: var(--space-md) 0; border-bottom: var(--rule-hair) solid var(--color-rule); }
+@media (min-width: 48rem) { .type-row { grid-template-columns: 14rem minmax(0, 1fr); align-items: baseline; gap: var(--space-lg); } }
+.type-row__spec { color: var(--color-muted); font-size: var(--text-sm); }
+.t-display { font: var(--weight-display) var(--text-2xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); color: var(--color-ink); }
+.t-title { font: var(--weight-display) var(--text-lg)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); color: var(--color-ink); }
+.t-caption { font: var(--weight-caption) var(--text-caption)/var(--leading-caption) var(--font-body); color: var(--color-ink); }
+.t-body { font-size: var(--text-base); }
+.t-mono { font: 400 var(--text-sm)/1.4 var(--font-mono); color: var(--color-ink); overflow-wrap: anywhere; }
+
+/* ── Buttons: 8 states ──────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); white-space: nowrap;
+  min-height: var(--control-height); padding: 0 var(--space-md); border-radius: var(--radius-input);
+  font: 700 var(--text-base)/1 var(--font-body); cursor: pointer; border: var(--rule-hair) solid transparent;
+  transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out); }
+.btn svg { width: 1.05em; height: 1.05em; flex: none; }
+.btn--primary { background: var(--color-accent); color: var(--color-accent-ink); }
+.btn--secondary { background: var(--color-paper); color: var(--color-ink); border-color: var(--color-control); }
+.btn--ghost { background: transparent; color: var(--color-accent-text); }
+.btn--danger { background: var(--color-paper); color: var(--color-danger); border-color: var(--color-control); }
+.btn--sm { min-height: 2rem; padding: 0 var(--space-sm); font-size: var(--text-sm); }
+@media (hover: hover) {
+  .btn--primary:hover { background: var(--color-accent-hover); }
+  .btn--secondary:hover, .btn--danger:hover, .btn--ghost:hover { background: var(--color-paper-3); }
+}
+.btn--primary.is-hover { background: var(--color-accent-hover); }
+.btn--secondary.is-hover { background: var(--color-paper-3); }
+.btn.is-focus { outline: var(--rule-fine) solid var(--color-focus); outline-offset: 2px; }
+.btn:active, .btn.is-active { transform: translateY(1px); }
+.btn--primary:active, .btn--primary.is-active { background: var(--color-accent-hover); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn[data-state="loading"] { cursor: progress; }
+.btn[data-state="error"] { background: var(--color-danger-soft); color: var(--color-danger); border-color: var(--color-danger); }
+.btn[data-state="success"] { background: var(--color-ok-soft); color: var(--color-ok); border-color: var(--color-ok); }
+.spinner { width: 1em; height: 1em; border-radius: 50%; border: 2px solid currentColor; border-inline-end-color: transparent;
+  animation: spin 700ms linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+.states { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--space-md) var(--space-lg); }
+.state { display: grid; gap: var(--space-xs); justify-items: start; }
+
+/* ── Inputs ─────────────────────────────────────────────── */
+.field { display: grid; gap: var(--space-2xs); min-width: 0; }
+.field__label { font-size: var(--text-sm); font-weight: 700; color: var(--color-ink); }
+.field__help { font-size: var(--text-sm); color: var(--color-muted); min-height: 1.4em; }
+.input { width: 100%; min-height: var(--control-height); padding: 0 var(--space-sm); border-radius: var(--radius-input);
+  border: var(--rule-hair) solid var(--color-control); background: var(--color-paper); color: var(--color-ink);
+  font: var(--weight-body) var(--text-base)/1 var(--font-body); transition: border-color var(--dur-micro) var(--ease-out); }
+.input--mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.input::placeholder { color: var(--color-muted); }
+@media (hover: hover) { .input:hover { border-color: var(--color-ink-2); } }
+.input:focus-visible, .input.is-focus { outline: var(--rule-fine) solid var(--color-focus); outline-offset: 0; border-color: var(--color-focus); }
+.input:disabled { background: var(--color-paper-2); color: var(--color-muted); cursor: not-allowed; }
+.field--error .input { border-color: var(--color-danger); }
+.field--error .field__help { color: var(--color-danger); }
+.field--ok .field__help { color: var(--color-ok); }
+.fields { display: grid; gap: var(--space-md) var(--space-lg); grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+
+/* ── Status chips ───────────────────────────────────────── */
+.chip { display: inline-flex; align-items: center; gap: var(--space-2xs); white-space: nowrap;
+  font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: var(--tracking-label); text-transform: uppercase;
+  padding: var(--space-2xs) var(--space-xs); border-radius: var(--radius-chip); border: var(--rule-hair) solid var(--color-rule-2); color: var(--color-neutral); }
+.chip::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
+.chip--live { background: var(--color-live); color: var(--color-live-ink); border-color: var(--color-live); }
+.chip--live::before { background: var(--color-live-ink); }
+.chip--ok { color: var(--color-ok); border-color: currentColor; }
+.chip--warn { color: var(--color-warn); border-color: currentColor; }
+.chip--error { color: var(--color-danger); border-color: currentColor; background: var(--color-danger-soft); }
+.chip--accent { color: var(--color-accent-text); border-color: currentColor; }
+.chip--plain::before { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+
+/* ── Level meter ────────────────────────────────────────── */
+.meter { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: var(--space-3xs); height: 0.625rem; }
+.meter i { background: var(--color-paper-3); border-radius: 1px; }
+.meter i.on { background: var(--color-ok); }
+.meter i.on.hot { background: var(--color-warn-fill); }
+.meter i.on.clip { background: var(--color-danger); }
+.meter--lg { height: 1.5rem; gap: var(--space-2xs); }
+
+/* ── Panels (hairline, no shadow) ───────────────────────── */
+.panel { border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-card); background: var(--color-paper); min-width: 0; }
+
+/* ── Admin mockup ───────────────────────────────────────── */
+.app { display: grid; grid-template-columns: minmax(0, 1fr); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-card); overflow: hidden; background: var(--color-paper); }
+@media (min-width: 60rem) { .app { grid-template-columns: var(--rail-width) minmax(0, 1fr); } }
+.rail { display: none; background: var(--color-paper-2); border-inline-end: var(--rule-hair) solid var(--color-rule); padding: var(--space-md) var(--space-sm); gap: var(--space-2xs); align-content: start; }
+@media (min-width: 60rem) { .rail { display: grid; } }
+.wordmark { font: 700 var(--text-md)/1 var(--font-display); letter-spacing: -0.03em; color: var(--color-ink); display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-xs) var(--space-md); white-space: nowrap; }
+.wordmark__cc { font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: var(--tracking-label); color: var(--color-accent-ink); background: var(--color-accent); padding: var(--space-3xs) var(--space-2xs); border-radius: var(--radius-chip); }
+.rail a { display: flex; align-items: center; gap: var(--space-sm); padding: 0 var(--space-sm); min-height: 2.5rem; border-radius: var(--radius-input);
+  color: var(--color-ink-2); text-decoration: none; white-space: nowrap; position: relative; transition: background-color var(--dur-micro) var(--ease-out); }
+.rail a svg { width: 1.1rem; height: 1.1rem; color: var(--color-muted); }
+@media (hover: hover) { .rail a:hover { background: var(--color-paper-3); } }
+.rail a[aria-current="page"] { background: var(--color-accent-soft); color: var(--color-accent-text); font-weight: 700; }
+.rail a[aria-current="page"] svg { color: var(--color-accent-text); }
+.rail a[aria-current="page"]::before { content: ""; position: absolute; inset-inline-start: calc(-1 * var(--space-sm)); top: 25%; bottom: 25%; width: var(--space-2xs); border-radius: 0 var(--space-3xs) var(--space-3xs) 0; background: var(--color-accent); }
+.rail__foot { margin-top: var(--space-lg); padding: var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule); display: grid; gap: var(--space-2xs); }
+
+.topbar { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); flex-wrap: wrap; }
+.topbar h3 { font-size: var(--text-lg); margin-inline-end: auto; }
+.kbar { display: inline-flex; align-items: center; gap: var(--space-sm); min-height: 2.25rem; padding: 0 var(--space-xs) 0 var(--space-sm);
+  border: var(--rule-hair) solid var(--color-control); border-radius: var(--radius-input); color: var(--color-muted); background: var(--color-paper);
+  font-size: var(--text-sm); cursor: pointer; white-space: nowrap; min-width: 0; }
+.kbar kbd { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--color-neutral); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-chip); padding: var(--space-3xs) var(--space-2xs); }
+@media (max-width: 29.99rem) { .kbar__text { display: none; } }
+
+.sessions { display: grid; gap: var(--space-sm); padding: var(--space-md); }
+.session { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-md); padding: var(--space-md); }
+.session--error { border-color: var(--color-danger); }
+.session__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-sm); }
+.session__name { font: 600 var(--text-md)/1.2 var(--font-display); color: var(--color-ink); letter-spacing: var(--tracking-display); }
+.session__room { color: var(--color-muted); font-size: var(--text-sm); margin-inline-end: auto; }
+.session__grid { display: grid; gap: var(--space-md); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 48rem) { .session__grid { grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); } }
+.stat { display: grid; gap: var(--space-2xs); align-content: start; min-width: 0; }
+.stat__value { font: 500 var(--text-base)/1.2 var(--font-mono); color: var(--color-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat__value small { display: block; margin-top: var(--space-3xs); color: var(--color-muted); font-size: var(--text-xs); }
+.stat--meter { grid-column: 1 / -1; }
+@media (min-width: 48rem) { .stat--meter { grid-column: auto; } }
+.session__actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
+.session__error { display: flex; gap: var(--space-xs); align-items: flex-start; color: var(--color-danger); font-size: var(--text-sm); }
+.session__error svg { width: 1.1rem; height: 1.1rem; flex: none; margin-top: var(--space-3xs); }
+
+/* ── Two-up row for capture + viewer ────────────────────── */
+.duo { display: grid; gap: var(--space-xl); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 60rem) { .duo { grid-template-columns: minmax(0, 1fr) minmax(0, 24rem); } }
+.fig { margin: 0; display: grid; gap: var(--space-xs); min-width: 0; }
+.fig figcaption { font-size: var(--text-sm); color: var(--color-muted); }
+
+/* Capture */
+.capture { padding: var(--space-lg); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); }
+.capture__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.capture__top h3 { font-size: var(--text-xl); margin-inline-end: auto; }
+.capture__meter { display: grid; gap: var(--space-xs); }
+.capture__readout { display: flex; justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap; }
+.capture__actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+.btn--xl { min-height: 3.5rem; padding: 0 var(--space-xl); font-size: var(--text-md); }
+.notice { display: flex; gap: var(--space-xs); align-items: flex-start; padding: var(--space-sm); border-radius: var(--radius-input);
+  background: var(--color-warn-soft); color: var(--color-ink-2); font-size: var(--text-sm); }
+.notice svg { width: 1.1rem; height: 1.1rem; color: var(--color-warn); flex: none; margin-top: var(--space-3xs); }
+
+/* Viewer (phone width) */
+.viewer { max-width: 24rem; width: 100%; justify-self: center; display: grid; grid-template-rows: auto auto 1fr auto; min-height: 40rem;
+  border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-card); overflow: hidden; background: var(--color-paper); }
+.viewer__head { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.viewer__head strong { font: 600 var(--text-base)/1.2 var(--font-display); color: var(--color-ink); margin-inline-end: auto; overflow-wrap: anywhere; min-width: 0; }
+.viewer__tools { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); padding: var(--space-xs) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); background: var(--color-paper-2); flex-wrap: wrap; }
+.viewer__log { padding: var(--space-md); display: grid; gap: var(--space-md); align-content: end; }
+.line { display: grid; gap: var(--space-3xs); }
+.line time { font: 400 var(--text-xs)/1 var(--font-mono); color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.line p { font: var(--weight-caption) var(--text-caption)/var(--leading-caption) var(--font-body); color: var(--color-ink); }
+.line--old p { color: var(--color-neutral); }
+.line--interim p { color: var(--color-muted); }
+.line--interim p::after { content: ""; display: inline-block; width: 0.5ch; height: 1em; margin-inline-start: var(--space-3xs); vertical-align: -0.15em; background: var(--color-accent); }
+.viewer__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); padding: var(--space-xs) var(--space-md) var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule); flex-wrap: wrap; }
+.viewer__rec { font-size: var(--text-xs); color: var(--color-muted); display: flex; align-items: center; gap: var(--space-2xs); }
+.viewer__rec::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--color-live); }
+
+/* Stage + overlay (16:9 frames) */
+.screens { display: grid; gap: var(--space-xl); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 72rem) { .screens { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.frame { aspect-ratio: 16 / 9; border-radius: var(--radius-input); overflow: hidden; position: relative; container-type: inline-size; }
+.stage { background: var(--stage-bg-dark); color: var(--stage-fg-white); display: grid; align-content: end; padding: 5cqw 5cqw 6cqw; gap: 1.2cqw; }
+.stage__line { font: 600 4.4cqw/1.28 var(--font-body); margin: 0; max-width: 36ch; }
+.stage__line--2 { font-weight: 500; font-size: 3.1cqw; color: var(--stage-fg-secondary); }
+.stage__qr { position: absolute; top: 3.5cqw; inset-inline-end: 3.5cqw; display: grid; gap: 0.8cqw; justify-items: end; }
+.stage__qr svg { width: 11cqw; height: 11cqw; }
+.stage__qr span { font: 500 1.35cqw/1.2 var(--font-mono); color: var(--stage-fg-secondary); text-align: end; }
+.stage__live { position: absolute; top: 3.5cqw; inset-inline-start: 5cqw; font: 500 1.4cqw/1 var(--font-mono); letter-spacing: var(--tracking-label); color: var(--stage-fg-secondary); text-transform: uppercase; display: flex; gap: 0.8cqw; align-items: center; }
+.stage__live::before { content: ""; width: 1cqw; height: 1cqw; border-radius: 50%; background: var(--color-live); }
+.program { background: var(--color-graphite); display: grid; place-items: stretch; }
+.program__label { position: absolute; top: 3cqw; inset-inline-start: 3cqw; font: 500 1.4cqw/1 var(--font-mono); letter-spacing: var(--tracking-label); color: var(--color-graphite-ink); text-transform: uppercase; opacity: 0.7; }
+.program__slate { position: absolute; inset: 18% 30% 34%; border: var(--rule-hair) dashed var(--color-graphite-rule); border-radius: var(--radius-input); display: grid; place-items: center; color: var(--color-graphite-ink); opacity: 0.6; font: 400 1.6cqw/1.3 var(--font-mono); text-align: center; padding: 1cqw; }
+.overlay { position: absolute; inset-inline: 0; bottom: 4.5cqw; display: grid; justify-items: center; padding: 0 6cqw; }
+.overlay p { margin: 0; max-width: 42ch; text-align: center; font: 600 3.2cqw/1.3 var(--font-body); color: var(--overlay-fg);
+  background: var(--overlay-box); padding: 0.6cqw 1.6cqw; border-radius: var(--radius-chip);
+  -webkit-text-stroke: 0; text-shadow: 0 0 0.25cqw var(--overlay-outline), 0 0 0.25cqw var(--overlay-outline); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.preset-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
+
+/* Setup wizard */
+.wizard { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+@media (min-width: 60rem) { .wizard { grid-template-columns: 17rem minmax(0, 1fr); } }
+.steps { list-style: none; margin: 0; padding: var(--space-lg) var(--space-md); display: grid; gap: var(--space-2xs); align-content: start; background: var(--color-paper-2); border-bottom: var(--rule-hair) solid var(--color-rule); counter-reset: s; }
+@media (min-width: 60rem) { .steps { border-bottom: 0; border-inline-end: var(--rule-hair) solid var(--color-rule); } }
+.steps li { counter-increment: s; display: flex; gap: var(--space-sm); align-items: center; min-height: 2.25rem; color: var(--color-muted); white-space: nowrap; }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 1.5rem; height: 1.5rem; flex: none; border-radius: 50%; border: var(--rule-hair) solid var(--color-control); font: 500 var(--text-xs)/1 var(--font-mono); }
+.steps li.done { color: var(--color-ink-2); }
+.steps li.done::before { content: "✓"; background: var(--color-ok-soft); border-color: var(--color-ok); color: var(--color-ok); }
+.steps li[aria-current="step"] { color: var(--color-ink); font-weight: 700; }
+.steps li[aria-current="step"]::before { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
+.wizard__body { padding: var(--space-xl) var(--space-lg); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); align-content: start; }
+.wizard__body h3 { font-size: var(--text-xl); }
+.checks { display: grid; border-top: var(--rule-hair) solid var(--color-rule); }
+.check { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2xs) var(--space-md); padding: var(--space-sm) 0; border-bottom: var(--rule-hair) solid var(--color-rule); align-items: center; }
+.check__what { color: var(--color-ink); font-weight: 700; }
+.check__detail { grid-column: 1 / -1; font: 400 var(--text-sm)/1.4 var(--font-mono); color: var(--color-muted); overflow-wrap: anywhere; }
+.reco { border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-card); padding: var(--space-md); display: grid; gap: var(--space-xs); background: var(--color-paper-2); }
+.wizard__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); justify-content: space-between; }
+
+/* URL card (graphite) */
+.urlcard { background: var(--color-graphite); color: var(--color-graphite-ink); border-radius: var(--radius-card); padding: var(--space-md); display: grid; gap: var(--space-sm); }
+.urlcard .label { color: var(--color-graphite-ink); opacity: 0.75; }
+.urlcard code { font: 400 var(--text-sm)/1.4 var(--font-mono); overflow-wrap: anywhere; }
+.urlrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-sm); align-items: center; padding-top: var(--space-sm); border-top: var(--rule-hair) solid var(--color-graphite-rule); }
+.urlrow:first-of-type { border-top: 0; padding-top: 0; }
+.btn--on-graphite { background: transparent; color: var(--color-graphite-ink); border-color: var(--color-graphite-rule); }
+@media (hover: hover) { .btn--on-graphite:hover { border-color: var(--color-graphite-ink); } }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1400ms; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sessions" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="M9 20a4 4 0 0 1-4-4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 3.5 21.5 20h-19z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <!-- QR placeholder: the app renders a real code for the viewer URL -->
+  <symbol id="i-qr" viewBox="0 0 29 29"><rect width="29" height="29" style="fill:var(--stage-fg-white)"/><g style="fill:var(--stage-bg-dark)"><path d="M2 2h7v7H2zm2 2v3h3V4zM20 2h7v7h-7zm2 2v3h3V4zM2 20h7v7H2zm2 2v3h3v-3z"/><path d="M11 2h2v2h-2zm3 1h2v3h-2zm-3 4h3v2h-3zm5 1h2v2h-2zm-5 3h2v2h-2zm3 0h4v2h-4zm6 0h2v4h-2zm3 0h3v2h-3zM2 11h3v2H2zm4 1h3v2H6zm7 3h2v3h-2zm4 1h3v2h-3zm5 1h3v2h-3zm-11 3h2v2h-2zm3 1h3v3h-3zm5 0h2v2h-2zm2 3h3v2h-3zm-9 2h2v2h-2zm7-8h2v2h-2z"/></g></symbol>
+</svg>
+
+<header class="doc-bar">
+  <div class="doc-bar__title">Live Subtitles <span>· design system</span></div>
+  <div class="doc-bar__spacer"></div>
+  <span class="label" id="theme-label">Theme</span>
+  <div class="seg" role="group" aria-labelledby="theme-label" id="theme-switch">
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+    <button type="button" data-set="system" aria-pressed="true">System</button>
+  </div>
+</header>
+
+<main class="doc">
+
+  <!-- ─────────────── Palette ─────────────── -->
+  <section class="sec" aria-labelledby="h-palette">
+    <div class="sec__head">
+      <h2 id="h-palette">Palette</h2>
+      <p>Cool engineered paper, charcoal ink, one cobalt signal. Status colours always travel with an icon or a label. Switch the theme above to see the dark scheme.</p>
+    </div>
+    <div class="swatch-groups">
+      <div class="swatch-group">
+        <h3 class="label">Surfaces and text</h3>
+        <div class="swatches">
+          <div class="sw"><div class="sw__chip" style="background:var(--color-paper)"></div><div class="sw__meta"><span class="sw__name">paper</span><span class="sw__role">Page</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-paper-2)"></div><div class="sw__meta"><span class="sw__name">paper-2</span><span class="sw__role">Rail, wells</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-paper-3)"></div><div class="sw__meta"><span class="sw__name">paper-3</span><span class="sw__role">Hover fill</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-rule-2)"></div><div class="sw__meta"><span class="sw__name">rule-2</span><span class="sw__role">Panel borders</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-control)"></div><div class="sw__meta"><span class="sw__name">control</span><span class="sw__role">Input borders, ≥ 3:1</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-muted)"></div><div class="sw__meta"><span class="sw__name">muted</span><span class="sw__role">Meta, interim text</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-ink-2)"></div><div class="sw__meta"><span class="sw__name">ink-2</span><span class="sw__role">Body</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-ink)"></div><div class="sw__meta"><span class="sw__name">ink</span><span class="sw__role">Headings, captions</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-graphite)"></div><div class="sw__meta"><span class="sw__name">graphite</span><span class="sw__role">URL cards, previews</span></div></div>
+        </div>
+      </div>
+      <div class="swatch-group">
+        <h3 class="label">Signal and status</h3>
+        <div class="swatches">
+          <div class="sw"><div class="sw__chip" style="background:var(--color-accent)"></div><div class="sw__meta"><span class="sw__name">accent</span><span class="sw__role">Primary action, focus</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-accent-soft)"></div><div class="sw__meta"><span class="sw__name">accent-soft</span><span class="sw__role">Selected</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-live)"></div><div class="sw__meta"><span class="sw__name">live</span><span class="sw__role">On-air tally</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-ok)"></div><div class="sw__meta"><span class="sw__name">ok</span><span class="sw__role">Healthy</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-warn)"></div><div class="sw__meta"><span class="sw__name">warn</span><span class="sw__role">Attention</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--color-danger)"></div><div class="sw__meta"><span class="sw__name">danger</span><span class="sw__role">Error, destructive</span></div></div>
+        </div>
+        <h3 class="label">Caption presets (ignore the UI theme)</h3>
+        <div class="swatches">
+          <div class="sw"><div class="sw__chip" style="background:var(--stage-bg-dark); display:grid; place-items:center; color:var(--stage-fg-white); font-weight:700">Aa</div><div class="sw__meta"><span class="sw__name">white-on-black</span><span class="sw__role">Stage default</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--stage-bg-dark); display:grid; place-items:center; color:var(--stage-fg-yellow); font-weight:700">Aa</div><div class="sw__meta"><span class="sw__name">yellow-on-black</span><span class="sw__role">Stage, high glare</span></div></div>
+          <div class="sw"><div class="sw__chip" style="background:var(--stage-bg-light); display:grid; place-items:center; color:var(--stage-fg-black); font-weight:700">Aa</div><div class="sw__meta"><span class="sw__name">black-on-white</span><span class="sw__role">Stage, bright room</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Type ─────────────── -->
+  <section class="sec" aria-labelledby="h-type">
+    <div class="sec__head">
+      <h2 id="h-type">Type</h2>
+      <p>Space Grotesk for headings. Atkinson Hyperlegible Next for everything people read, captions most of all: it keeps I, l and 1 apart at projector distance. Atkinson Hyperlegible Mono only for machine data like timecodes, URLs, IPs and tokens.</p>
+    </div>
+    <div class="type-rows">
+      <div class="type-row"><span class="type-row__spec">Display · Space Grotesk 600 · 2xl</span><span class="t-display">Set up this room</span></div>
+      <div class="type-row"><span class="type-row__spec">Title · Space Grotesk 600 · lg</span><span class="t-title">Sessions</span></div>
+      <div class="type-row"><span class="type-row__spec">Caption · Atkinson Next 500 · caption</span><span class="t-caption">Hoy vamos a hablar de cómo escalar Kubernetes sin perder la cabeza.</span></div>
+      <div class="type-row"><span class="type-row__spec">Body · Atkinson Next 400 · base</span><span class="t-body">Plug the mixer's 3.5 mm output into this computer, choose the input below and press Start sending.</span></div>
+      <div class="type-row"><span class="type-row__spec">Data · Atkinson Mono 400 · sm</span><span class="t-mono">http://192.168.1.20:8080/s/main-stage · 00:41:07 · p95 2.4 s</span></div>
+      <div class="type-row"><span class="type-row__spec">Label · Atkinson Mono 500 · xs caps</span><span class="label">Detected language</span></div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Controls ─────────────── -->
+  <section class="sec" aria-labelledby="h-controls">
+    <div class="sec__head">
+      <h2 id="h-controls">Controls</h2>
+      <p>6 px corners, never pills. One filled cobalt button per view; everything else is outlined or text. Every control has all eight states.</p>
+    </div>
+    <div class="states">
+      <div class="state"><span class="label">Default</span><button class="btn btn--primary" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start session</button></div>
+      <div class="state"><span class="label">Hover</span><button class="btn btn--primary is-hover" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start session</button></div>
+      <div class="state"><span class="label">Focus</span><button class="btn btn--primary is-focus" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start session</button></div>
+      <div class="state"><span class="label">Active</span><button class="btn btn--primary is-active" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start session</button></div>
+      <div class="state"><span class="label">Disabled</span><button class="btn btn--primary" type="button" disabled><svg aria-hidden="true"><use href="#i-play"/></svg>Start session</button></div>
+      <div class="state"><span class="label">Loading</span><button class="btn btn--primary" type="button" data-state="loading" aria-busy="true"><span class="spinner" aria-hidden="true"></span>Starting…</button></div>
+      <div class="state"><span class="label">Error</span><button class="btn" type="button" data-state="error"><svg aria-hidden="true"><use href="#i-alert"/></svg>Retry start</button></div>
+      <div class="state"><span class="label">Success</span><button class="btn" type="button" data-state="success"><svg aria-hidden="true"><use href="#i-check"/></svg>Live</button></div>
+    </div>
+    <div class="chips" aria-label="Button variants">
+      <button class="btn btn--secondary" type="button"><svg aria-hidden="true"><use href="#i-pause"/></svg>Pause</button>
+      <button class="btn btn--danger" type="button"><svg aria-hidden="true"><use href="#i-stop"/></svg>Stop</button>
+      <button class="btn btn--ghost" type="button"><svg aria-hidden="true"><use href="#i-copy"/></svg>Copy overlay URL</button>
+      <button class="btn btn--secondary btn--sm" type="button">Send test caption</button>
+    </div>
+    <div class="fields">
+      <div class="field"><label class="field__label" for="f1">Session name</label><input class="input" id="f1" value="Main stage"><span class="field__help">Shown to the audience.</span></div>
+      <div class="field"><label class="field__label" for="f2">Slug</label><input class="input input--mono is-focus" id="f2" value="main-stage"><span class="field__help">Used in URLs: /s/main-stage</span></div>
+      <div class="field field--error"><label class="field__label" for="f3">Google API key</label><input class="input input--mono" id="f3" value="AIza••••••••" aria-invalid="true" aria-describedby="f3h"><span class="field__help" id="f3h">Google rejected this key. Check it in AI Studio and paste it again.</span></div>
+      <div class="field field--ok"><label class="field__label" for="f4">YouTube caption URL</label><input class="input input--mono" id="f4" value="••••••••••••/closedcaption?cid=…3f9a" readonly><span class="field__help">Saved in the system keychain. Test caption delivered.</span></div>
+      <div class="field"><label class="field__label" for="f5">Room</label><input class="input" id="f5" placeholder="Sala Konex" disabled><span class="field__help">Locked while the session is live.</span></div>
+    </div>
+    <div class="chips" aria-label="Status chips">
+      <span class="chip chip--live">Live</span>
+      <span class="chip chip--ok">Connected</span>
+      <span class="chip">Idle</span>
+      <span class="chip chip--warn">Paused</span>
+      <span class="chip chip--accent">Starting</span>
+      <span class="chip chip--error">Error</span>
+      <span class="chip chip--plain">EN → ES · EN</span>
+    </div>
+    <div style="display:grid; gap:var(--space-xs); max-width:22rem">
+      <span class="label">Audio level</span>
+      <div class="meter" role="meter" aria-label="Input level" aria-valuemin="-60" aria-valuemax="0" aria-valuenow="-12">
+        <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on hot"></i><i class="on hot"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Admin ─────────────── -->
+  <section class="sec" aria-labelledby="h-admin">
+    <div class="sec__head">
+      <h2 id="h-admin">Operator dashboard</h2>
+      <p>One row per room, readable from across the booth: state, provider, detected language, level, latency per track and viewers. Errors say what broke and what to do. <span class="sample-note">Sample data.</span></p>
+    </div>
+    <div class="app">
+      <nav class="rail" aria-label="Admin">
+        <div class="wordmark">Live Subtitles <span class="wordmark__cc">CC</span></div>
+        <a href="#h-admin" aria-current="page"><svg aria-hidden="true"><use href="#i-sessions"/></svg>Sessions</a>
+        <a href="#h-admin"><svg aria-hidden="true"><use href="#i-rec"/></svg>Recordings</a>
+        <a href="#h-admin"><svg aria-hidden="true"><use href="#i-book"/></svg>Glossary</a>
+        <a href="#h-admin"><svg aria-hidden="true"><use href="#i-chip"/></svg>Models &amp; hardware</a>
+        <a href="#h-admin"><svg aria-hidden="true"><use href="#i-gear"/></svg>Settings</a>
+        <div class="rail__foot">
+          <span class="label">This server</span>
+          <span class="mono" style="font-size:var(--text-sm); color:var(--color-ink)">192.168.1.20:8080</span>
+          <span class="chip chip--ok">Gemini key valid</span>
+        </div>
+      </nav>
+      <div>
+        <div class="topbar">
+          <h3>Sessions</h3>
+          <button class="kbar" type="button"><span class="kbar__text">Search or run a command</span><kbd>⌘K</kbd></button>
+          <button class="btn btn--primary btn--sm" type="button">New session</button>
+        </div>
+        <div class="sessions">
+          <article class="panel session" aria-label="Main stage">
+            <div class="session__head">
+              <span class="session__name">Main stage</span>
+              <span class="chip chip--live">Live</span>
+              <span class="session__room">Sala Konex · 00:41:07</span>
+              <div class="session__actions">
+                <button class="btn btn--secondary btn--sm" type="button"><svg aria-hidden="true"><use href="#i-pause"/></svg>Pause</button>
+                <button class="btn btn--danger btn--sm" type="button"><svg aria-hidden="true"><use href="#i-stop"/></svg>Stop</button>
+              </div>
+            </div>
+            <div class="session__grid">
+              <div class="stat stat--meter"><span class="label">Input · browser</span>
+                <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+              <div class="stat"><span class="label">Provider</span><span class="stat__value">Gemini</span></div>
+              <div class="stat"><span class="label">Speaking</span><span class="stat__value">EN</span></div>
+              <div class="stat"><span class="label">Latency p95</span><span class="stat__value">ES 2.4 s <small>EN 1.3 s</small></span></div>
+              <div class="stat"><span class="label">Viewers</span><span class="stat__value">128</span></div>
+            </div>
+          </article>
+
+          <article class="panel session session--error" aria-label="Room B">
+            <div class="session__head">
+              <span class="session__name">Room B</span>
+              <span class="chip chip--error">Error</span>
+              <span class="session__room">Sala 2 · local provider</span>
+              <div class="session__actions">
+                <button class="btn btn--secondary btn--sm" type="button">Retry</button>
+                <button class="btn btn--ghost btn--sm" type="button">Switch to Gemini</button>
+              </div>
+            </div>
+            <p class="session__error"><svg aria-hidden="true"><use href="#i-alert"/></svg><span>The speech model stopped responding at <span class="mono">127.0.0.1:8178</span>. Check that whisper-server is running, then retry. Audio is still being recorded.</span></p>
+          </article>
+
+          <article class="panel session" aria-label="Workshops">
+            <div class="session__head">
+              <span class="session__name">Workshops</span>
+              <span class="chip">Idle</span>
+              <span class="session__room">Sala 3 · starts 15:30</span>
+              <div class="session__actions">
+                <button class="btn btn--secondary btn--sm" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Capture + viewer ─────────────── -->
+  <section class="sec" aria-labelledby="h-capture">
+    <div class="sec__head">
+      <h2 id="h-capture">Capture station and audience viewer</h2>
+      <p>The mini PC shows one thing: is audio reaching the server? The phone viewer is caption-first, with the newest line at the bottom and the draft line in muted ink. It follows the phone's language (Spanish here).</p>
+    </div>
+    <div class="duo">
+      <figure class="fig">
+        <div class="panel capture">
+          <div class="capture__top">
+            <h3>Main stage</h3>
+            <span class="chip chip--ok">Connected</span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="dev">Audio input</label>
+            <select class="input" id="dev"><option>Line In (USB Audio CODEC)</option><option>MacBook Pro Microphone</option></select>
+            <span class="field__help">Remembered on this computer.</span>
+          </div>
+          <div class="capture__meter">
+            <div class="capture__readout"><span class="label">Level</span><span class="mono num" style="font-size:var(--text-sm); color:var(--color-ink)">−14 dBFS · 16 kHz mono</span></div>
+            <div class="meter meter--lg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on hot"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="notice"><svg aria-hidden="true"><use href="#i-alert"/></svg><span>Clipping twice in the last minute. Lower the mixer's output a little.</span></div>
+          <div class="capture__actions">
+            <button class="btn btn--danger btn--xl" type="button"><svg aria-hidden="true"><use href="#i-stop"/></svg>Stop sending</button>
+          </div>
+        </div>
+        <figcaption>Capture page · <span class="mono">/capture/main-stage</span> · runs on the mini PC over localhost</figcaption>
+      </figure>
+
+      <figure class="fig">
+        <div class="viewer" lang="es">
+          <div class="viewer__head"><strong>Escenario principal</strong><span class="chip chip--live">En vivo</span></div>
+          <div class="viewer__tools">
+            <div class="seg" role="group" aria-label="Idioma de subtítulos">
+              <button type="button" aria-pressed="true">Español</button>
+              <button type="button" aria-pressed="false">English</button>
+              <button type="button" aria-pressed="false">Original</button>
+            </div>
+            <div class="seg" role="group" aria-label="Tamaño de letra">
+              <button type="button" aria-pressed="false" aria-label="Achicar letra">A−</button>
+              <button type="button" aria-pressed="false" aria-label="Agrandar letra">A+</button>
+            </div>
+          </div>
+          <div class="viewer__log" aria-live="polite">
+            <div class="line line--old"><time>00:40:51</time><p>El primer problema fue que cada réplica guardaba estado local.</p></div>
+            <div class="line"><time>00:40:58</time><p>Así que movimos las sesiones a Redis y el autoscaler empezó a funcionar.</p></div>
+            <div class="line line--interim"><time>00:41:05</time><p>Hoy vamos a ver cómo medir la latencia de punta a</p></div>
+          </div>
+          <div class="viewer__foot">
+            <span class="viewer__rec">Esta sesión se graba</span>
+            <button class="btn btn--secondary btn--sm" type="button"><svg aria-hidden="true"><use href="#i-down"/></svg>Ir al vivo</button>
+          </div>
+        </div>
+        <figcaption>Audience viewer at 375 px · <span class="mono">/s/main-stage</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ─────────────── Stage + overlay ─────────────── -->
+  <section class="sec" aria-labelledby="h-screens">
+    <div class="sec__head">
+      <h2 id="h-screens">Stage screen and stream overlay</h2>
+      <p>These never follow the UI theme. The stage screen is set for projectors: large text, two or three lines, and an optional second language underneath. The overlay is transparent and sits on the program feed in OBS or vMix.</p>
+    </div>
+    <div class="screens">
+      <figure class="fig">
+        <div class="frame stage" lang="es">
+          <span class="stage__live">En vivo · Escenario principal</span>
+          <div class="stage__qr"><svg aria-hidden="true"><use href="#i-qr"/></svg><span>Seguí los subtítulos<br>192.168.1.20:8080/s/main-stage</span></div>
+          <p class="stage__line">Así que movimos las sesiones a Redis y el autoscaler empezó a funcionar.</p>
+          <p class="stage__line stage__line--2" lang="en">So we moved sessions to Redis and the autoscaler started working.</p>
+        </div>
+        <figcaption>Stage · white-on-black preset · dual language · QR code placeholder</figcaption>
+      </figure>
+      <figure class="fig">
+        <div class="frame program">
+          <span class="program__label">Program feed</span>
+          <div class="program__slate">camera / slides<br>(your video source)</div>
+          <div class="overlay" lang="es"><p>Así que movimos las sesiones a Redis y el autoscaler empezó a funcionar.</p></div>
+        </div>
+        <figcaption>Overlay · "Classic box" preset · <span class="mono">/overlay/main-stage?lang=es</span></figcaption>
+      </figure>
+    </div>
+    <div class="urlcard">
+      <span class="label">Add to OBS or vMix as a browser input · 1920 × 1080</span>
+      <div class="urlrow"><code>http://192.168.1.20:8080/overlay/main-stage?lang=es&amp;preset=classic</code><button class="btn btn--on-graphite btn--sm" type="button"><svg aria-hidden="true"><use href="#i-copy"/></svg>Copy</button></div>
+      <div class="urlrow"><code>http://192.168.1.20:8080/overlay/main-stage?lang=en&amp;preset=outline</code><button class="btn btn--on-graphite btn--sm" type="button"><svg aria-hidden="true"><use href="#i-copy"/></svg>Copy</button></div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Setup ─────────────── -->
+  <section class="sec" aria-labelledby="h-setup">
+    <div class="sec__head">
+      <h2 id="h-setup">Setup wizard</h2>
+      <p>First run on a fresh mini PC. Each step checks something real and says what it found in plain language. <span class="sample-note">Sample data.</span></p>
+    </div>
+    <div class="panel wizard">
+      <ol class="steps">
+        <li class="done">Language and theme</li>
+        <li class="done">Admin PIN</li>
+        <li aria-current="step">Check this computer</li>
+        <li>Download models</li>
+        <li>Google API key</li>
+        <li>First session</li>
+      </ol>
+      <div class="wizard__body">
+        <h3>Check this computer</h3>
+        <p>We run a 30-second Spanish clip through the local speech and translation models to see if this machine keeps up in real time.</p>
+        <div class="checks">
+          <div class="check"><span class="check__what">Graphics acceleration</span><span class="chip chip--ok">Metal</span><span class="check__detail">Apple M2 · 16 GB memory</span></div>
+          <div class="check"><span class="check__what">Speech model server</span><span class="chip chip--ok">Reachable</span><span class="check__detail">whisper-server 1.7 · 127.0.0.1:8178</span></div>
+          <div class="check"><span class="check__what">Translation model server</span><span class="chip chip--ok">Reachable</span><span class="check__detail">ollama 0.9 · 127.0.0.1:11434</span></div>
+          <div class="check"><span class="check__what">ffmpeg with SRT</span><span class="chip chip--warn">No SRT</span><span class="check__detail">ffmpeg found, but built without libsrt. SRT input will be off.</span></div>
+          <div class="check"><span class="check__what">Real-time test</span><span class="chip chip--ok">0.42× real time</span><span class="check__detail">speech 9.1 s · translation 3.5 s for a 30 s clip</span></div>
+        </div>
+        <div class="reco">
+          <span class="label">Recommended</span>
+          <p>whisper <span class="mono">large-v3-turbo</span> and Gemma <span class="mono">gemma3:4b</span>. This computer can run subtitles locally. Add a Google API key later to use Gemini instead.</p>
+        </div>
+        <div class="wizard__actions">
+          <button class="btn btn--secondary" type="button">Back</button>
+          <button class="btn btn--primary" type="button">Download models</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var buttons = document.querySelectorAll('#theme-switch button');
+  function apply(mode) {
+    root.setAttribute('data-theme', mode);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === mode)); });
+  }
+  var saved = null;
+  var q = new URLSearchParams(location.search).get('theme');
+  try { saved = localStorage.getItem('ls-preview-theme'); } catch (e) {}
+  apply(q || saved || 'system');
+  buttons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      apply(b.dataset.set);
+      try { localStorage.setItem('ls-preview-theme', b.dataset.set); } catch (e) {}
+    });
+  });
+})();
+</script>
+</body>
+</html>
