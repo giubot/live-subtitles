@@ -4,9 +4,7 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"net/http"
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/secrets"
@@ -81,25 +79,11 @@ func (s *Server) DeleteSecret(ctx context.Context, req api.DeleteSecretRequestOb
 	case errors.Is(err, secrets.ErrNotFound):
 		return notFound, nil
 	case errors.Is(err, secrets.ErrReadOnly):
-		// Not in the spec yet (proposed: 409 on deleteSecret).
-		return errorResponse{status: http.StatusConflict, body: api.Error{
+		return api.DeleteSecret409JSONResponse{ConflictJSONResponse: api.ConflictJSONResponse{
 			Code: "secret.read_only_env", Message: "this secret is set by an environment variable",
 		}}, nil
 	case err != nil:
 		return nil, err
 	}
 	return api.DeleteSecret204Response{}, nil
-}
-
-// errorResponse is an api.Error with a status the spec doesn't list for
-// the operation.
-type errorResponse struct {
-	status int
-	body   api.Error
-}
-
-func (e errorResponse) VisitDeleteSecretResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(e.status)
-	return json.NewEncoder(w).Encode(e.body)
 }
