@@ -31,6 +31,7 @@ Live Subtitles: real-time EN/ES transcription and translation for live events. O
 ## Web (`web/`)
 
 - API calls go through `web/src/api/client.ts` (`api.useQuery('get', '/api/…')`), typed by the generated `schema.d.ts`. `task dev:web API=mock` runs the app against the Prism mock before the Go handler exists.
+- Realtime goes through `web/src/realtime/`: `useCaptions(sessionId, langs)` for viewers, stage and overlay, `useAdminEvents()` for the dashboard, `createIngestSocket()` for capture. They reconnect with backoff and keep state in Zustand stores; tests use `src/test/fakeWebSocket.ts`.
 - Routes in `web/src/routes/` stay thin and import from `features/`. Feature lanes edit only their own route file.
 - Every user-facing string comes from i18n with both `es` and `en` keys in the feature's own namespace (`web/src/locales/<lang>/<namespace>.json`). `common.json` belongs to the shared shell. `check:i18n` enforces key parity.
 - Style with the CSS variables from `web/src/theme/tokens.css` (`var(--color-ok)`, `var(--space-xs)`) or the MUI theme. `check:design` fails on raw colours or fonts outside `web/src/theme/`. A design change is its own `feat(design):` commit that updates `docs/design.md` and `tokens.css` together and regenerates `palette.ts`.

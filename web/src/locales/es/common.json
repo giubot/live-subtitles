@@ -61,6 +61,11 @@
         "title": "El servidor rechazó la solicitud",
         "why": "No pudo leer los datos que se enviaron.",
         "fix": "Revisá los campos y probá de nuevo. Si sigue pasando, recargá la página: puede que la app sea más vieja que el servidor."
+      },
+      "failed": {
+        "title": "La solicitud falló",
+        "why": "Algo entre este dispositivo y el servidor respondió con HTTP {{status}} en lugar del servidor.",
+        "fix": "Probá de nuevo. Si sigue fallando, revisá la red o el proxy delante del servidor."
       }
     },
     "route": {

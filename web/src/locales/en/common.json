@@ -61,6 +61,11 @@
         "title": "The server rejected the request",
         "why": "It couldn't read the data that was sent.",
         "fix": "Check the fields and try again. If it keeps happening, reload the page: the app may be older than the server."
+      },
+      "failed": {
+        "title": "The request failed",
+        "why": "Something between this device and the server answered with HTTP {{status}} instead of the server itself.",
+        "fix": "Try again. If it keeps failing, check the network or proxy in front of the server."
       }
     },
     "route": {
