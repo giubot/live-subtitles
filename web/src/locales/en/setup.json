@@ -1,3 +1,12 @@
 {
-  "title": "Set up Live Subtitles"
+  "title": "Set up Live Subtitles",
+  "intro": "Choose the PIN that protects the admin pages. Anyone with it can start sessions and change settings.",
+  "pin": "Admin PIN",
+  "pinHelp": "At least {{min}} characters. Numbers are fine.",
+  "pinTooShort": "Use at least {{min}} characters.",
+  "confirm": "Repeat the PIN",
+  "mismatch": "The two PINs don’t match.",
+  "submit": "Save PIN and continue",
+  "done": "This server is already set up. Log in with its admin PIN.",
+  "toAdmin": "Go to the admin"
 }

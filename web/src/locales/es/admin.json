@@ -1,3 +1,94 @@
 {
-  "title": "Sesiones"
+  "title": "Sesiones",
+  "appTitle": "Admin de Live Subtitles",
+  "newSession": "Nueva sesión",
+  "logout": "Cerrar sesión",
+  "nav": { "label": "Admin", "sessions": "Sesiones", "server": "Este servidor" },
+  "login": {
+    "title": "Ingresar",
+    "intro": "Ingresá el PIN de admin que se eligió al configurar este servidor.",
+    "pin": "PIN de admin",
+    "submit": "Ingresar"
+  },
+  "empty": {
+    "title": "Todavía no hay sesiones",
+    "body": "Una sesión es una sala o un escenario con sus propios subtítulos. Creá una con Nueva sesión."
+  },
+  "state": {
+    "idle": "Inactiva",
+    "starting": "Arrancando",
+    "live": "En vivo",
+    "paused": "En pausa",
+    "stopping": "Deteniendo",
+    "error": "Error"
+  },
+  "source": { "browser": "navegador", "file": "archivo", "srt": "SRT", "device": "dispositivo" },
+  "provider": {
+    "default": "Predeterminado",
+    "gemini": "Gemini",
+    "local": "Local (whisper + Ollama)",
+    "mock": "Simulado (guionado)"
+  },
+  "card": {
+    "start": "Iniciar",
+    "resume": "Reanudar",
+    "pause": "Pausar",
+    "stop": "Detener",
+    "edit": "Editar",
+    "links": "Enlaces",
+    "input": "Entrada · {{source}}",
+    "noCapture": "No hay página de captura conectada",
+    "provider": "Proveedor",
+    "speaking": "Idioma hablado",
+    "viewers": "Espectadores"
+  },
+  "links": {
+    "viewer": "Visor del público",
+    "stage": "Pantalla de escenario",
+    "overlay": "Overlay para OBS / vMix · 1920 × 1080",
+    "capture": "Página de captura",
+    "captureHidden": "El enlace de captura lleva un token secreto que solo se muestra cuando se crea. Creá uno nuevo para verlo acá.",
+    "rotate": "Crear un enlace de captura nuevo",
+    "rotateConfirm": "Un enlace de captura nuevo reemplaza al anterior: las páginas de captura abiertas con el enlace viejo no van a poder reconectarse.",
+    "rotateYes": "Reemplazar el enlace de captura",
+    "rotateNo": "Mantener el anterior",
+    "captureHint": "Abrilo en la computadora que tiene la entrada de audio. Sigue siendo válido hasta que crees uno nuevo.",
+    "qr": "Escaneá para seguir los subtítulos"
+  },
+  "form": {
+    "createTitle": "Nueva sesión",
+    "editTitle": "Editar {{name}}",
+    "name": "Nombre",
+    "slug": "Dirección",
+    "slugHelp": "Va en todos los enlaces: minúsculas, números y guiones.",
+    "slugFixed": "La dirección no puede cambiar, así los enlaces compartidos siguen funcionando.",
+    "room": "Sala",
+    "roomHelp": "Opcional, se le muestra al público.",
+    "sourceLanguage": "Idioma hablado",
+    "sourceLanguageHelp": "Automático distingue inglés de español oración por oración.",
+    "source": { "auto": "Automático (inglés o español)", "en": "Inglés", "es": "Español" },
+    "provider": "Proveedor de IA",
+    "providerHelp": {
+      "default": "Gemini si hay una clave de API de Google; si no, local.",
+      "gemini": "Google Gemini, por internet.",
+      "local": "whisper y Ollama en esta red, sin internet.",
+      "mock": "Subtítulos guionados para probar, sin IA."
+    },
+    "targetLanguages": "Idiomas de subtítulos",
+    "targetLanguagesHelp": "El original también está siempre disponible.",
+    "recording": "Grabar el audio",
+    "invalid": {
+      "name": "Ponele un nombre a la sesión (hasta 120 caracteres).",
+      "slug": "Usá minúsculas, números y guiones, empezando con una letra o un número.",
+      "room": "Hasta 120 caracteres.",
+      "targetLanguages": "Elegí al menos un idioma."
+    },
+    "create": "Crear sesión",
+    "save": "Guardar cambios",
+    "cancel": "Cancelar",
+    "delete": "Eliminar sesión",
+    "deleteConfirm": "¿Eliminarla junto con sus subtítulos? Las grabaciones se conservan.",
+    "deleteYes": "Eliminar",
+    "deleteNo": "Conservarla"
+  }
 }

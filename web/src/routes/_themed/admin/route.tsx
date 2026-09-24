@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { AdminLayout } from '../../../features/admin/AdminLayout'
 
-// Admin shell (side rail, top bar, ⌘K) lands in P1-17; feature lanes add
-// their pages as children of this route.
+// Admin shell: login gate, side rail, /ws/admin. Feature lanes add their
+// pages as children of this route.
 export const Route = createFileRoute('/_themed/admin')({
-  component: Outlet,
+  component: AdminLayout,
 })

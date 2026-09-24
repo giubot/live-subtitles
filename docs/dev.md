@@ -36,7 +36,9 @@ To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db
 
 ## Sessions and realtime
 
-Create a session with its URL slug (lowercase letters, digits and hyphens) and a name; anything you leave out comes from the settings (target languages `[es, en]`, source language `auto`, recording on):
+Manage sessions at `/admin` → **New session**: give it a name (the address, or slug, is derived from it), languages and provider, then use **Start**, **Pause** and **Stop** on its card. **Links** shows the viewer, stage, overlay and capture links with a QR code for the audience. The capture link carries the session's ingest token, which the server only stores hashed: it's shown right after creating the session, or after **Make a new capture link** (which retires the old one). When the admin runs on `localhost`, the capture link stays on `localhost` too, so the browser allows the microphone.
+
+Scripts can do the same over the API. Anything left out comes from the settings (target languages `[es, en]`, source language `auto`, recording on):
 
 ```sh
 curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" -H "Content-Type: application/json" \

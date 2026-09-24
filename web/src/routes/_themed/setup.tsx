@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-import { StubPage } from '../../components/StubPage'
+import { SetupPage } from '../../features/admin/SetupPage'
 
 export const Route = createFileRoute('/_themed/setup')({
-  component: Page,
+  component: SetupPage,
 })
-
-function Page() {
-  const { t } = useTranslation('setup')
-  return <StubPage title={t('title')} />
-}

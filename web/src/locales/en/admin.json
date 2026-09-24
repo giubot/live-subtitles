@@ -1,3 +1,94 @@
 {
-  "title": "Sessions"
+  "title": "Sessions",
+  "appTitle": "Live Subtitles admin",
+  "newSession": "New session",
+  "logout": "Log out",
+  "nav": { "label": "Admin", "sessions": "Sessions", "server": "This server" },
+  "login": {
+    "title": "Log in",
+    "intro": "Enter the admin PIN chosen when this server was set up.",
+    "pin": "Admin PIN",
+    "submit": "Log in"
+  },
+  "empty": {
+    "title": "No sessions yet",
+    "body": "A session is one room or stage with its own captions. Create one with New session."
+  },
+  "state": {
+    "idle": "Idle",
+    "starting": "Starting",
+    "live": "Live",
+    "paused": "Paused",
+    "stopping": "Stopping",
+    "error": "Error"
+  },
+  "source": { "browser": "browser", "file": "file", "srt": "SRT", "device": "device" },
+  "provider": {
+    "default": "Default",
+    "gemini": "Gemini",
+    "local": "Local (whisper + Ollama)",
+    "mock": "Mock (scripted)"
+  },
+  "card": {
+    "start": "Start",
+    "resume": "Resume",
+    "pause": "Pause",
+    "stop": "Stop",
+    "edit": "Edit",
+    "links": "Links",
+    "input": "Input · {{source}}",
+    "noCapture": "No capture page connected",
+    "provider": "Provider",
+    "speaking": "Speaking",
+    "viewers": "Viewers"
+  },
+  "links": {
+    "viewer": "Audience viewer",
+    "stage": "Stage screen",
+    "overlay": "OBS / vMix overlay · 1920 × 1080",
+    "capture": "Capture page",
+    "captureHidden": "The capture link carries a secret token that’s only shown when it’s made. Make a new one to see it here.",
+    "rotate": "Make a new capture link",
+    "rotateConfirm": "A new capture link replaces the old one: capture pages opened with the old link can’t reconnect.",
+    "rotateYes": "Replace the capture link",
+    "rotateNo": "Keep the old one",
+    "captureHint": "Open it on the computer that has the audio input. It stays valid until you make a new one.",
+    "qr": "Scan to follow the captions"
+  },
+  "form": {
+    "createTitle": "New session",
+    "editTitle": "Edit {{name}}",
+    "name": "Name",
+    "slug": "Address",
+    "slugHelp": "Goes in every link: lowercase letters, digits and hyphens.",
+    "slugFixed": "The address can’t change, so shared links keep working.",
+    "room": "Room",
+    "roomHelp": "Optional, shown to the audience.",
+    "sourceLanguage": "Spoken language",
+    "sourceLanguageHelp": "Automatic tells English from Spanish sentence by sentence.",
+    "source": { "auto": "Automatic (English or Spanish)", "en": "English", "es": "Spanish" },
+    "provider": "AI provider",
+    "providerHelp": {
+      "default": "Gemini when a Google API key is set, otherwise local.",
+      "gemini": "Google Gemini, over the internet.",
+      "local": "whisper and Ollama on this network, no internet needed.",
+      "mock": "Scripted captions for testing, no AI."
+    },
+    "targetLanguages": "Caption languages",
+    "targetLanguagesHelp": "The original is always available too.",
+    "recording": "Record the audio",
+    "invalid": {
+      "name": "Give the session a name (up to 120 characters).",
+      "slug": "Use lowercase letters, digits and hyphens, starting with a letter or digit.",
+      "room": "Up to 120 characters.",
+      "targetLanguages": "Pick at least one language."
+    },
+    "create": "Create session",
+    "save": "Save changes",
+    "cancel": "Cancel",
+    "delete": "Delete session",
+    "deleteConfirm": "Delete it and its captions? Recordings are kept.",
+    "deleteYes": "Delete",
+    "deleteNo": "Keep it"
+  }
 }

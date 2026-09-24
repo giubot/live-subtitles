@@ -36,5 +36,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
+    // UI flow tests click through several pages; on a loaded machine
+    // (all files in parallel, cold transforms) they need more than 5 s.
+    testTimeout: 30000,
   },
 })

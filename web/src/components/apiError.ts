@@ -6,6 +6,8 @@ export interface ApiErrorLike {
   code: string
   message?: string
   params?: Record<string, unknown>
+  /** Field → error code, for a rejected form (400). */
+  fields?: Record<string, string>
 }
 
 /** Client-side code for a request that never got an answer. */
@@ -17,11 +19,12 @@ const codePattern = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/
 /** Pulls a translatable error out of whatever a request threw or returned. */
 export function toApiError(err: unknown): ApiErrorLike | undefined {
   if (err && typeof err === 'object' && 'code' in err && typeof err.code === 'string') {
-    const { code, message, params } = err as ApiErrorLike
+    const { code, message, params, fields } = err as ApiErrorLike
     return {
       code,
       message: typeof message === 'string' ? message : undefined,
       params: params && typeof params === 'object' ? params : undefined,
+      fields: fields && typeof fields === 'object' ? fields : undefined,
     }
   }
   // fetch() rejects with a TypeError when the server can't be reached.

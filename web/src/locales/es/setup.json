@@ -1,3 +1,12 @@
 {
-  "title": "Configurar Subtítulos en vivo"
+  "title": "Configurar Live Subtitles",
+  "intro": "Elegí el PIN que protege las páginas de admin. Quien lo tenga puede iniciar sesiones y cambiar la configuración.",
+  "pin": "PIN de admin",
+  "pinHelp": "Al menos {{min}} caracteres. Pueden ser números.",
+  "pinTooShort": "Usá al menos {{min}} caracteres.",
+  "confirm": "Repetí el PIN",
+  "mismatch": "Los dos PIN no coinciden.",
+  "submit": "Guardar PIN y seguir",
+  "done": "Este servidor ya está configurado. Ingresá con su PIN de admin.",
+  "toAdmin": "Ir al admin"
 }

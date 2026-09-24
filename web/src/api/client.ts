@@ -38,7 +38,15 @@ export const errorBodyMiddleware: Middleware = {
  * rides along. Failed requests resolve with `error` set to an API Error
  * body, and the query hooks throw it: pass it to `ErrorAlert`.
  */
-export const client = createFetchClient<paths>({ baseUrl: '/', credentials: 'include' })
+export const client = createFetchClient<paths>({
+  // The page's own origin: same as '/' in a browser, and absolute so tests
+  // (Node's Request) can resolve it.
+  baseUrl: `${globalThis.location?.origin ?? ''}/`,
+  credentials: 'include',
+  // Looked up on every call rather than captured at startup, so tests can
+  // stub fetch per test.
+  fetch: (request) => globalThis.fetch(request),
+})
 client.use(errorBodyMiddleware)
 
 /** TanStack Query hooks over the client: `api.useQuery('get', '/api/sessions')`. */
