@@ -56,7 +56,7 @@ live-subtitles/
 │   │   ├── api/                   # generated schema.d.ts + client + query hooks
 │   │   ├── realtime/              # WS clients (captions, ingest, admin) + zustand stores
 │   │   ├── i18n/ + locales/{es,en}/
-│   │   ├── theme/                 # MUI theme, colorSchemes, stage presets
+│   │   ├── theme/                 # tokens.css (source of truth), palette.ts (generated), theme.ts (MUI), fonts
 │   │   ├── components/            # shared UI (QrCode, LanguagePicker, ThemeToggle, …)
 │   │   ├── features/
 │   │   │   ├── setup/  admin/  capture/  viewer/  stage/  overlay/  replay/
@@ -65,9 +65,11 @@ live-subtitles/
 ├── deploy/
 │   ├── docker/Dockerfile
 │   └── compose/{compose.yaml,compose.dev.yaml}
-├── scripts/                       # fetch-test-audio.sh, gen.sh, …
+├── design/
+│   └── preview.html               # visual reference for every surface (light + dark)
+├── scripts/                       # fetch-test-audio.sh, gen-palette.py, check-contrast.py, …
 ├── testdata/audio/                # small committed fixtures + gitignored downloads
-├── docs/                          # requirements, plan, guides, runbook, scaling
+├── docs/                          # requirements, plan, design (locked design system), guides, runbook, scaling
 ├── Taskfile.yml  redocly.yaml  go.mod  LICENSE  NOTICE  .env.example
 ```
 
@@ -133,6 +135,7 @@ With fewer people, merge lanes (e.g. `core`+`sec`, `web-admin`+`web-audience`). 
 | `internal/api/gen.go` | generated | Never hand-edit |
 | `internal/api/handlers_<tag>.go` | the lane owning that tag | One file per OpenAPI tag |
 | `internal/app/wire.go` | core | Other lanes add **one line** to register their service |
+| `docs/design.md`, `web/src/theme/**`, `design/**`, `scripts/gen-palette.py`, `scripts/check-contrast.py` | web-shell | Design changes follow §3.6 |
 | `web/src/routes/**` | web-shell creates stubs in P0 | Feature lanes only edit their own route file |
 | `web/src/locales/{es,en}/<namespace>.json` | one namespace per feature (`admin`, `viewer`, `capture`, …) | Never edit another feature's namespace; `common.json` belongs to web-shell |
 | `Taskfile.yml`, CI, Docker | platform | Others propose changes in the commit body |
@@ -141,7 +144,7 @@ With fewer people, merge lanes (e.g. `core`+`sec`, `web-admin`+`web-audience`). 
 
 | Milestone | Contents | Target (UTC) |
 |---|---|---|
-| **M0 Skeleton** | Phase 0 done: builds, dev env, contract, codegen, mock server, domain interfaces | Thu 24 · 19:00 |
+| **M0 Skeleton** | Phase 0 done: builds, dev env, contract, codegen, mock server, domain interfaces, design system in the app (theme, fonts, light/dark) | Thu 24 · 19:00 |
 | **M1 Walking skeleton** | Browser capture → mock provider → bus → viewer/stage/overlay end to end, sessions CRUD, admin auth | Thu 24 · 23:59 |
 | **M2 Real AI** | Gemini + local providers with EN/ES detection and ES/EN translation, VTT/SRT live + export, secrets | Fri 25 · 05:00 |
 | **M3 Operable** | Dashboard, setup wizard, default-provider rule, recording + replay, TLS, SRT ingest | Fri 25 · 10:00 |
@@ -155,11 +158,20 @@ Everything else hangs off this path in parallel. If time runs short, cut from th
 
 - [ ] Code + tests (Go: table tests; Web: Vitest for logic, Playwright smoke for pages). `task check` is green (lint, typecheck, test, spec lint, codegen drift).
 - [ ] Every user-facing string goes through i18n with **both `es` and `en`** keys. Pages are checked in **light and dark**.
-- [ ] UI follows [`design.md`](../design.md): tokens only (no raw colours/fonts/spacing), 8 interactive states, one primary button per view; compare against `design/preview.html`.
+- [ ] UI follows [`design.md`](design.md): tokens only (no raw colours/fonts/spacing), 8 interactive states, one primary button per view; compare against `design/preview.html`.
 - [ ] Errors use translatable `code`s (UI-4). No secrets in logs.
 - [ ] Apache-2.0 SPDX header on new source files.
 - [ ] Docs touched if behavior or config changed (README / runbook / guide).
 - [ ] Conventional Commit landed on `main`, with `Refs: <task-id>`.
+
+### 3.6 Design system rules
+
+The UI design is locked in [`docs/design.md`](design.md), with [`design/preview.html`](../design/preview.html) as the visual reference (also published as a private web page: https://claude.ai/artifact/6GoH35X8qEw6fWCX6zj2N2).
+
+1. **Tokens only.** Components use CSS variables from `web/src/theme/tokens.css` or the MUI theme built from them (P0-09). No raw hex, `rgb()`, `oklch()`, `font-family` or pixel spacing in feature code. `task check` fails on raw colour literals outside `web/src/theme/`.
+2. **Changing the design** is its own `feat(design):` commit that updates `docs/design.md` and `tokens.css` together, regenerates `palette.ts` (`task gen`), passes the contrast check, and updates `design/preview.html`. Land it before the feature that needs it. The published preview page is republished from the same file.
+3. **Shared UI primitives** (status chip, level meter, copy field, panel, stat, ⌘K palette, theme and language switches) live in `web/src/components/` and belong to web-shell. Feature lanes compose them; they don't restyle them locally. If a feature needs a variant, add it to the shared component.
+4. **Per-surface rules** in `docs/design.md` § Surfaces are acceptance criteria: the stage screen and overlay never follow the UI theme, the admin has one filled primary button per view, and status is always a chip plus a label.
 
 ---
 
@@ -175,14 +187,15 @@ P0-01 comes first. After that, P0-02..P0-07 run in parallel, and P0-08 needs P0-
 
 | ID | Task | Lane | Deps | Reqs | Deliverables / acceptance |
 |---|---|---|---|---|---|
-| **P0-01** | **Repo skeleton** | platform | — | 5.4, 5.7 | Layout from §2; `go.mod` (`github.com/iencodev/live-subtitles`, Go 1.26); `LICENSE` (Apache-2.0), `NOTICE`; `.gitignore`, `.editorconfig`, `.env.example`; `Taskfile.yml` with `dev`, `gen`, `check`, `build`, `test` stubs; SPDX header check script. |
+| **P0-01** | **Repo skeleton** | platform | — | 5.4, 5.7 | Layout from §2; `go.mod` (`github.com/iencodev/live-subtitles`, Go 1.26); `LICENSE` (Apache-2.0), `NOTICE`; `.editorconfig`, `.env.example` (`.gitignore` already exists; extend it as tooling lands); `Taskfile.yml` with `dev`, `gen`, `check`, `build`, `test` stubs; SPDX header check script. |
 | **P0-02** | **Contract + codegen pipeline** | api | P0-01 | AI-1, OUT-1 | `api/openapi.yaml` (initial version already drafted) + `redocly.yaml`; `task gen` generates Go (`internal/api/gen.go`) and TS (`web/src/api/schema.d.ts`, client, query hooks); `task check` fails on codegen drift; example values for the main schemas. |
 | **P0-03** | **Go server skeleton** | core | P0-01 | 5.4 | `cmd/livesubs`: config (flags + env + `LIVESUBS_*`), `slog` JSON/text logging, HTTP server on `0.0.0.0:8080`, `/healthz`, graceful shutdown, serving the embedded `web/dist` with SPA fallback, `air` live reload config. Strict server wired with a `NotImplemented` default for all operations. |
-| **P0-04** | **Web skeleton** | web-shell | P0-01 | UI-1, UI-2, UI-3, UI-5, UI-7 | Vite + React + TS; TanStack Router (file routes) with **stub routes for every page**: `/setup`, `/admin/*`, `/capture/$id`, `/s`, `/s/$id`, `/stage/$id`, `/overlay/$id`, `/replay/$id`; TanStack Query provider; Zustand; MUI theme built from the locked design system ([`design.md`](../design.md), `web/src/theme/tokens.css` + generated `palette.ts`) with `colorSchemes` + **Light/Dark/System** toggle (no flash); self-hosted fonts via `@fontsource-variable` (Space Grotesk, Atkinson Hyperlegible Next, Atkinson Hyperlegible Mono); **i18next ES/EN** with browser detection, `?ui=` override, switcher, MUI locale switch, per-feature namespaces; bare overlay layout (transparent, no theme); ESLint + Prettier + Vitest; missing-i18n-key check in `task check`. |
+| **P0-04** | **Web skeleton** | web-shell | P0-01 | UI-1, UI-2, UI-3, UI-5, UI-7 | Vite + React + TS; TanStack Router (file routes) with **stub routes for every page**: `/setup`, `/admin/*`, `/capture/$id`, `/s`, `/s/$id`, `/stage/$id`, `/overlay/$id`, `/replay/$id`; TanStack Query provider; Zustand; MUI installed with a `ThemeProvider` slot that P0-09 fills; **i18next ES/EN** with browser detection, `?ui=` override, switcher, MUI locale switch, per-feature namespaces; bare overlay layout (transparent, no theme); ESLint + Prettier + Vitest; missing-i18n-key check in `task check`. |
 | **P0-05** | **Mock API + dev proxy** | platform | P0-02, P0-04 | — | `task dev:mock` runs Prism on `:4010`. Vite proxy switch `VITE_API=mock\|server`. |
-| **P0-06** | **Dev environment** | platform | P0-01 | 5.4, AI-3 | `task dev` runs Vite (HMR) + `air` together, with Vite proxying `/api` and `/ws` to Go. `deploy/compose/compose.dev.yaml` runs `whisper-server` (whisper.cpp, multilingual model volume) + `ollama` (Gemma), with GPU passthrough where available and native-install notes for macOS/Metal. `task models:pull` pulls `ggml-large-v3-turbo` + `gemma3:4b` (smaller fallbacks documented). `scripts/fetch-test-audio.sh` uses yt-dlp + ffmpeg to fetch **one English and one Spanish Nerdearla talk** into gitignored `testdata/audio/`, trimmed to 16 kHz mono clips. A tiny self-recorded EN and ES clip is committed for CI. |
+| **P0-06** | **Dev environment** | platform | P0-01 | 5.4, AI-3 | `task dev` runs Vite (HMR) + `air` together, with Vite proxying `/api` and `/ws` to Go. `deploy/compose/compose.dev.yaml` runs `whisper-server` (whisper.cpp, multilingual model volume) + `ollama` (Gemma), with GPU passthrough where available and native-install notes for macOS/Metal. `task models:pull` pulls `ggml-large-v3-turbo` + `gemma3:4b` (smaller fallbacks documented). `scripts/fetch-test-audio.sh` uses yt-dlp + ffmpeg to fetch **one English and one Spanish Nerdearla talk** into gitignored `testdata/audio/`, trimmed to 16 kHz mono clips. A tiny self-recorded EN and ES clip is committed under `testdata/audio/fixtures/` for CI. |
 | **P0-07** | **CI** | platform | P0-01 | 5.4 | GitHub Actions: Go (`vet`, `golangci-lint`, `test -race`), web (lint, typecheck, vitest, build), `redocly lint`, codegen drift, i18n key check, SPDX check. Runs on push to `main`. |
 | **P0-08** | **Domain types + internal interfaces + mock provider** | core | P0-02 | AI-1, SES-2 | `internal/domain`: `Session`, `CaptionEvent` (alias of the generated `Caption`), `AudioFrame{PCM []int16, T time.Duration}`, `Clock`; interfaces `AudioSource`, `ASRProvider` (`Start(ctx, cfg) (chan<- AudioFrame, <-chan ASREvent, error)`), `Translator` (`Translate(ctx, TranslateRequest) (TranslateResult, error)`, streaming optional), `CaptionBus`, `SessionStore`, `CaptionStore`, `SecretStore`, `Recorder`. `provider/mock`: emits scripted EN/ES captions with interim→final and fake latency. `audio/fake`: generates silence or a sine wave. This is what unblocks all backend lanes. |
+| **P0-09** | **Design system implementation** | web-shell | P0-04 | UI-5, UI-6, UI-7 | Implements [`docs/design.md`](design.md) in the app: global import of `web/src/theme/tokens.css`; self-hosted fonts via `@fontsource-variable/{space-grotesk,atkinson-hyperlegible-next,atkinson-hyperlegible-mono}` (no CDN, edge nodes may be offline); `web/src/theme/theme.ts` with `createTheme({ cssVariables: { colorSchemeSelector: '[data-theme="%s"]' }, colorSchemes })` fed by the generated `palette.ts`, typography from the font tokens, `shape.borderRadius: 6`, and component overrides from design.md § Components (Button: no elevation, no uppercase, 700; outlined secondary/danger; Card/Paper outlined 10 px; flat AppBar with hairline; Drawer on `paper-2`; OutlinedInput with `control` border and reserved helper height; Tooltip `enterDelay` 800 hover / 0 focus; instant `:focus-visible` ring); **Light/Dark/System** switch that keeps `data-theme` on `<html>` in sync, persisted per device, with an inline pre-mount script so there's no flash of the wrong theme; `scripts/gen-palette.py` wired into `task gen` with a drift check; `scripts/check-contrast.py` (WCAG pairs from design.md, both schemes) and a raw-colour-literal check in `task check` and CI; a dev-only `/dev/design` route that renders the theme and shared primitives in all 8 states, light and dark, matching `design/preview.html`. |
 
 ### Phase 1: Foundations and the walking skeleton (M1)
 
@@ -210,14 +223,14 @@ Most tasks here are independent. Backend and frontend lanes run in parallel agai
 | ID | Task | Lane | Deps | Reqs | Deliverables / acceptance |
 |---|---|---|---|---|---|
 | **P1-11** | **API client + realtime lib** | web-shell | P0-02, P0-04 | OUT-1, SES-5 | `src/api`: `openapi-fetch` client with cookie credentials and an error → i18n code mapper; `openapi-react-query` hooks. `src/realtime`: `useCaptions(sessionId, langs[])` (WS with backoff reconnect, history merge, interim replacement, Zustand store per session/track), `useAdminEvents()`, `createIngestSocket()`. Unit tests with a mock WS. |
-| **P1-12** | **Shared components** | web-shell | P0-04 | OUT-4, UI-2, UI-5 | `QrCode`, `LanguagePicker` (native names), `ThemeToggle`, `UiLanguageSwitcher`, `StatusChip`, `LevelMeter`, `CopyField`, `EmptyState`, `ErrorAlert` (translates `code`). |
+| **P1-12** | **Shared UI primitives** | web-shell | P0-04, P0-09 | OUT-4, UI-2, UI-5 | Per docs/design.md § Components, each shown on `/dev/design` in all 8 states: `StatusChip` (live / ok / warn / error / idle / starting: mono uppercase label + dot, LIVE filled with `live`), `LevelMeter` (24 segments ok → warn → danger, `role="meter"`), `Panel` (hairline, 10 px), `Stat` (mono label + tabular value), `CopyField` (graphite URL card + copy with clipboard fallback), `KbdHint`, `QrCode`, `LanguagePicker` (native names), `ThemeToggle` and `UiLanguageSwitcher` (segmented), `EmptyState` (what's empty, why, one action), `ErrorAlert` (translates `code`: what broke, why, what to do). Icons: `@mui/icons-material` Outlined only, `aria-hidden` next to text. |
 | **P1-13** | **Capture page** | web-audience | P1-11, P1-12 | AUD-1, AUD-2 | `/capture/$id?token=`: device picker (labels after permission), **AudioWorklet** downmix + resample to 16 kHz s16le in 20 ms frames, level meter, start/stop, auto-reconnect with local buffer, device choice persisted, Screen **Wake Lock**, clear warnings when not a secure context (TLS-2). |
-| **P1-14** | **Audience viewer** | web-audience | P1-11, P1-12 | OUT-2, OUT-11, UI-1, UI-7 | `/s` (session list) and `/s/$id`: language picker (tracks + `source`), auto-scrolling transcript with interim styling, "jump to live", font size control, `aria-live="polite"` region, recorded-session notice, mobile-first. |
-| **P1-15** | **Stage screen** | web-audience | P1-11, P1-12 | OUT-3, UI-7 | `/stage/$id`: full screen, last N lines, large high-contrast presets (independent of the UI theme), optional dual language, QR corner linking to the viewer, auto-hide cursor, reconnect indicator. |
-| **P1-16** | **OBS/vMix overlay page** | web-audience | P1-11 | OUT-5, UI-7 | `/overlay/$id?lang=&preset=&…`: transparent background, no MUI chrome, style from preset + query params (`OverlayStyle`), max lines, fade after silence, text outline, 1920×1080-safe layout, no scrollbars; verified in the OBS Browser source. |
-| **P1-17** | **Admin shell + sessions CRUD UI** | web-admin | P1-11, P1-12 | SES-1, ADM-3 | `/setup` (PIN step only for now), login, admin layout/nav, sessions list + create/edit dialog (name, slug, room, source language, target languages, provider, glossary, recording), start/pause/stop buttons, "copy URL" for viewer/stage/overlay/capture (with token), QR display. |
+| **P1-14** | **Audience viewer** | web-audience | P1-11, P1-12 | OUT-2, OUT-11, UI-1, UI-7 | `/s` (session list) and `/s/$id`: language picker (tracks + `source`), auto-scrolling transcript with interim styling, "jump to live", font size control, `aria-live="polite"` region, recorded-session notice, mobile-first. Caption type: Atkinson Hyperlegible Next 500 at `--text-caption`, interim line in `--color-muted` with a cobalt caret, mono timecodes, `lang` attribute per caption track. |
+| **P1-15** | **Stage screen** | web-audience | P1-11, P1-12 | OUT-3, UI-7 | `/stage/$id`: full screen, last N lines, large high-contrast presets (independent of the UI theme), optional dual language, QR corner linking to the viewer, auto-hide cursor, reconnect indicator. Uses the `--stage-*` presets (`white-on-black` default, `yellow-on-black`, `black-on-white`) and `--text-caption-stage`; captions appear without animation. |
+| **P1-16** | **OBS/vMix overlay page** | web-audience | P1-11 | OUT-5, UI-7 | `/overlay/$id?lang=&preset=&…`: transparent background, no MUI chrome, style from preset + query params (`OverlayStyle`), max lines, fade after silence, text outline, 1920×1080-safe layout, no scrollbars; verified in the OBS Browser source. Built-in presets from design.md: **Classic box** (`--overlay-box`), **Outline only**, **Lower third**; Atkinson Hyperlegible Next 600. |
+| **P1-17** | **Admin shell + sessions CRUD UI** | web-admin | P1-11, P1-12 | SES-1, ADM-3 | `/setup` (PIN step only for now), login, admin layout/nav, sessions list + create/edit dialog (name, slug, room, source language, target languages, provider, glossary, recording), start/pause/stop buttons, "copy URL" for viewer/stage/overlay/capture (with token), QR display. Layout per design.md: side rail (N3) on `paper-2` with accent tick on the active item, flat top bar with the ⌘K trigger (palette itself in P3-19), **one filled primary button per view**. |
 
-**M1 exit check**: open `/capture/main` on the laptop mic and `/s/main` on a phone via the QR code, and see mock captions flowing; `/stage/main` and `/overlay/main` render; `task check` passes.
+**M1 exit check**: open `/capture/main` on the laptop mic and `/s/main` on a phone via the QR code, and see mock captions flowing; `/stage/main` and `/overlay/main` render; every page switches light/dark and ES/EN and matches the design preview's look; `task check` passes.
 
 ### Phase 2: Real AI and languages (M2)
 
@@ -257,10 +270,11 @@ Goal: event-day operability: dashboard, setup wizard, recording and replay, TLS,
 | **P3-12** | **Resilience** | core + ai | P1-05, P2-01, P2-03 | SES-5, 5.5 | Automatic restart of a crashed provider or source with capped backoff, and a gap marker in captions and status; ingest reconnect keeps the session live; Gemini resumption verified with a 60 min test file at 4× speed (where possible) or a forced reconnect. |
 | **P3-13** | **Observability** | platform | P2-08 | ADM-5 | Structured request logs with session IDs; `/metrics` Prometheus (sessions live, latency histograms, viewers, WS clients, provider errors, bytes recorded); `/healthz` with dependency checks. |
 | **P3-14** | **Overlay presets + preview** | web-admin + core | P1-16 | OUT-5 | `overlay-presets` handlers; admin editor with a **live preview** over a sample video frame; "Copy overlay URL" per language; built-in presets (Classic box, Outline only, Lower-third). |
-| **P3-15** | **i18n + a11y audit** | web-shell | most UI tasks | UI-1, UI-3, UI-4, UI-6, OUT-11 | Every screen in ES/EN with no hard-coded strings (lint rule); every backend error code has ES/EN translations; axe checks in Playwright for light and dark; contrast fixes. |
+| **P3-15** | **i18n, a11y and design audit** | web-shell | most UI tasks | UI-1, UI-3, UI-4, UI-6, OUT-11 | Every screen in ES/EN with no hard-coded strings (lint rule); every backend error code has ES/EN translations; axe checks in Playwright for light and dark; contrast fixes. Design audit: Playwright screenshots of every route in light and dark at 375 and 1440 px compared by eye against `design/preview.html`; no horizontal scroll at 320 / 375 / 414 / 768 px; no two-line button or nav labels; contrast check green. |
 | **P3-16** | **YouTube closed captions (Route A: HTTP POST)** | core | P1-05, P1-10 | CC-1, CC-2, CC-3, OUT-10 | `internal/streamcc`: per-session sink subscribed to the chosen track's **final** captions → line-wrapped cues → POST to the YouTube caption ingestion URL (UTC timestamp line + text, increasing `seq`); clock offset from YouTube's response timestamp; bounded queue, retry with backoff, no replay of stale cues after long outages; URL stored as a per-session secret (`PUT/DELETE …/stream-captions/youtube-url`), never logged; `POST …/stream-captions/test`; `StreamCaptionStatus` in session status and `/ws/admin`. Tested against a local fake ingestion server plus one real YouTube test stream (unlisted). Works regardless of vMix or OBS. |
 | **P3-17** | **Stream captions UI** | web-admin | P1-17, P3-16 | CC-3 | Session editor section: enable, target (YouTube HTTP / OBS), track (default `en`), write-only ingestion URL field (masked hint), "Send test caption" button; dashboard card shows state, last `seq`, last sent, errors; hint recommending "burn one language with the overlay, send the other as CC". |
 | **P3-18** | **OBS `SendStreamCaption` (Route B, quick option)** | core | P3-16 | CC-4 | Second `streamcc` target: obs-websocket v5 client (e.g. `andreykaipov/goobs`), `websocketUrl` setting + `obs_websocket_password` secret; final captions split to ≤32-char lines (608 limit) and paced; reconnect when OBS restarts. Verified on a YouTube or Twitch test stream from OBS. Priority C: do it if P3-16 is done and time allows. |
+| **P3-19** | **⌘K command palette** | web-admin | P1-17, P1-12 | ADM-1, UI-1 | The admin's signature interaction from docs/design.md: opens with ⌘K / Ctrl+K or the top-bar trigger; `role="dialog"` + `aria-modal`, focus trapped and restored, type-to-filter, ↑/↓ + Enter, Esc closes; commands: start / pause / stop a session, open viewer / stage / overlay / capture, copy each URL, go to any admin page, switch theme and UI language. Translated (ES/EN), reduced-motion safe, no layout shift. |
 
 **M3 exit check**: fresh data dir → the wizard completes → a session runs with the local provider by default → after entering a Google key, a new session defaults to Gemini. A replay page plays audio with synced ES/EN subtitles. A second laptop captures over HTTPS after installing the CA. OBS pushes audio via SRT and captions appear. A YouTube test stream shows the English track as closed captions via the ingestion URL while the overlay burns in Spanish.
 
@@ -318,7 +332,7 @@ Every requirement ID maps to at least one task.
 | AUD-4 | P5-08 | | OUT-9 | dropped (D3) |
 | AUD-5 | P3-11 | | OUT-10 | P3-16, P3-18 |
 | AUD-6 | P1-06, P3-01 | | OUT-11 | P1-14, P3-15 |
-| AUD-7 | P5-09 | | ADM-1 | P3-01 |
+| AUD-7 | P5-09 | | ADM-1 | P3-01, P3-19 |
 | AI-1 | P0-02, P0-08, P1-05 | | ADM-2 | P3-02 |
 | AI-2 | P2-01 | | ADM-3 | P1-02, P1-17 |
 | AI-3 | P0-06, P2-03, P2-04 | | ADM-4 | P5-01 |
@@ -339,8 +353,8 @@ Every requirement ID maps to at least one task.
 | REC-5 | P3-07 | | TLS-5 | P3-09 |
 | REC-6 | P5-10 | | UI-1 | P0-04, P1-14, P3-15 |
 | UI-2 | P0-04, P1-12 | | UI-3 | P0-04, P3-15 |
-| UI-4 | P1-11, P3-15 | | UI-5 | P0-04, P1-12 |
-| UI-6 | P3-15 | | UI-7 | P0-04, P1-14, P1-15, P1-16 |
+| UI-4 | P1-11, P3-15 | | UI-5 | P0-04, P0-09, P1-12 |
+| UI-6 | P0-09, P3-15 | | UI-7 | P0-04, P0-09, P1-14, P1-15, P1-16 |
 | UI-8 | P5-11 | | CC-1 | P3-16 |
 | CC-2 | P3-16 | | CC-3 | P3-16, P3-17 |
 | CC-4 | P3-18 | | CC-5 | P5-03 |
@@ -366,10 +380,10 @@ With about 6 parallel agents, this is one way the lanes fill up (times in UTC). 
 
 | Window | platform / api | core | audio | ai | sec | web-shell | web-admin | web-audience |
 |---|---|---|---|---|---|---|---|---|
-| Thu 15–19 (M0) | P0-01, P0-02, P0-05, P0-06, P0-07 | P0-03, P0-08 | — | P0-06 (models) | — | P0-04 | — | — |
+| Thu 15–19 (M0) | P0-01, P0-02, P0-05, P0-06, P0-07 | P0-03, P0-08 | — | P0-06 (models) | — | P0-04, P0-09 | — | — |
 | Thu 19–24 (M1) | P3-13 prep | P1-01..05, P1-08, P1-09 | P1-06, P1-07 | P2-01 (Gemini) and P2-03 (whisper) start early against `domain` | P1-10 | P1-11, P1-12 | P1-17 | P1-13..16 |
 | Fri 00–05 (M2) | P4-01 | P2-08, P1-09 finish | P3-07 | P2-02, P2-04, P2-05, P2-07, P2-09 | P3-09 | P3-15 (continuous) | P2-06 UI, P3-02 | P3-08 |
-| Fri 05–10 (M3) | P4-02, P3-13 | P3-12, P3-16, P3-18, P4-05 | P3-11 | P3-04, P3-05, P2-06 | P3-10 | — | P3-01, P3-03, P3-06, P3-14, P3-17 | polish |
+| Fri 05–10 (M3) | P4-02, P3-13 | P3-12, P3-16, P3-18, P4-05 | P3-11 | P3-04, P3-05, P2-06 | P3-10 | — | P3-01, P3-03, P3-06, P3-14, P3-17, P3-19 | polish |
 | Fri 10–14 (M4) | release | P4-06 | P4-06 | P4-06 | P4-06 | P4-06 | P4-04 | P4-03, P4-07, P4-08 |
 
 ---
@@ -385,6 +399,7 @@ With about 6 parallel agents, this is one way the lanes fill up (times in UTC). 
 | Browser mic permissions and secure context | Capture fails on remote machines | `localhost` on the mini PC (D5), local CA over HTTPS (P3-09), SRT ingest alternative (P3-11) |
 | ffmpeg without libsrt on some hosts | SRT unavailable | Capability detection + clear UI message; Docker image ships libsrt |
 | YouTube caption ingestion quirks (clock skew, one track only, broadcast delay required) | CC missing or out of sync on the stream | Clock offset from YouTube's response, test caption button, runbook step to set the delay; overlay remains the primary path |
+| UI drifts from the design across parallel lanes | Inconsistent screens, rework at the end | Tokens-only rule enforced in `task check`, shared primitives owned by web-shell (§3.6), `/dev/design` route, design audit in P3-15 |
 | Contract churn between lanes | Rework and merge conflicts | Contract-first rules (§3.2), additive-only changes, api lane gatekeeper |
 | Time (24 h hackathon) | Unfinished scope | Critical path first; S/C tasks are cut before M tasks; the M1 walking skeleton is always demo-able |
 
@@ -400,8 +415,9 @@ With about 6 parallel agents, this is one way the lanes fill up (times in UTC). 
 | `task models:pull` | Download the default whisper + Gemma models |
 | `task audio:fetch` | Download and trim the EN/ES Nerdearla test clips |
 | `task demo:file SESSION=… FILE=…` | Feed a file to a session in real time |
-| `task gen` | Regenerate Go + TS code from the OpenAPI spec |
-| `task check` | Lint, typecheck, tests, spec lint, codegen drift, i18n keys, SPDX |
+| `task gen` | Regenerate Go + TS code from the OpenAPI spec, and `palette.ts` from `tokens.css` |
+| `task check` | Lint, typecheck, tests, spec lint, codegen drift, i18n keys, SPDX, contrast, no raw colour literals |
+| `task design:preview` | Open `design/preview.html` in the browser |
 | `task build` | Build the web app + a single binary for the host platform |
 | `task build:all` | Cross-compile release binaries |
 | `task loadtest` | N sessions × M viewers load test |

@@ -2,9 +2,9 @@
 
 This is the locked design system for every screen in `web/`. Pages and components use it; they don't invent their own. Change it on purpose: edit this file and `web/src/theme/tokens.css` together.
 
-- Tokens (source of truth): [`web/src/theme/tokens.css`](web/src/theme/tokens.css)
-- MUI palette (generated hex mirror, since MUI can't parse `oklch()`): [`web/src/theme/palette.ts`](web/src/theme/palette.ts), produced by `python3 scripts/gen-palette.py`
-- Visual reference for every surface, in light and dark: [`design/preview.html`](design/preview.html). Open it in a browser.
+- Tokens (source of truth): [`web/src/theme/tokens.css`](../web/src/theme/tokens.css)
+- MUI palette (generated hex mirror, since MUI can't parse `oklch()`): [`web/src/theme/palette.ts`](../web/src/theme/palette.ts), produced by `python3 scripts/gen-palette.py`
+- Visual reference for every surface, in light and dark: [`design/preview.html`](../design/preview.html). Open it in a browser.
 
 ## System
 
