@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/domain"
 )
 
 // Server implements api.StrictServerInterface. Operations without a handler
@@ -18,6 +19,9 @@ type Server struct {
 
 	// Network describes the LAN addresses and base URL for QR codes.
 	Network func() api.NetworkInfo
+
+	// Secrets stores API keys and passwords; nil: secrets operations answer 501.
+	Secrets domain.SecretStore
 }
 
 var _ api.StrictServerInterface = (*Server)(nil)
