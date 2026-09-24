@@ -1204,6 +1204,7 @@ components:
     Timestamp:
       type: string
       format: date-time
+      example: "2026-09-25T13:30:00Z"
 
     Error:
       type: object
@@ -1238,9 +1239,9 @@ components:
       type: object
       required: [version, mode, features]
       properties:
-        version: { type: string }
-        commit: { type: string }
-        mode: { type: string, enum: [dev, edge, cloud] }
+        version: { type: string, example: 0.1.0 }
+        commit: { type: string, example: 22f9237 }
+        mode: { type: string, enum: [dev, edge, cloud], example: edge }
         features:
           type: object
           required: [srtIngest, recording, tls]
@@ -1382,22 +1383,22 @@ components:
         - type: object
           required: [ingestToken]
           properties:
-            ingestToken: { type: string }
+            ingestToken: { type: string, example: 3q9Zx7kT0bW5nR2mYp8vLc }
     IngestToken:
       type: object
       required: [ingestToken]
       properties:
-        ingestToken: { type: string }
+        ingestToken: { type: string, example: 3q9Zx7kT0bW5nR2mYp8vLc }
     SessionUrls:
       type: object
       description: Absolute URLs built from NetworkInfo.viewerBaseUrl
       required: [viewer, stage, overlay, capture, replay]
       properties:
         viewer: { type: string, example: "http://192.168.1.20:8080/s/main-stage" }
-        stage: { type: string }
-        overlay: { type: string }
-        capture: { type: string, description: Without token; the admin UI appends it }
-        replay: { type: string }
+        stage: { type: string, example: "http://192.168.1.20:8080/stage/main-stage" }
+        overlay: { type: string, example: "http://192.168.1.20:8080/overlay/main-stage?lang=en" }
+        capture: { type: string, description: Without token; the admin UI appends it, example: "http://192.168.1.20:8080/capture/main-stage" }
+        replay: { type: string, example: "http://192.168.1.20:8080/replay/main-stage" }
         srtIngest: { type: string, nullable: true, example: "srt://192.168.1.20:9000?streamid=main-stage" }
     StageStyle:
       type: object
@@ -1424,14 +1425,15 @@ components:
       required: [id, name, state, languages]
       properties:
         id: { $ref: "#/components/schemas/Slug" }
-        name: { type: string }
-        room: { type: string }
+        name: { type: string, example: Main stage }
+        room: { type: string, example: Sala Konex }
         state: { $ref: "#/components/schemas/SessionState" }
         detectedLanguage: { $ref: "#/components/schemas/LanguageCode" }
         languages:
           type: array
           description: Available caption tracks (target languages; `source` is always available)
           items: { $ref: "#/components/schemas/LanguageCode" }
+          example: [es, en]
         recording: { type: boolean, description: Show the "this session is recorded" notice (REC-5) }
         stageStyle: { $ref: "#/components/schemas/StageStyle" }
     SessionStatus:
@@ -1449,8 +1451,8 @@ components:
           description: Per caption track (`source` + target languages)
           additionalProperties: { $ref: "#/components/schemas/LatencyStats" }
         usage: { $ref: "#/components/schemas/UsageStats" }
-        viewers: { type: integer }
-        recordingId: { type: string, nullable: true }
+        viewers: { type: integer, example: 142 }
+        recordingId: { type: string, nullable: true, example: rec-main-stage-20260925-133000 }
         srt: { $ref: "#/components/schemas/SrtStats" }
         streamCaptions: { $ref: "#/components/schemas/StreamCaptionStatus" }
         error: { $ref: "#/components/schemas/Error" }
@@ -1460,8 +1462,8 @@ components:
       properties:
         connected: { type: boolean }
         source: { $ref: "#/components/schemas/AudioSourceKind" }
-        levelDbfs: { type: number, description: RMS over the last window }
-        peakDbfs: { type: number }
+        levelDbfs: { type: number, description: RMS over the last window, example: -18.5 }
+        peakDbfs: { type: number, example: -6.2 }
         silent: { type: boolean }
         clipping: { type: boolean }
         lastGapMs: { type: integer, description: Duration of the last reconnect gap (SES-5) }
@@ -1469,9 +1471,9 @@ components:
       type: object
       required: [p50Ms, p95Ms]
       properties:
-        p50Ms: { type: integer }
-        p95Ms: { type: integer }
-        lastMs: { type: integer }
+        p50Ms: { type: integer, example: 1800 }
+        p95Ms: { type: integer, example: 3100 }
+        lastMs: { type: integer, example: 1650 }
     UsageStats:
       type: object
       properties:
@@ -1528,11 +1530,11 @@ components:
         final:
           type: boolean
           description: false = interim text that will be replaced by a later event with the same segmentId (AI-6)
-        text: { type: string }
-        start: { type: number, description: Seconds from the session clock origin (= recording start) (REC-3) }
-        end: { type: number }
+        text: { type: string, example: Hoy vamos a hablar de observabilidad en Kubernetes. }
+        start: { type: number, description: Seconds from the session clock origin (= recording start) (REC-3), example: 754.2 }
+        end: { type: number, example: 757.9 }
         sourceLang: { $ref: "#/components/schemas/LanguageCode" }
-        latencyMs: { type: integer }
+        latencyMs: { type: integer, example: 1720 }
         edited: { type: boolean, default: false }
         hidden: { type: boolean, default: false }
     CaptionPage:

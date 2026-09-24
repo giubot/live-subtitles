@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# oapi-codegen config: Go types + std net/http strict server from api/openapi.yaml.
+# Run through `task gen`; never hand-edit the output.
+package: api
+output: internal/api/gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+  embedded-spec: true
+output-options:
+  skip-prune: true

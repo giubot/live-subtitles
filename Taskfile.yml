@@ -8,6 +8,12 @@ vars:
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   LDFLAGS: -s -w -X main.version={{.VERSION}}
+  SPEC: api/openapi.yaml
+  # Node tools run through pinned npx until web/package.json owns them (P0-04).
+  REDOCLY: npx --yes @redocly/cli@2.54.2
+  OPENAPI_TS: npx --yes openapi-typescript@7.13.0
+  # Every file `task gen` writes; check:gen fails if regenerating changes any of them.
+  GENERATED: internal/api/gen.go web/src/api/schema.d.ts web/src/theme/palette.ts
 
 tasks:
   default:
@@ -22,7 +28,30 @@ tasks:
       - go run ./cmd/livesubs
 
   gen:
-    desc: Regenerate code (palette.ts from tokens.css; OpenAPI Go/TS clients from P0-02)
+    desc: Regenerate Go + TS code from the OpenAPI spec, and palette.ts from tokens.css
+    cmds:
+      - task: gen:go
+      - task: gen:ts
+      - task: gen:palette
+
+  gen:go:
+    desc: Go types + strict server (internal/api/gen.go)
+    sources: ['{{.SPEC}}', api/oapi-codegen.yaml]
+    generates: [internal/api/gen.go]
+    cmds:
+      - go tool oapi-codegen -config api/oapi-codegen.yaml {{.SPEC}}
+
+  gen:ts:
+    desc: TS types (web/src/api/schema.d.ts)
+    sources: ['{{.SPEC}}']
+    generates: [web/src/api/schema.d.ts]
+    cmds:
+      - '{{.OPENAPI_TS}} {{.SPEC}} -o web/src/api/schema.d.ts --silent'
+
+  gen:palette:
+    desc: palette.ts (sRGB hex) from tokens.css (OKLCH)
+    sources: [web/src/theme/tokens.css, scripts/gen-palette.py]
+    generates: [web/src/theme/palette.ts]
     cmds:
       - python3 scripts/gen-palette.py
 
@@ -30,8 +59,29 @@ tasks:
     desc: Everything CI runs (lint, typecheck, tests, spec lint, codegen drift, SPDX…)
     cmds:
       - task: check:spdx
+      - task: check:spec
+      - task: check:gen
       - task: check:go
       - task: test
+
+  check:spec:
+    desc: Lint the OpenAPI spec with Redocly
+    cmds:
+      - '{{.REDOCLY}} lint {{.SPEC}}'
+
+  check:gen:
+    desc: Fail if generated code is out of date with its sources
+    cmds:
+      - cmd: |
+          before=$(shasum {{.GENERATED}} 2>/dev/null)
+          task gen --force --silent
+          after=$(shasum {{.GENERATED}})
+          if [ "$before" != "$after" ]; then
+            echo "generated code was stale; commit the output of 'task gen':"
+            git status --short -- {{.GENERATED}}
+            exit 1
+          fi
+        silent: true
 
   check:spdx:
     desc: Fail on source files without the Apache-2.0 SPDX header
