@@ -4,17 +4,16 @@ Real-time transcription and translation for live events. See [`docs/requirements
 
 ## Development
 
-Requirements: Go 1.26+, Node 22+ with pnpm, Python 3, [Task](https://taskfile.dev) (`brew install go-task`).
+Requirements: Go 1.26+, Node 22+ with pnpm, Python 3, [Task](https://taskfile.dev) (`brew install go-task`), ffmpeg.
 
 ```sh
-task          # list commands
-task gen      # regenerate Go/TS code from api/openapi.yaml and palette.ts
-task check    # SPDX, spec lint, codegen drift, gofmt, go vet, tests
-task dev:server  # Go server on :8080 with live reload (air)
-task dev:web     # Vite on :5173, proxying /api and /ws to the Go server
-task dev:mock    # Prism mock API on :4010; pair with `task dev:web API=mock`
+task dev      # Go server (air) + Vite; open http://localhost:5173
+task check    # everything CI runs
 task build    # web app + single binary in bin/livesubs
+task          # list every command
 ```
+
+See [`docs/dev.md`](docs/dev.md) for the local AI provider (whisper.cpp + Ollama), test audio and troubleshooting.
 
 ## License
 

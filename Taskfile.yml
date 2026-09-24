@@ -9,6 +9,8 @@ vars:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   LDFLAGS: -s -w -X main.version={{.VERSION}}
   SPEC: api/openapi.yaml
+  # Go server port in dev; `task dev PORT=18080` if 8080 is taken.
+  PORT: '{{.PORT | default "8080"}}'
   # Redocly runs through pinned npx; the other Node tools are web/ devDependencies.
   REDOCLY: npx --yes @redocly/cli@2.54.2
   PRISM: npx --yes @stoplight/prism-cli@5.16.0
@@ -26,10 +28,36 @@ tasks:
     silent: true
 
   dev:
-    desc: Run the web app (Vite HMR) and the Go server (air) together
+    desc: Go server (air) + Vite (HMR) together; open http://localhost:5173 (PORT=… moves the Go server)
+    deps: [dev:server, dev:web]
+
+  dev:ai:
+    desc: 'Local-provider sidecars in Docker: whisper-server :8178 + ollama :11434 (GPU=1 for NVIDIA, SERVICES=whisper for one)'
     cmds:
-      # P0-06 adds Vite alongside air.
-      - task: dev:server
+      - >-
+        docker compose -f deploy/compose/compose.dev.yaml
+        {{if .GPU}}-f deploy/compose/compose.gpu.yaml{{end}}
+        up -d {{.SERVICES}}
+
+  dev:ai:down:
+    desc: Stop the local-provider sidecars
+    cmds:
+      - docker compose -f deploy/compose/compose.dev.yaml down
+
+  models:pull:
+    desc: 'Download the default local models (WHISPER_MODEL, GEMMA_MODEL override)'
+    cmds:
+      - scripts/pull-models.sh
+
+  audio:fetch:
+    desc: Download and trim the EN/ES Nerdearla test clips into testdata/audio/
+    cmds:
+      - scripts/fetch-test-audio.sh
+
+  design:preview:
+    desc: Open design/preview.html in the browser
+    cmds:
+      - '{{if eq OS "darwin"}}open{{else}}xdg-open{{end}} design/preview.html'
 
   dev:web:
     desc: 'Vite dev server with HMR on :5173 (API=mock uses the Prism mock instead of the Go server)'
@@ -37,6 +65,7 @@ tasks:
     dir: web
     env:
       VITE_API: '{{.API | default "server"}}'
+      VITE_API_TARGET: 'http://localhost:{{.PORT}}'
     cmds:
       - pnpm -s dev {{.CLI_ARGS}}
 
@@ -48,6 +77,7 @@ tasks:
   dev:server:
     desc: Go server with live reload (air)
     env:
+      LIVESUBS_ADDR: ':{{.PORT}}'
       LIVESUBS_LOG_LEVEL: '{{.LIVESUBS_LOG_LEVEL | default "debug"}}'
     cmds:
       - '{{.AIR}} -c .air.toml'

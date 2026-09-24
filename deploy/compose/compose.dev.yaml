@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Local-provider sidecars for development: whisper.cpp (ASR) and Ollama (Gemma).
+#   task dev:ai                          # both, CPU
+#   task dev:ai GPU=1                    # + NVIDIA GPU (compose.gpu.yaml)
+#   task dev:ai SERVICES=whisper         # just one
+# Models live in ./models (task models:pull), shared with native installs.
+# On macOS, prefer native installs for Metal acceleration (see docs/dev.md):
+# containers can't use the Apple GPU and the whisper.cpp image is amd64-only.
+name: livesubs-dev
+
+services:
+  whisper:
+    image: ghcr.io/ggml-org/whisper.cpp:main
+    command:
+      - >-
+        ./build/bin/whisper-server --host 0.0.0.0 --port 8178
+        --model /models/ggml-${WHISPER_MODEL:-large-v3-turbo}.bin
+    ports:
+      - '8178:8178'
+    volumes:
+      - ../../models:/models:ro
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - '11434:11434'
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama:
