@@ -40,7 +40,8 @@ build-errors.log
 
 # Node / web
 node_modules/
-web/dist/
+web/dist/*
+!web/dist/.gitkeep
 web/.vite/
 web/coverage/
 web/test-results/

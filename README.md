@@ -10,6 +10,7 @@ Requirements: Go 1.26+, Node 22+ (for `npx`), Python 3, [Task](https://taskfile.
 task          # list commands
 task gen      # regenerate Go/TS code from api/openapi.yaml and palette.ts
 task check    # SPDX, spec lint, codegen drift, gofmt, go vet, tests
+task dev:server  # Go server on :8080 with live reload (air)
 task build    # bin/livesubs
 ```
 

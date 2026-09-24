@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# Live reload for the Go server (https://github.com/air-verse/air), used by `task dev`.
+root = "."
+tmp_dir = ".air"
+
+[build]
+  cmd = "go build -o ./.air/livesubs ./cmd/livesubs"
+  entrypoint = ["./.air/livesubs"]
+  include_ext = ["go"]
+  include_dir = ["cmd", "internal", "web"]
+  exclude_dir = ["web/src", "web/node_modules", "web/dist"]
+  exclude_regex = ["_test\\.go$"]
+  delay = 300
+  stop_on_error = true
+  send_interrupt = true
+  kill_delay = "2s"
+
+[log]
+  main_only = true
+
+[misc]
+  clean_on_exit = true

@@ -12,8 +12,10 @@ vars:
   # Node tools run through pinned npx until web/package.json owns them (P0-04).
   REDOCLY: npx --yes @redocly/cli@2.54.2
   OPENAPI_TS: npx --yes openapi-typescript@7.13.0
+  # air stays out of go.mod: as a `go tool` it pulls in Hugo and bumps shared deps.
+  AIR: go run github.com/air-verse/air@v1.67.4
   # Every file `task gen` writes; check:gen fails if regenerating changes any of them.
-  GENERATED: internal/api/gen.go web/src/api/schema.d.ts web/src/theme/palette.ts
+  GENERATED: internal/api/gen.go internal/api/unimplemented_gen.go web/src/api/schema.d.ts web/src/theme/palette.ts
 
 tasks:
   default:
@@ -24,8 +26,15 @@ tasks:
   dev:
     desc: Run the web app (Vite HMR) and the Go server (air) together
     cmds:
-      # P0-06 replaces this with Vite + air behind one proxy.
-      - go run ./cmd/livesubs
+      # P0-06 adds Vite alongside air.
+      - task: dev:server
+
+  dev:server:
+    desc: Go server with live reload (air)
+    env:
+      LIVESUBS_LOG_LEVEL: '{{.LIVESUBS_LOG_LEVEL | default "debug"}}'
+    cmds:
+      - '{{.AIR}} -c .air.toml'
 
   gen:
     desc: Regenerate Go + TS code from the OpenAPI spec, and palette.ts from tokens.css
@@ -35,11 +44,12 @@ tasks:
       - task: gen:palette
 
   gen:go:
-    desc: Go types + strict server (internal/api/gen.go)
-    sources: ['{{.SPEC}}', api/oapi-codegen.yaml]
-    generates: [internal/api/gen.go]
+    desc: Go types + strict server (internal/api/gen.go) and NotImplemented defaults
+    sources: ['{{.SPEC}}', api/oapi-codegen.yaml, scripts/gen-unimplemented.py]
+    generates: [internal/api/gen.go, internal/api/unimplemented_gen.go]
     cmds:
       - go tool oapi-codegen -config api/oapi-codegen.yaml {{.SPEC}}
+      - python3 scripts/gen-unimplemented.py
 
   gen:ts:
     desc: TS types (web/src/api/schema.d.ts)
