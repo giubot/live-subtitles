@@ -60,7 +60,7 @@ Design implication: the capture machine is a low-powered mini PC with a browser 
 - **Two or more concurrent sessions** (stages), with a documented path to 5–10+ and to 30+.
 - Two interchangeable AI backends: **Gemini (cloud)** and **Gemma (local, offline-capable)**.
 - Runs **locally for dev/testing** and can be **self-hosted** on a LAN machine or server. It works on an event LAN with no internet when using the local provider.
-- Subtitle outputs: web viewer, stage screen, phone via QR/LAN IP, **OBS/vMix overlay** for burning into the stream, and **SRT/VTT** for players and export.
+- Subtitle outputs: web viewer, stage screen, phone via QR/LAN IP, **OBS/vMix overlay** for burning into the stream, **SRT/VTT** for players and export, and **closed captions on the YouTube stream** (§4.11).
 - API keys are stored securely.
 
 ### Non-goals (for the hackathon)
@@ -143,7 +143,7 @@ Priority: **M** = must (hackathon MVP), **S** = should, **C** = could / stretch.
 | OUT-7 | **Live SRT (SubRip)**: a continuously updated `.srt` per session and language, for tools that poll or tail a subtitle file. | S |
 | OUT-8 | **Export** after or during a session: SRT, VTT, plain text and JSON (with timestamps) per language. | S |
 | OUT-9 | ~~vMix Title data source~~. Dropped: the browser input overlay (OUT-5/5b) is the vMix integration. | — |
-| OUT-10 | **OBS native closed captions**: push captions into the stream as CEA-608 via obs-websocket (`SendStreamCaption`), so platforms like YouTube/Twitch show toggleable CC. | C |
+| OUT-10 | Stream closed captions (CC that viewers can toggle on the live stream). See §4.11. | S |
 | OUT-11 | Accessibility: WCAG AA contrast, screen-reader friendly live region on the viewer, no flashing. | S |
 
 ### 4.5 Administration and operations
@@ -217,6 +217,21 @@ Implementation notes:
 | UI-6 | Both themes meet **WCAG AA contrast**, including caption text, status chips and the audio level meter. | S |
 | UI-7 | Theme scope: the **audience viewer** and **admin** follow light/dark. The **stage screen** has its own high-contrast presets (default: light text on black, which suits projectors), configurable per session. The **OBS/vMix overlay** is always transparent and styled only by its own overlay settings, never by the UI theme. | M |
 | UI-8 | Additional UI languages (e.g. Portuguese) can be added by dropping in a new locale folder, with no code changes. | C |
+
+### 4.11 Closed captions for the live stream (YouTube)
+
+Burning subtitles in with the overlay (OUT-5) shows one language to everyone. Closed captions give remote viewers a caption track they can **switch on or off** in the YouTube player. The two are complementary. A good default is **Spanish burned in + English as closed captions**, or the other way round.
+
+**YouTube constraints**: only **one caption track per stream**, and caption ingestion requires a **30–60 s broadcast delay** in the stream's advanced settings (viewers online are already delayed, and captions are aligned by timestamp). Only **final** captions are sent, since live caption formats can't revise text already shown.
+
+| ID | Requirement | P |
+|---|---|---|
+| CC-1 | **Route A: YouTube HTTP POST caption ingestion.** The server posts final captions of **one chosen track** per session directly to the YouTube **caption ingestion URL** (Live Control Room → Stream settings → Closed captions → "POST captions to URL"). It works the same whether the stream is produced in **vMix or OBS**, because it bypasses the video pipeline. Each POST carries a timestamped cue (UTC `YYYY-MM-DDTHH:MM:SS.mmm` line followed by the text) and an increasing `seq`. Clock offset is corrected using the server timestamp in YouTube's response. Retries with backoff; failures are shown on the dashboard. | S |
+| CC-2 | The YouTube ingestion URL is a **signed, secret URL**: stored like an API key (write-only, keychain or encrypted file, masked in the UI, never logged). | S |
+| CC-3 | Per-session stream-caption settings: enabled, target (`youtube_http` / `obs_websocket`), **caption track** (default `en`), line length, and a **"Send test caption"** button. The dashboard shows status (last `seq`, last sent, errors). | S |
+| CC-4 | **Route B: OBS `SendStreamCaption`.** Quick alternative for OBS users: the server connects to obs-websocket v5 and sends final captions of the chosen track. OBS encodes them as **CEA-608** into its RTMP stream (works on YouTube and Twitch; not Vimeo). Lines are split to 32 characters or fewer (the 608 limit); Spanish accents and ñ, ¿, ¡ are supported. The OBS websocket URL is a setting, and its password is stored as a secret. | C |
+| CC-5 | **Route C (future, not in the hackathon scope)**: a relay that receives the vMix/OBS RTMP/SRT stream, injects CEA-608/708 caption data into the H.264 SEI without re-encoding (libcaption-style), and forwards it to the platform. Only needed if captions must be embedded in the stream itself (e.g. for platforms without an HTTP ingestion API). | Future |
+| CC-6 | The OBS/vMix guide (OUT-5b) includes the YouTube setup: enabling HTTP POST captions, copying the ingestion URL into the admin, setting the broadcast delay, and choosing which language is burned in and which goes to CC. | S |
 
 ---
 
@@ -360,7 +375,7 @@ In order of delivery:
 11. SRT ingest (vMix/OBS program audio → server).
 12. README, scalability/cost doc, LICENSE, 1–2 min demo video.
 
-Stretch: glossary UI, extra target languages beyond ES/EN, SRT egress (burned-in or key feed), OBS CEA-608 captions, live correction, fallback provider, cloud hub mode, re-processing recordings.
+Stretch: glossary UI, extra target languages beyond ES/EN, SRT egress (burned-in or key feed), OBS `SendStreamCaption` CC (CC-4), live correction, fallback provider, cloud hub mode, re-processing recordings.
 
 ---
 
@@ -373,6 +388,7 @@ Stretch: glossary UI, extra target languages beyond ES/EN, SRT egress (burned-in
 - [ ] A phone on the same Wi-Fi scans the QR, opens the session and switches language.
 - [ ] The stage screen displays large subtitles with a QR.
 - [ ] The OBS browser source shows transparent overlay subtitles on top of a video source and is recorded/streamed.
+- [ ] A YouTube test stream (from vMix or OBS) shows the chosen language as toggleable closed captions via the HTTP POST ingestion URL, while the overlay burns in the other language.
 - [ ] Following the guide, the same overlay works as a vMix Web Browser input.
 - [ ] Audio pushed from OBS/vMix via SRT to the server produces subtitles.
 - [ ] The `.vtt` / `.srt` files download and play correctly in a player (e.g. VLC or an HTML `<track>`).
@@ -401,6 +417,7 @@ Stretch: glossary UI, extra target languages beyond ES/EN, SRT egress (burned-in
 | D8 | Audio recording | **Record by default** as AAC `.m4a` (~14–22 MB/h per room), with a replay page that shows synced subtitles (§4.8). |
 | D9 | Default provider | Mini PC specs are unknown. The **default is local (whisper.cpp + Gemma)** unless a Google API key is provided, in which case the default is Gemini (AI-11). A hardware self-check recommends model sizes and warns if the box can't keep up in real time (AI-12). |
 | D10 | UI language and theme | UI in **Spanish and English** (independent of the subtitle language) with **Light / Dark / System** themes (§4.10). |
+| D11 | Stream closed captions | **Route A (YouTube HTTP POST)** is in scope alongside the burned-in overlay. **Route B (OBS `SendStreamCaption`, CEA-608)** is a quick optional extra. **Route C (608/708 injection relay)** is future work (§4.11). |
 
 ## 10. Open questions
 
