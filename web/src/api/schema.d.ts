@@ -2338,6 +2338,7 @@ export interface operations {
                     "application/json": components["schemas"]["CaptionPage"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
         };
     };

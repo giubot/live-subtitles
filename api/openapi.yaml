@@ -515,6 +515,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CaptionPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/public/sessions/{sessionId}/subtitles:
