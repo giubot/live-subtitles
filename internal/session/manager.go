@@ -335,6 +335,29 @@ func (m *Manager) SourceKind(id string) (api.AudioSourceKind, bool) {
 	return src.Kind(), true
 }
 
+// EffectiveProvider is the provider a session with this choice runs on.
+func (m *Manager) EffectiveProvider(ctx context.Context, choice api.ProviderChoice) domain.ProviderKind {
+	return m.resolve(ctx, choice)
+}
+
+// Forget drops what the manager remembers about a session that isn't
+// running (its last error, its clock and its ingest source), before the
+// session is deleted. ErrState if it's running.
+func (m *Manager) Forget(id string) error {
+	m.mu.Lock()
+	if m.runs[id] != nil {
+		m.mu.Unlock()
+		return ErrState
+	}
+	delete(m.failed, id)
+	delete(m.clocks, id)
+	m.mu.Unlock()
+	if m.opts.ReleaseIngest != nil {
+		m.opts.ReleaseIngest(id)
+	}
+	return nil
+}
+
 // State is the session's runtime state (idle when it isn't running).
 func (m *Manager) State(id string) api.SessionState {
 	m.mu.Lock()
@@ -356,6 +379,9 @@ func (m *Manager) Status(ctx context.Context, id string) (api.SessionStatus, err
 	}
 	return m.status(id), nil
 }
+
+// StatusOf is Status without the store lookup, for a session known to exist.
+func (m *Manager) StatusOf(id string) api.SessionStatus { return m.status(id) }
 
 func (m *Manager) status(id string) api.SessionStatus {
 	m.mu.Lock()

@@ -92,6 +92,16 @@
         "title": "La sesión no puede hacer eso ahora",
         "why": "Está en estado {{state}}, y esa acción necesita otro estado (por ejemplo, solo se puede pausar una sesión en vivo).",
         "fix": "Esperá a que se actualice el estado y probá de nuevo."
+      },
+      "slug_invalid": {
+        "title": "Esa dirección de sesión no es válida",
+        "why": "La dirección (slug) va en todos los enlaces, así que solo puede usar minúsculas, números y guiones, empezar con una letra o un número y tener hasta 63 caracteres.",
+        "fix": "Usá algo como sala-principal o sala-2."
+      },
+      "slug_taken": {
+        "title": "Esa dirección de sesión ya está en uso",
+        "why": "Otra sesión ya usa {{slug}}, y cada dirección tiene que apuntar a una sola sesión.",
+        "fix": "Elegí otra dirección, o editá la sesión que ya existe."
       }
     },
     "ingest": {

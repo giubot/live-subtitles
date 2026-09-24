@@ -36,6 +36,15 @@ To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db
 
 ## Sessions and realtime
 
+Create a session with its URL slug (lowercase letters, digits and hyphens) and a name; anything you leave out comes from the settings (target languages `[es, en]`, source language `auto`, recording on):
+
+```sh
+curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"slug":"main","name":"Main stage"}' http://localhost:8080/api/sessions
+```
+
+The answer includes the session's `ingestToken` (shown only here and on rotation) and its `urls` for the viewer, stage, overlay and capture pages, built from the LAN address in `GET /api/network` (or `--public-base-url`). Open `urls.capture` + `?token=<ingestToken>` on the capture device. `PATCH` changes a session: its name, room, recording and styles any time; its languages, provider and glossary only while it isn't running. `DELETE` removes an idle session and its captions. The audience sees `/api/public/sessions`, which has no tokens or provider settings.
+
 A running session is one pipeline: audio source → speech recognition → one translator per target language → the caption bus (`/ws/captions/{id}?lang=es&lang=source`) and, for final captions, the database. `POST /api/sessions/{id}/start` uses browser audio from `/ws/ingest/{id}?token=…` (the token comes from `POST /api/sessions/{id}/ingest-token`); `pause` stops feeding the provider without dropping the capture connection, `start` resumes, and `stop` waits for the provider to flush its last sentence.
 
 - Until the Gemini and local providers land, sessions run on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.

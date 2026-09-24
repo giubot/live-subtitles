@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"net/http"
@@ -62,6 +63,7 @@ func (c call) do(t *testing.T, h http.Handler) *http.Response {
 	h.ServeHTTP(rec, req)
 	res := rec.Result()
 	body, _ := io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(body)) // callers may decode it
 	if res.StatusCode != c.wantStatus {
 		t.Errorf("%s %s: status %d, want %d: %s", c.method, c.path, res.StatusCode, c.wantStatus, body)
 	}

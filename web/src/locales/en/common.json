@@ -92,6 +92,16 @@
         "title": "The session can't do that right now",
         "why": "It's {{state}}, and that action needs a different state (for example, only a live session can be paused).",
         "fix": "Wait for the status to update, then try again."
+      },
+      "slug_invalid": {
+        "title": "That session address isn't valid",
+        "why": "The address (slug) goes in every link, so it can only use lowercase letters, digits and hyphens, start with a letter or digit, and be at most 63 characters.",
+        "fix": "Use something like main-stage or room-2."
+      },
+      "slug_taken": {
+        "title": "That session address is taken",
+        "why": "Another session already uses {{slug}}, and each address has to point to one session.",
+        "fix": "Pick another address, or edit the existing session instead."
       }
     },
     "ingest": {
