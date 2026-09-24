@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -20,9 +21,15 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/api/handlers"
+	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/config"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
+	"github.com/iencodev/live-subtitles/internal/secrets"
+	"github.com/iencodev/live-subtitles/internal/store"
 )
+
+// DBFile is the SQLite database inside the data directory.
+const DBFile = "livesubs.db"
 
 // ShutdownTimeout bounds how long in-flight requests get after a stop signal.
 const ShutdownTimeout = 10 * time.Second
@@ -34,10 +41,13 @@ type App struct {
 	handler http.Handler
 	out     io.Writer    // startup banner (URLs + QR)
 	port    atomic.Int32 // HTTP port, known for sure once listening
+	store   *store.Store
 }
 
-// New wires services and routes. dist is the built web app.
-func New(cfg config.Config, log *slog.Logger, dist fs.FS) *App {
+// New opens the data directory and wires services and routes. dist is the
+// built web app; red, which may be nil, learns secret values so the log
+// handler can mask them. Call Close when done.
+func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, red *secrets.Redactor) (*App, error) {
 	a := &App{cfg: cfg, log: log, out: os.Stderr}
 	if _, port, err := net.SplitHostPort(cfg.Addr); err == nil {
 		if n, err := strconv.Atoi(port); err == nil {
@@ -45,13 +55,35 @@ func New(cfg config.Config, log *slog.Logger, dist fs.FS) *App {
 		}
 	}
 
+	st, err := store.Open(ctx, filepath.Join(cfg.DataDir, DBFile))
+	if err != nil {
+		return nil, err
+	}
+	a.store = st
+	sec, err := secrets.New(secrets.Options{
+		DataDir:         cfg.DataDir,
+		DisableKeychain: cfg.NoKeychain,
+		Redactor:        red,
+		Logger:          log,
+	})
+	if err != nil {
+		_ = st.Close()
+		return nil, fmt.Errorf("secrets: %w", err)
+	}
+	red.Add(cfg.AdminToken)
+
 	mux := http.NewServeMux()
 	mux.Handle("/", spa(dist))
 	srv := handlers.New()
 	srv.Network = a.network
+	srv.Secrets = sec
+	srv.Auth = auth.New(st, auth.Options{AdminToken: cfg.AdminToken})
 	a.handler = srv.Handler(mux, log)
-	return a
+	return a, nil
 }
+
+// Close releases the data directory.
+func (a *App) Close() error { return a.store.Close() }
 
 // network describes the LAN addresses and the base URL used in QR codes (OUT-4).
 func (a *App) network() api.NetworkInfo {

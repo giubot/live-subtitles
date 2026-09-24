@@ -97,6 +97,45 @@
         "why": "The key is wrong, revoked, or can't use the Gemini API.",
         "fix": "Check it in Google AI Studio, then paste it again in Settings."
       }
+    },
+    "auth": {
+      "required": {
+        "title": "You need to log in",
+        "why": "This page is for the event admin, and this browser isn't logged in, or its login expired.",
+        "fix": "Log in with the admin PIN and try again."
+      },
+      "invalid_pin": {
+        "title": "Wrong PIN",
+        "why": "The PIN doesn't match the admin PIN set during setup.",
+        "fix": "Check it and try again. After a few failed tries, logging in is paused for a while."
+      },
+      "rate_limited": {
+        "title": "Too many failed logins",
+        "why": "Logging in from this device is paused after several wrong PINs, to stop guessing.",
+        "fix": "Wait {{retryAfterSec}} seconds, then try again."
+      },
+      "setup_required": {
+        "title": "Setup isn't finished",
+        "why": "No admin PIN has been set yet, so there is nothing to log in with.",
+        "fix": "Open the setup page and choose an admin PIN."
+      },
+      "invalid_token": {
+        "title": "This capture link isn't valid",
+        "why": "Its access token is wrong, or the admin generated a new one.",
+        "fix": "Copy the capture link again from the admin page."
+      }
+    },
+    "setup": {
+      "pin_invalid": {
+        "title": "Choose a different PIN",
+        "why": "The PIN must be {{min}} to {{max}} characters long.",
+        "fix": "Type a PIN of that length. Numbers are easiest to type on the event PC."
+      },
+      "already_done": {
+        "title": "Setup is already done",
+        "why": "An admin PIN was set before, possibly from another browser.",
+        "fix": "Log in with that PIN."
+      }
     }
   }
 }

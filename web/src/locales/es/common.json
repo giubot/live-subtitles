@@ -97,6 +97,45 @@
         "why": "La clave es incorrecta, fue revocada o no tiene acceso a la API de Gemini.",
         "fix": "Revisala en Google AI Studio y volvé a pegarla en Configuración."
       }
+    },
+    "auth": {
+      "required": {
+        "title": "Tenés que iniciar sesión",
+        "why": "Esta página es para quien administra el evento, y este navegador no inició sesión o la sesión venció.",
+        "fix": "Iniciá sesión con el PIN de administración y probá de nuevo."
+      },
+      "invalid_pin": {
+        "title": "PIN incorrecto",
+        "why": "El PIN no coincide con el PIN de administración que se configuró.",
+        "fix": "Revisalo y probá de nuevo. Después de varios intentos fallidos, el ingreso se bloquea por un rato."
+      },
+      "rate_limited": {
+        "title": "Demasiados intentos fallidos",
+        "why": "El ingreso desde este dispositivo se pausa después de varios PIN incorrectos, para evitar que lo adivinen.",
+        "fix": "Esperá {{retryAfterSec}} segundos y probá de nuevo."
+      },
+      "setup_required": {
+        "title": "Falta completar la configuración",
+        "why": "Todavía no se eligió un PIN de administración, así que no hay con qué iniciar sesión.",
+        "fix": "Abrí la página de configuración y elegí un PIN."
+      },
+      "invalid_token": {
+        "title": "Este enlace de captura no es válido",
+        "why": "Su token de acceso es incorrecto, o se generó uno nuevo desde la administración.",
+        "fix": "Copiá de nuevo el enlace de captura desde la administración."
+      }
+    },
+    "setup": {
+      "pin_invalid": {
+        "title": "Elegí otro PIN",
+        "why": "El PIN tiene que tener entre {{min}} y {{max}} caracteres.",
+        "fix": "Escribí un PIN de ese largo. Los números son lo más fácil de tipear en la PC del evento."
+      },
+      "already_done": {
+        "title": "La configuración ya está hecha",
+        "why": "Ya se eligió un PIN de administración, quizás desde otro navegador.",
+        "fix": "Iniciá sesión con ese PIN."
+      }
     }
   }
 }

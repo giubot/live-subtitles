@@ -9,12 +9,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/iencodev/live-subtitles/internal/app"
 	"github.com/iencodev/live-subtitles/internal/config"
+	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/web"
 )
 
@@ -35,13 +37,25 @@ func main() {
 		return
 	}
 
-	log := cfg.Logger(os.Stderr)
+	// Every log line goes through the redactor, which learns secret values
+	// as the secrets store and the app read them.
+	red := secrets.NewRedactor()
+	log := slog.New(secrets.NewRedactingHandler(cfg.Logger(os.Stderr).Handler(), red))
 	log.Info("starting livesubs", "version", version)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := app.New(cfg, log, web.Dist()).Run(ctx); err != nil {
+	if err := run(ctx, cfg, log, red); err != nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
+}
+
+func run(ctx context.Context, cfg config.Config, log *slog.Logger, red *secrets.Redactor) error {
+	a, err := app.New(ctx, cfg, log, web.Dist(), red)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = a.Close() }()
+	return a.Run(ctx)
 }

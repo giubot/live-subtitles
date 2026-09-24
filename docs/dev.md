@@ -22,6 +22,18 @@ How to run Live Subtitles from source. The [plan](plan.md) covers the architectu
 
 Environment variables are listed in [`.env.example`](../.env.example). Flags win over `LIVESUBS_*` variables, which win over defaults (`bin/livesubs -h`).
 
+## Admin access
+
+On first run, open `/setup` and choose the admin PIN (4 to 64 characters). It's stored as an Argon2id hash in `<data dir>/livesubs.db`. Logging in sets the `ls_admin` cookie (HttpOnly, SameSite=Strict, 7 days); after 5 wrong PINs in 15 minutes, a device has to wait.
+
+Scripts can skip the PIN with a bearer token set in `LIVESUBS_ADMIN_TOKEN`:
+
+```sh
+curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/api/sessions
+```
+
+To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db` (this also deletes sessions and captions).
+
 ## Local AI provider
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.

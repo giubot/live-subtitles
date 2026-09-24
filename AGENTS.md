@@ -16,13 +16,14 @@ Live Subtitles: real-time EN/ES transcription and translation for live events. O
 - If a handler needs a status code the spec doesn't list, add it to the spec first, then return the generated response type. `WriteError` is only for errors raised outside the strict handlers.
 - Generated files are listed under `GENERATED` in `Taskfile.yml`. Regenerate them with `task gen` and commit the output; `check:gen` fails on drift.
 - `internal/api` holds only generated code, so `internal/domain` can alias its types without an import cycle. Handlers live in `internal/api/handlers/<tag>.go`, one file per OpenAPI tag, as methods on `*Server`.
+- Who may call an operation comes from its `security` in the spec: `handlers/security.go` reads it from the embedded spec and answers 401 `auth.required` to admin operations without the `ls_admin` cookie or the bearer token. Don't re-check it in handlers; read the caller with `auth.RequestFrom(ctx)`.
 - An operation with no implementation yet returns `api.ErrNotImplemented`, which answers 501. Services are optional fields on `Server` (nil means 501), set in `internal/app/app.go`. That file is the wiring point the plan calls `wire.go`.
 - `internal/domain` interfaces are the contract between backend packages: small, additive changes, landed first.
 
 ## Backend (Go)
 
 - Errors carry a translatable dotted `code` (`secret.read_only_env`, `session.not_found`, `request.invalid`) plus an English `message`. The web app translates the code, so every new code needs `errors.<code>.{title,why,fix}` in both locales' `common.json`.
-- Secrets never reach logs. Pass values through `secrets.RedactingHandler` (`internal/secrets/redact.go`), and log secret names, never values. The handler isn't wired into `cmd/livesubs` yet, so the startup logger doesn't redact.
+- Secrets never reach logs. `cmd/livesubs` wraps the logger in `secrets.RedactingHandler` (`internal/secrets/redact.go`); a secret your package holds outside the secrets store goes to the `*secrets.Redactor` with `Add`. Log secret names, never values.
 - Tests are table-driven and pass under `go test -race`. The real OS keychain test only runs with `-tags keychain`.
 - Use the committed 16 kHz mono fixtures in `testdata/audio/fixtures/` for audio tests. `testdata/audio/*.m4a` are gitignored downloads that CI doesn't have.
 - For dependencies, prefer pure Go with no transitive bloat, and give the reason in the commit body. `air` runs through `go run` on purpose: adding it as a `go tool` pulls Hugo into `go.mod`.

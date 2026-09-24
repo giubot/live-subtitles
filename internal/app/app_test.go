@@ -23,8 +23,17 @@ var testDist = fstest.MapFS{
 	"favicon.svg":        {Data: []byte("<svg/>")},
 }
 
-func newTestApp(dist fstest.MapFS) *App {
-	a := New(config.Config{Addr: "127.0.0.1:0"}, slog.New(slog.DiscardHandler), dist)
+func newTestApp(t *testing.T, cfg config.Config, dist fstest.MapFS) *App {
+	t.Helper()
+	if cfg.Addr == "" {
+		cfg.Addr = "127.0.0.1:0"
+	}
+	cfg.DataDir, cfg.NoKeychain = t.TempDir(), true
+	a, err := New(t.Context(), cfg, slog.New(slog.DiscardHandler), dist, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = a.Close() })
 	a.out = io.Discard
 	return a
 }
@@ -39,7 +48,9 @@ func TestRoutes(t *testing.T) {
 	}{
 		{"health", "GET", "/healthz", testDist, 200, `"status":"ok"`, ""},
 		{"network on loopback", "GET", "/api/network", testDist, 200, `"viewerBaseUrl":"http://localhost:0"`, ""},
-		{"unimplemented operation", "GET", "/api/sessions", testDist, 501, `"code":"not_implemented"`, ""},
+		{"admin operation needs login", "GET", "/api/sessions", testDist, 401, `"code":"auth.required"`, ""},
+		{"setup status", "GET", "/api/setup", testDist, 200, `"adminPinSet":false`, ""},
+		{"unimplemented operation", "GET", "/api/languages", testDist, 501, `"code":"not_implemented"`, ""},
 		{"unknown api path", "GET", "/api/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"unknown ws path", "GET", "/ws/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"root", "GET", "/", testDist, 200, "<title>app</title>", "no-cache"},
@@ -52,7 +63,7 @@ func TestRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newTestApp(tt.dist).Handler().ServeHTTP(rec, httptest.NewRequest(tt.method, tt.path, nil))
+			newTestApp(t, config.Config{}, tt.dist).Handler().ServeHTTP(rec, httptest.NewRequest(tt.method, tt.path, nil))
 			if rec.Code != tt.wantStatus {
 				t.Errorf("status %d, want %d", rec.Code, tt.wantStatus)
 			}
@@ -73,7 +84,8 @@ func TestServeShutsDownOnCancel(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { done <- newTestApp(testDist).Serve(ctx, ln) }()
+	a := newTestApp(t, config.Config{}, testDist)
+	go func() { done <- a.Serve(ctx, ln) }()
 
 	res, err := http.Get("http://" + ln.Addr().String() + "/healthz")
 	if err != nil {
@@ -94,7 +106,7 @@ func TestServeShutsDownOnCancel(t *testing.T) {
 }
 
 func TestBanner(t *testing.T) {
-	a := New(config.Config{Addr: ":8080", PublicBaseURL: "https://subs.example.com"}, slog.New(slog.DiscardHandler), testDist)
+	a := newTestApp(t, config.Config{Addr: ":8080", PublicBaseURL: "https://subs.example.com"}, testDist)
 	var out strings.Builder
 	a.out = &out
 	a.banner()

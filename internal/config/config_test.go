@@ -30,6 +30,18 @@ func TestLoad(t *testing.T) {
 			env:  map[string]string{"LIVESUBS_ADDR": ":9090"},
 			want: Config{Addr: ":7070", DataDir: "./data", LogFormat: "text", LogLevel: slog.LevelInfo, PublicBaseURL: "https://subs.example.com"},
 		},
+		{
+			name: "admin token and keychain from env",
+			env:  map[string]string{"LIVESUBS_ADMIN_TOKEN": "0123456789abcdef", "LIVESUBS_NO_KEYCHAIN": "true"},
+			want: Config{Addr: "0.0.0.0:8080", DataDir: "./data", LogFormat: "text", LogLevel: slog.LevelInfo, AdminToken: "0123456789abcdef", NoKeychain: true},
+		},
+		{
+			name: "no-keychain flag",
+			args: []string{"-no-keychain"},
+			want: Config{Addr: "0.0.0.0:8080", DataDir: "./data", LogFormat: "text", LogLevel: slog.LevelInfo, NoKeychain: true},
+		},
+		{name: "short admin token", env: map[string]string{"LIVESUBS_ADMIN_TOKEN": "short"}, wantErr: true},
+		{name: "bad keychain bool", env: map[string]string{"LIVESUBS_NO_KEYCHAIN": "maybe"}, wantErr: true},
 		{name: "bad level", args: []string{"-log-level", "loud"}, wantErr: true},
 		{name: "bad format", env: map[string]string{"LIVESUBS_LOG_FORMAT": "xml"}, wantErr: true},
 		{name: "stray argument", args: []string{"serve"}, wantErr: true},

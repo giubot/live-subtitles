@@ -9,8 +9,12 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 )
+
+// MinAdminTokenLength keeps a guessable bearer token out of the config.
+const MinAdminTokenLength = 16
 
 // Config is the process configuration. Runtime settings that the admin can
 // change (languages, providers, recording…) live in the store, not here.
@@ -20,7 +24,12 @@ type Config struct {
 	LogFormat     string // text | json
 	LogLevel      slog.Level
 	PublicBaseURL string // overrides LAN detection for generated URLs
+	NoKeychain    bool   // never use the OS keychain for secrets
 	Version       bool   // print the version and exit
+
+	// AdminToken is accepted as a bearer token on admin endpoints. It is
+	// only read from LIVESUBS_ADMIN_TOKEN: a flag would show in `ps`.
+	AdminToken string
 }
 
 // Load parses args (without the program name) with defaults taken from
@@ -42,7 +51,13 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	fs.StringVar(&c.LogFormat, "log-format", env("LOG_FORMAT", "text"), "log format: text or json (LIVESUBS_LOG_FORMAT)")
 	fs.StringVar(&level, "log-level", env("LOG_LEVEL", "info"), "log level: debug, info, warn or error (LIVESUBS_LOG_LEVEL)")
 	fs.StringVar(&c.PublicBaseURL, "public-base-url", env("PUBLIC_BASE_URL", ""), "base URL for generated links, e.g. https://subs.example.com (LIVESUBS_PUBLIC_BASE_URL)")
+	noKeychain, err := strconv.ParseBool(env("NO_KEYCHAIN", "false"))
+	if err != nil {
+		return c, fmt.Errorf("LIVESUBS_NO_KEYCHAIN: %w", err)
+	}
+	fs.BoolVar(&c.NoKeychain, "no-keychain", noKeychain, "keep secrets in the encrypted file only, never the OS keychain (LIVESUBS_NO_KEYCHAIN)")
 	fs.BoolVar(&c.Version, "version", false, "print the version and exit")
+	c.AdminToken = getenv("LIVESUBS_ADMIN_TOKEN")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -60,6 +75,9 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	c.LogFormat = strings.ToLower(c.LogFormat)
 	if c.LogFormat != "text" && c.LogFormat != "json" {
 		return c, fmt.Errorf("log format %q: want text or json", c.LogFormat)
+	}
+	if c.AdminToken != "" && len(c.AdminToken) < MinAdminTokenLength {
+		return c, fmt.Errorf("LIVESUBS_ADMIN_TOKEN must be at least %d characters", MinAdminTokenLength)
 	}
 	return c, nil
 }
