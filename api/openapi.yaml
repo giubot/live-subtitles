@@ -735,10 +735,12 @@ paths:
       tags: [secrets]
       operationId: deleteSecret
       summary: Delete secret
+      description: A secret provided by an environment variable can't be deleted here (409 `secret.read_only_env`).
       responses:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/secrets/{name}/validate:
     parameters:

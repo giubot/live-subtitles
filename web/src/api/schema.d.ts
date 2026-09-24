@@ -605,7 +605,10 @@ export interface paths {
         /** Write-only; stores in OS keychain or encrypted file (SEC-2, SEC-3) */
         put: operations["putSecret"];
         post?: never;
-        /** Delete secret */
+        /**
+         * Delete secret
+         * @description A secret provided by an environment variable can't be deleted here (409 `secret.read_only_env`).
+         */
         delete: operations["deleteSecret"];
         options?: never;
         head?: never;
@@ -2611,6 +2614,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     validateSecret: {
