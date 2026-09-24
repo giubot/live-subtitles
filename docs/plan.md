@@ -27,7 +27,8 @@ live-subtitles/
 ├── cmd/
 │   └── livesubs/main.go           # single binary entrypoint
 ├── internal/                      # Go packages (see ownership §3.3)
-│   ├── api/                       # generated (gen.go) + handlers (one file per tag)
+│   ├── api/                       # generated only (gen.go): types + strict server, imports nothing internal
+│   │   └── handlers/              # StrictServerInterface implementation, one file per tag
 │   ├── app/                       # wiring: config → services → http server
 │   ├── config/                    # flags/env/config file
 │   ├── domain/                    # shared types + interfaces (Provider, Source, Bus, …)
@@ -132,8 +133,8 @@ With fewer people, merge lanes (e.g. `core`+`sec`, `web-admin`+`web-audience`). 
 |---|---|---|
 | `api/**`, `redocly.yaml` | api | Contract changes only via §3.2.4 |
 | `internal/domain/**` | core (P0-08) | Additive changes only; announce |
-| `internal/api/gen.go` | generated | Never hand-edit |
-| `internal/api/handlers_<tag>.go` | the lane owning that tag | One file per OpenAPI tag |
+| `internal/api/gen.go` | generated | Never hand-edit. `internal/api` holds only generated code so `domain` can alias its types without an import cycle |
+| `internal/api/handlers/<tag>.go` | the lane owning that tag | One file per OpenAPI tag |
 | `internal/app/wire.go` | core | Other lanes add **one line** to register their service |
 | `docs/design.md`, `web/src/theme/**`, `design/**`, `scripts/gen-palette.py`, `scripts/check-contrast.py` | web-shell | Design changes follow §3.6 |
 | `web/src/routes/**` | web-shell creates stubs in P0 | Feature lanes only edit their own route file |
