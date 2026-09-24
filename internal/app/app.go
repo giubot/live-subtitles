@@ -21,12 +21,20 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/api/handlers"
+	"github.com/iencodev/live-subtitles/internal/audio/ingest"
 	"github.com/iencodev/live-subtitles/internal/auth"
+	"github.com/iencodev/live-subtitles/internal/bus"
 	"github.com/iencodev/live-subtitles/internal/config"
+	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
+	"github.com/iencodev/live-subtitles/internal/provider/mock"
 	"github.com/iencodev/live-subtitles/internal/secrets"
+	"github.com/iencodev/live-subtitles/internal/session"
 	"github.com/iencodev/live-subtitles/internal/store"
 )
+
+// mockLatency makes the mock provider feel like a real one in the UI.
+const mockLatency = 300 * time.Millisecond
 
 // DBFile is the SQLite database inside the data directory.
 const DBFile = "livesubs.db"
@@ -42,6 +50,8 @@ type App struct {
 	out     io.Writer    // startup banner (URLs + QR)
 	port    atomic.Int32 // HTTP port, known for sure once listening
 	store   *store.Store
+	hub     *ingest.Hub
+	manager *session.Manager
 }
 
 // New opens the data directory and wires services and routes. dist is the
@@ -79,12 +89,43 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.Secrets = sec
 	srv.Sessions, srv.Captions, srv.Settings = st, st, st
 	srv.Auth = auth.New(st, auth.Options{AdminToken: cfg.AdminToken})
+
+	// Realtime: browser audio in (/ws/ingest), sessions, captions out
+	// (/ws/captions) and admin events (/ws/admin).
+	captionBus := bus.New()
+	a.hub = ingest.NewHub(srv.Auth.VerifyIngestToken, ingest.Options{Logger: log})
+	a.manager = session.New(session.Options{
+		Sessions: st,
+		Captions: st,
+		Bus:      captionBus,
+		// Gemini (P2-01) and local (P2-03) register here; until the
+		// default-provider rule (P2-07), `default` resolves to mock.
+		Providers: map[domain.ProviderKind]session.Provider{
+			api.ProviderKindMock: {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
+		},
+		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
+		IngestStatus:  a.hub.Status,
+		ReleaseIngest: a.hub.Remove,
+		Logger:        log,
+	})
+	srv.Manager = a.manager
+	srv.CaptionsWS = bus.NewCaptionsHandler(captionBus, log, bus.WithSessionLookup(func(ctx context.Context, id string) error {
+		_, err := st.GetSession(ctx, id)
+		return err
+	})).Serve
+	srv.IngestWS = a.hub.ServeIngest
+	srv.AdminWS = a.manager.AdminHandler(log)
+
 	a.handler = srv.Handler(mux, log)
 	return a, nil
 }
 
-// Close releases the data directory.
-func (a *App) Close() error { return a.store.Close() }
+// Close stops running sessions and releases the data directory.
+func (a *App) Close() error {
+	a.manager.Close()
+	a.hub.Close()
+	return a.store.Close()
+}
 
 // network describes the LAN addresses and the base URL used in QR codes (OUT-4).
 func (a *App) network() api.NetworkInfo {

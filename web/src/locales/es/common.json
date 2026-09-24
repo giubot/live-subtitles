@@ -82,6 +82,11 @@
         "title": "No encontramos la sesión",
         "why": "Puede que la hayan borrado o que el enlace tenga un error.",
         "fix": "Revisá el enlace o elegí la sesión de la lista."
+      },
+      "state_conflict": {
+        "title": "La sesión no puede hacer eso ahora",
+        "why": "Está en estado {{state}}, y esa acción necesita otro estado (por ejemplo, solo se puede pausar una sesión en vivo).",
+        "fix": "Esperá a que se actualice el estado y probá de nuevo."
       }
     },
     "ingest": {
@@ -89,6 +94,16 @@
         "title": "Otro dispositivo tomó esta entrada de audio",
         "why": "Una segunda página de captura se conectó con el mismo enlace, y el servidor se queda con la más reciente.",
         "fix": "Cerrá la otra página de captura, o recargá esta para recuperar la entrada."
+      },
+      "bad_hello": {
+        "title": "La página de captura y el servidor no coinciden en el formato de audio",
+        "why": "El servidor espera audio mono de 16 kHz y 16 bits, y la página mandó otra cosa.",
+        "fix": "Recargá la página de captura. Si sigue pasando, la página es más vieja que el servidor."
+      },
+      "closed": {
+        "title": "La sesión cerró la entrada de audio",
+        "why": "La sesión se detuvo o se borró, así que el servidor dejó de recibir audio de esta página.",
+        "fix": "La página se reconecta sola; volvé a iniciar la sesión para retomar los subtítulos."
       }
     },
     "provider": {
@@ -96,6 +111,16 @@
         "title": "Google rechazó la clave de API",
         "why": "La clave es incorrecta, fue revocada o no tiene acceso a la API de Gemini.",
         "fix": "Revisala en Google AI Studio y volvé a pegarla en Configuración."
+      },
+      "unavailable": {
+        "title": "El proveedor de IA no está disponible",
+        "why": "La sesión usa {{provider}}, que todavía no está configurado en este servidor.",
+        "fix": "Elegí otro proveedor para la sesión, o configurá este en Ajustes."
+      },
+      "error": {
+        "title": "El proveedor de IA informó un error",
+        "why": "{{provider}} falló mientras transcribía. Puede faltar un tramo de subtítulos.",
+        "fix": "Si sigue pasando, detené y volvé a iniciar la sesión, o cambiá de proveedor."
       }
     },
     "auth": {
@@ -135,6 +160,30 @@
         "title": "La configuración ya está hecha",
         "why": "Ya se eligió un PIN de administración, quizás desde otro navegador.",
         "fix": "Iniciá sesión con ese PIN."
+      }
+    },
+    "translation": {
+      "failed": {
+        "title": "No se pudo traducir un subtítulo",
+        "why": "Falló la traducción a {{lang}}, así que esa línea falta en la pista {{lang}}.",
+        "fix": "Revisá el estado del proveedor. Las líneas siguientes se traducen normalmente."
+      }
+    },
+    "source": {
+      "unavailable": {
+        "title": "La fuente de audio no arrancó",
+        "why": "No se pudo abrir la entrada {{source}}.",
+        "fix": "Revisá la entrada de audio y probá de nuevo."
+      },
+      "failed": {
+        "title": "La fuente de audio se cortó",
+        "why": "La entrada {{source}} terminó con un error, así que la sesión se detuvo.",
+        "fix": "Revisá la entrada de audio y volvé a iniciar la sesión."
+      },
+      "unsupported": {
+        "title": "Esa fuente de audio no se inicia desde acá",
+        "why": "Desde el botón Iniciar solo arranca la captura del navegador; el audio {{source}} tiene sus propios controles o todavía no está disponible.",
+        "fix": "Usá la página de captura, o iniciá la fuente desde su propia sección."
       }
     }
   }

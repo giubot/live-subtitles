@@ -11,6 +11,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/session"
 )
 
 // Server implements api.StrictServerInterface. Operations without a handler
@@ -29,6 +30,16 @@ type Server struct {
 	Sessions domain.SessionStore
 	Captions domain.CaptionStore
 	Settings domain.SettingsStore
+
+	// Manager runs sessions (start, pause, stop, status); nil: those
+	// operations answer 501.
+	Manager *session.Manager
+
+	// WebSocket endpoints need the raw connection, so they are served
+	// outside the strict handler; nil: 501.
+	CaptionsWS func(w http.ResponseWriter, r *http.Request, sessionID string, params api.WsCaptionsParams)
+	IngestWS   func(w http.ResponseWriter, r *http.Request, sessionID string)
+	AdminWS    http.HandlerFunc
 
 	// Auth checks admin credentials and ingest tokens; nil: setup and auth
 	// operations answer 501 and admin operations are not protected.
@@ -63,13 +74,44 @@ func (s *Server) Handler(mux *http.ServeMux, log *slog.Logger) http.Handler {
 			WriteError(w, http.StatusInternalServerError, "internal", "internal error")
 		},
 	})
-	return api.HandlerWithOptions(strict, api.StdHTTPServerOptions{
+	return api.HandlerWithOptions(websockets{strict, s}, api.StdHTTPServerOptions{
 		BaseRouter:  mux,
 		Middlewares: []api.MiddlewareFunc{s.authorize(policy)},
 		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			WriteError(w, http.StatusBadRequest, "request.invalid", err.Error())
 		},
 	})
+}
+
+// websockets routes the WebSocket operations to the Server's handlers and
+// everything else to the strict handler.
+type websockets struct {
+	api.ServerInterface
+	s *Server
+}
+
+func (ws websockets) WsCaptions(w http.ResponseWriter, r *http.Request, sessionID api.SessionId, params api.WsCaptionsParams) {
+	if ws.s.CaptionsWS == nil {
+		ws.ServerInterface.WsCaptions(w, r, sessionID, params)
+		return
+	}
+	ws.s.CaptionsWS(w, r, sessionID, params)
+}
+
+func (ws websockets) WsIngest(w http.ResponseWriter, r *http.Request, sessionID api.SessionId) {
+	if ws.s.IngestWS == nil {
+		ws.ServerInterface.WsIngest(w, r, sessionID)
+		return
+	}
+	ws.s.IngestWS(w, r, sessionID)
+}
+
+func (ws websockets) WsAdmin(w http.ResponseWriter, r *http.Request) {
+	if ws.s.AdminWS == nil {
+		ws.ServerInterface.WsAdmin(w, r)
+		return
+	}
+	ws.s.AdminWS(w, r)
 }
 
 // WriteError writes an api.Error with a translatable code (UI-4).

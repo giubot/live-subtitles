@@ -82,6 +82,11 @@
         "title": "Session not found",
         "why": "It may have been deleted, or the link has a typo.",
         "fix": "Check the link, or pick the session from the list."
+      },
+      "state_conflict": {
+        "title": "The session can't do that right now",
+        "why": "It's {{state}}, and that action needs a different state (for example, only a live session can be paused).",
+        "fix": "Wait for the status to update, then try again."
       }
     },
     "ingest": {
@@ -89,6 +94,16 @@
         "title": "Another device took over this audio input",
         "why": "A second capture page connected with the same link, and the server keeps the newest one.",
         "fix": "Close the other capture page, or reload this one to take the input back."
+      },
+      "bad_hello": {
+        "title": "The capture page and the server don't agree on the audio format",
+        "why": "The server expects 16 kHz mono 16-bit audio, and the page sent something else.",
+        "fix": "Reload the capture page. If it keeps happening, the page is older than the server."
+      },
+      "closed": {
+        "title": "The session closed the audio input",
+        "why": "The session stopped or was deleted, so the server stopped taking audio from this page.",
+        "fix": "The page reconnects on its own; start the session again to resume captions."
       }
     },
     "provider": {
@@ -96,6 +111,16 @@
         "title": "Google rejected the API key",
         "why": "The key is wrong, revoked, or can't use the Gemini API.",
         "fix": "Check it in Google AI Studio, then paste it again in Settings."
+      },
+      "unavailable": {
+        "title": "The AI provider isn't available",
+        "why": "The session uses {{provider}}, which isn't set up on this server yet.",
+        "fix": "Pick another provider for the session, or set this one up in Settings."
+      },
+      "error": {
+        "title": "The AI provider reported an error",
+        "why": "{{provider}} failed while transcribing. Captions may have a gap.",
+        "fix": "If it keeps happening, stop and start the session, or switch provider."
       }
     },
     "auth": {
@@ -135,6 +160,30 @@
         "title": "Setup is already done",
         "why": "An admin PIN was set before, possibly from another browser.",
         "fix": "Log in with that PIN."
+      }
+    },
+    "translation": {
+      "failed": {
+        "title": "A caption couldn't be translated",
+        "why": "The translation into {{lang}} failed, so that line is missing from the {{lang}} track.",
+        "fix": "Check the provider's status. The next lines are translated normally."
+      }
+    },
+    "source": {
+      "unavailable": {
+        "title": "The audio source didn't start",
+        "why": "The {{source}} input couldn't be opened.",
+        "fix": "Check the audio input and try again."
+      },
+      "failed": {
+        "title": "The audio source stopped",
+        "why": "The {{source}} input ended with an error, so the session stopped.",
+        "fix": "Check the audio input, then start the session again."
+      },
+      "unsupported": {
+        "title": "That audio source can't be started here",
+        "why": "Only browser capture starts from the Start button; {{source}} audio has its own controls or isn't available yet.",
+        "fix": "Use the capture page, or start the source from its own section."
       }
     }
   }

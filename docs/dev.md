@@ -34,6 +34,14 @@ curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/api/
 
 To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db` (this also deletes sessions and captions).
 
+## Sessions and realtime
+
+A running session is one pipeline: audio source → speech recognition → one translator per target language → the caption bus (`/ws/captions/{id}?lang=es&lang=source`) and, for final captions, the database. `POST /api/sessions/{id}/start` uses browser audio from `/ws/ingest/{id}?token=…` (the token comes from `POST /api/sessions/{id}/ingest-token`); `pause` stops feeding the provider without dropping the capture connection, `start` resumes, and `stop` waits for the provider to flush its last sentence.
+
+- Until the Gemini and local providers land, sessions run on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
+- Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
+- `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
+
 ## Subtitle files
 
 Final captions of every track can be downloaded while a session runs or afterwards (`lang` is a target language or `source`):
