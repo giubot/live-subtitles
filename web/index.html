@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Live Subtitles</title>
+    <script>
+      // Caption overlays for OBS/vMix must be transparent from the first paint.
+      if (location.pathname.startsWith('/overlay/'))
+        document.documentElement.dataset.surface = 'overlay'
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

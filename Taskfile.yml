@@ -9,13 +9,14 @@ vars:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   LDFLAGS: -s -w -X main.version={{.VERSION}}
   SPEC: api/openapi.yaml
-  # Node tools run through pinned npx until web/package.json owns them (P0-04).
+  # Redocly runs through pinned npx; the other Node tools are web/ devDependencies.
   REDOCLY: npx --yes @redocly/cli@2.54.2
-  OPENAPI_TS: npx --yes openapi-typescript@7.13.0
   # air stays out of go.mod: as a `go tool` it pulls in Hugo and bumps shared deps.
   AIR: go run github.com/air-verse/air@v1.67.4
   # Every file `task gen` writes; check:gen fails if regenerating changes any of them.
-  GENERATED: internal/api/gen.go internal/api/unimplemented_gen.go web/src/api/schema.d.ts web/src/theme/palette.ts
+  GENERATED: >-
+    internal/api/gen.go internal/api/unimplemented_gen.go
+    web/src/api/schema.d.ts web/src/routeTree.gen.ts web/src/theme/palette.ts
 
 tasks:
   default:
@@ -41,6 +42,7 @@ tasks:
     cmds:
       - task: gen:go
       - task: gen:ts
+      - task: gen:routes
       - task: gen:palette
 
   gen:go:
@@ -53,10 +55,21 @@ tasks:
 
   gen:ts:
     desc: TS types (web/src/api/schema.d.ts)
+    deps: [web:install]
     sources: ['{{.SPEC}}']
     generates: [web/src/api/schema.d.ts]
+    dir: web
     cmds:
-      - '{{.OPENAPI_TS}} {{.SPEC}} -o web/src/api/schema.d.ts --silent'
+      - pnpm -s gen:api --silent
+
+  gen:routes:
+    desc: TanStack Router route tree (web/src/routeTree.gen.ts)
+    deps: [web:install]
+    sources: [web/src/routes/**/*]
+    generates: [web/src/routeTree.gen.ts]
+    dir: web
+    cmds:
+      - pnpm -s gen:routes 2>/dev/null
 
   gen:palette:
     desc: palette.ts (sRGB hex) from tokens.css (OKLCH)
@@ -72,6 +85,7 @@ tasks:
       - task: check:spec
       - task: check:gen
       - task: check:go
+      - task: check:web
       - task: test
 
   check:spec:
@@ -105,15 +119,52 @@ tasks:
         silent: true
       - go vet ./...
 
+  check:web:
+    desc: ESLint, Prettier, TypeScript and i18n key parity for web/
+    deps: [web:install]
+    dir: web
+    cmds:
+      - pnpm -s lint
+      - pnpm -s format:check
+      - pnpm -s typecheck
+      - pnpm -s check:i18n
+
   test:
-    desc: Run the Go tests (web tests join in P0-04)
+    desc: Go tests (with -race) and web tests (Vitest)
+    cmds:
+      - task: test:go
+      - task: test:web
+
+  test:go:
     cmds:
       - go test -race ./...
+
+  test:web:
+    deps: [web:install]
+    dir: web
+    cmds:
+      - pnpm -s test
+
+  web:install:
+    desc: Install web dependencies
+    dir: web
+    sources: [package.json, pnpm-lock.yaml]
+    status:
+      - test -d node_modules
+    cmds:
+      - pnpm install --frozen-lockfile
+
+  web:build:
+    desc: Build the web app into web/dist (embedded by the Go binary)
+    deps: [web:install]
+    dir: web
+    cmds:
+      - pnpm -s build
 
   build:
     desc: Build a single binary for the host platform ({{.BINARY}})
     env:
       CGO_ENABLED: '0'
     cmds:
-      # P0-03/P0-04 add the web build and embed it before this step.
+      - task: web:build
       - go build -trimpath -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} ./cmd/livesubs

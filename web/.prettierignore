@@ -1,0 +1,6 @@
+dist
+pnpm-lock.yaml
+src/routeTree.gen.ts
+src/api/schema.d.ts
+src/theme/tokens.css
+src/theme/palette.ts

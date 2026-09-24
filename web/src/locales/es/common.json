@@ -1,0 +1,12 @@
+{
+  "appName": "Subtítulos en vivo",
+  "uiLanguage": {
+    "label": "Idioma de la interfaz"
+  },
+  "stub": "Esta página está en construcción.",
+  "notFound": {
+    "title": "No encontramos la página",
+    "body": "No hay nada en esta dirección. Revisá el enlace o volvé al inicio.",
+    "action": "Ir al inicio"
+  }
+}

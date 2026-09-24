@@ -4,14 +4,14 @@ Real-time transcription and translation for live events. See [`docs/requirements
 
 ## Development
 
-Requirements: Go 1.26+, Node 22+ (for `npx`), Python 3, [Task](https://taskfile.dev) (`brew install go-task`).
+Requirements: Go 1.26+, Node 22+ with pnpm, Python 3, [Task](https://taskfile.dev) (`brew install go-task`).
 
 ```sh
 task          # list commands
 task gen      # regenerate Go/TS code from api/openapi.yaml and palette.ts
 task check    # SPDX, spec lint, codegen drift, gofmt, go vet, tests
 task dev:server  # Go server on :8080 with live reload (air)
-task build    # bin/livesubs
+task build    # web app + single binary in bin/livesubs
 ```
 
 ## License

@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Global styles that apply before any theme. */
+
+@import './theme/tokens.css';
+
+/* OBS/vMix overlay: transparent from the first paint (set in index.html). */
+html[data-surface='overlay'],
+html[data-surface='overlay'] body {
+  background: transparent;
+  overflow: hidden;
+}

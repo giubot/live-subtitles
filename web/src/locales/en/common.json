@@ -1,0 +1,12 @@
+{
+  "appName": "Live Subtitles",
+  "uiLanguage": {
+    "label": "Interface language"
+  },
+  "stub": "This page is being built.",
+  "notFound": {
+    "title": "Page not found",
+    "body": "There's nothing at this address. Check the link, or go back to the start.",
+    "action": "Go to the start"
+  }
+}
