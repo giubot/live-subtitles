@@ -105,6 +105,13 @@ type SessionStore interface {
 	DeleteSession(ctx context.Context, id string) error
 }
 
+// SettingsStore persists the admin-editable settings. Settings returns
+// ErrNotFound until the first PutSettings; callers then use defaults.
+type SettingsStore interface {
+	Settings(ctx context.Context) (api.Settings, error)
+	PutSettings(ctx context.Context, s api.Settings) error
+}
+
 // CaptionQuery selects stored final captions.
 type CaptionQuery struct {
 	SessionID string

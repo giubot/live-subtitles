@@ -26,8 +26,9 @@ import (
 var migrationFS embed.FS
 
 var (
-	_ domain.SessionStore = (*Store)(nil)
-	_ domain.CaptionStore = (*Store)(nil)
+	_ domain.SessionStore  = (*Store)(nil)
+	_ domain.CaptionStore  = (*Store)(nil)
+	_ domain.SettingsStore = (*Store)(nil)
 )
 
 // Store is the SQLite database. It is safe for concurrent use: WAL lets
