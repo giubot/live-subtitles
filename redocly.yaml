@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# Redocly lint config for api/openapi.yaml
+extends:
+  - recommended
+rules:
+  # WebSocket message schemas are documented in components but not referenced by HTTP operations.
+  no-unused-components: off
+  # Local dev/edge servers are intentionally localhost.
+  no-server-example.com: off
+  tag-description: off
+  # WebSocket upgrade operations return 101.
+  operation-2xx-response: off
+  # Public read-only endpoints (health, languages, network...) have no 4xx cases.
+  operation-4xx-response: off

@@ -1,0 +1,1878 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Live Subtitles: HTTP API contract.
+#
+# This file is the single source of truth for the REST API and the JSON
+# messages exchanged over WebSockets. Generated code:
+#   - Go server stubs + models: oapi-codegen (strict server, std net/http)
+#   - TS types + client + TanStack Query hooks: openapi-typescript,
+#     openapi-fetch, openapi-react-query
+# Any change here must land in its own `feat(api):` / `fix(api):` commit
+# together with the regenerated code (see docs/plan.md §3.2).
+#
+# OpenAPI 3.0.3 is used (not 3.1) for full oapi-codegen compatibility.
+
+openapi: 3.0.3
+info:
+  title: Live Subtitles API
+  version: 0.1.0
+  description: |
+    Real-time transcription and translation of live audio for conferences.
+
+    **Auth model**
+    - Admin endpoints require the `adminSession` cookie (obtained with the
+      admin PIN) or an `Authorization: Bearer <admin token>` header.
+    - Public endpoints (viewer, stage, overlay, subtitle files, replay) need
+      no auth on the LAN.
+    - Audio ingest requires the per-session ingest token.
+
+    **Errors** are always `Error` objects with a stable, translatable `code`
+    (e.g. `session.not_found`). The UI translates codes; `message` is an
+    English fallback for logs and API clients.
+
+    **WebSockets** are documented as `GET` operations returning `101`. Their
+    message schemas live under `components.schemas` (`Ingest*`,
+    `CaptionsServerMessage`, `AdminEvent`).
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: http://localhost:8080
+    description: Local dev / edge node (HTTP)
+  - url: https://localhost:8443
+    description: Local HTTPS (local CA)
+tags:
+  - name: system
+  - name: setup
+  - name: auth
+  - name: sessions
+  - name: captions
+  - name: realtime
+  - name: settings
+  - name: providers
+  - name: secrets
+  - name: glossaries
+  - name: overlays
+  - name: network
+  - name: recordings
+  - name: models
+  - name: tls
+  - name: streamCaptions
+
+security:
+  - adminSession: []
+  - adminToken: []
+
+paths:
+  # ───────────────────────────── system ─────────────────────────────
+  /healthz:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Liveness/readiness probe
+      security: []
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /api/system/info:
+    get:
+      tags: [system]
+      operationId: getSystemInfo
+      summary: Version, build and feature flags (e.g. SRT availability)
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SystemInfo" }
+
+  /api/system/hardware:
+    get:
+      tags: [system]
+      operationId: getHardwareReport
+      summary: Hardware self-check and recommended local model sizes (AI-12)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HardwareReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/system/benchmark:
+    post:
+      tags: [system]
+      operationId: runBenchmark
+      summary: Run the local provider on a bundled clip and report real-time factor (AI-12)
+      responses:
+        "200":
+          description: Benchmark finished
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BenchmarkResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/languages:
+    get:
+      tags: [system]
+      operationId: listLanguages
+      summary: Supported source and target languages
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Language" }
+
+  # ───────────────────────────── setup & auth ─────────────────────────────
+  /api/setup:
+    get:
+      tags: [setup]
+      operationId: getSetupStatus
+      summary: First-run setup status
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SetupStatus" }
+    post:
+      tags: [setup]
+      operationId: completeSetup
+      summary: Set the admin PIN on first run (only allowed while no PIN exists)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetupRequest" }
+      responses:
+        "204":
+          description: Setup completed; an admin session cookie is set
+          headers:
+            Set-Cookie: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "204":
+          description: Logged in; admin session cookie set
+          headers:
+            Set-Cookie: { schema: { type: string } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Logout
+      responses:
+        "204": { description: Logged out }
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Get current auth state
+      security: []
+      responses:
+        "200":
+          description: Current auth state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+
+  # ───────────────────────────── sessions ─────────────────────────────
+  /api/sessions:
+    get:
+      tags: [sessions]
+      operationId: listSessions
+      summary: List sessions (admin view)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [sessions]
+      operationId: createSession
+      summary: Create session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionCreate" }
+      responses:
+        "201":
+          description: Created. The ingest token is only returned here and on rotation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionWithToken" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [sessions]
+      operationId: getSession
+      summary: Get session
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [sessions]
+      operationId: updateSession
+      summary: Update session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [sessions]
+      operationId: deleteSession
+      summary: Delete session
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/sessions/{sessionId}/start:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [sessions]
+      operationId: startSession
+      summary: Start session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionStartRequest" }
+      responses:
+        "200":
+          description: Starting / live
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /api/sessions/{sessionId}/pause:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [sessions]
+      operationId: pauseSession
+      summary: Pause session
+      responses:
+        "200":
+          description: Paused
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/sessions/{sessionId}/stop:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [sessions]
+      operationId: stopSession
+      summary: Stop session
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/sessions/{sessionId}/status:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [sessions]
+      operationId: getSessionStatus
+      summary: Live status snapshot (the dashboard also receives it via /ws/admin)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/sessions/{sessionId}/ingest-token:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [sessions]
+      operationId: rotateIngestToken
+      summary: Rotate the per-session ingest token (invalidates the previous one)
+      responses:
+        "200":
+          description: New token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestToken" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/sessions/{sessionId}/sources/file:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [sessions]
+      operationId: startFileSource
+      summary: Feed a local file or URL at real-time speed as the session's audio (AUD-3, dev/test)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FileSourceRequest" }
+      responses:
+        "202":
+          description: Source started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionStatus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [sessions]
+      operationId: stopFileSource
+      summary: Stop file source
+      responses:
+        "204": { description: Source stopped }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/sessions/{sessionId}/stream-captions/youtube-url:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    put:
+      tags: [streamCaptions]
+      operationId: putYoutubeCaptionUrl
+      summary: Set the YouTube caption ingestion URL (write-only secret) (CC-1, CC-2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecretWrite" }
+      responses:
+        "200":
+          description: Stored; only masked info is returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecretInfo" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [streamCaptions]
+      operationId: deleteYoutubeCaptionUrl
+      summary: Remove the YouTube caption ingestion URL
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/sessions/{sessionId}/stream-captions/test:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [streamCaptions]
+      operationId: sendTestStreamCaption
+      summary: Send a test caption to the configured stream-caption target (CC-3)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: Delivery result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StreamCaptionStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /api/public/sessions:
+    get:
+      tags: [sessions]
+      operationId: listPublicSessions
+      summary: Sessions visible to the audience (no tokens, no config)
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PublicSession" }
+
+  /api/public/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [sessions]
+      operationId: getPublicSession
+      summary: Get public session
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicSession" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────────── captions & subtitles ─────────────────────────────
+  /api/public/sessions/{sessionId}/captions:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [captions]
+      operationId: listCaptions
+      summary: Final captions history (JSON, paginated)
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LangQuery"
+        - name: after
+          in: query
+          description: Opaque cursor from a previous page
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 200 }
+        - name: recordingId
+          in: query
+          description: Restrict to captions belonging to one recording (timestamps relative to it)
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CaptionPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/public/sessions/{sessionId}/subtitles:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [captions]
+      operationId: getSubtitles
+      summary: Subtitle file (live or export) in VTT, SRT, TXT or JSON (OUT-6, OUT-7, OUT-8)
+      description: |
+        With `live=true` the response contains all final cues so far and is
+        served with `Cache-Control: no-store`, so players and tools can poll it.
+        Without `live`, `Content-Disposition: attachment` is set.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LangQuery"
+        - name: format
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/SubtitleFormat" }
+        - name: live
+          in: query
+          schema: { type: boolean, default: false }
+        - name: recordingId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Subtitle file
+          content:
+            text/vtt:
+              schema: { type: string }
+            application/x-subrip:
+              schema: { type: string }
+            text/plain:
+              schema: { type: string }
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Caption" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/sessions/{sessionId}/captions/{segmentId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+      - name: segmentId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [captions]
+      operationId: patchCaption
+      summary: Live correction, edit or hide a caption line (ADM-4)
+      parameters:
+        - $ref: "#/components/parameters/LangQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CaptionPatch" }
+      responses:
+        "200":
+          description: Updated; a `caption` event with `edited=true` is broadcast
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Caption" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────────── realtime (WebSockets) ─────────────────────────────
+  /ws/ingest/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [realtime]
+      operationId: wsIngest
+      summary: Audio ingest WebSocket (AUD-1)
+      description: |
+        1. Client sends an `IngestHello` text frame.
+        2. Server replies with `IngestServerMessage{type: ready}`.
+        3. Client sends **binary** frames of raw PCM, `s16le`, 16 kHz, mono,
+           20–100 ms each.
+        4. Server periodically sends `IngestServerMessage{type: level}` and
+           `state`/`error` messages.
+        Only one ingest connection per session is active; a new one replaces the old
+        (`error.code = ingest.replaced` is sent to the old one).
+      security:
+        - ingestToken: []
+      responses:
+        "101": { description: Switching protocols }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ws/captions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [realtime]
+      operationId: wsCaptions
+      summary: Live caption stream for one session (OUT-1)
+      description: |
+        Server → client JSON text frames of type `CaptionsServerMessage`.
+        On connect the server sends `history` (recent final captions) and then
+        live `caption` events. Pass `lang` several times to subscribe to more than
+        one track (e.g. stage screen dual-language); `lang=source` is the
+        original-language track.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { type: string }
+        - name: history
+          in: query
+          description: Number of recent final captions to send on connect
+          schema: { type: integer, minimum: 0, maximum: 500, default: 50 }
+      responses:
+        "101": { description: Switching protocols }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ws/admin:
+    get:
+      tags: [realtime]
+      operationId: wsAdmin
+      summary: Admin event stream (session status, levels, latency, errors) (ADM-1)
+      description: Server → client JSON text frames of type `AdminEvent`.
+      responses:
+        "101": { description: Switching protocols }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ───────────────────────────── settings & providers ─────────────────────────────
+  /api/settings:
+    get:
+      tags: [settings]
+      operationId: getSettings
+      summary: Get settings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Settings" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [settings]
+      operationId: updateSettings
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Settings" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Settings" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/providers:
+    get:
+      tags: [providers]
+      operationId: listProviders
+      summary: Provider availability and the resolved default (AI-4, AI-11)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProvidersResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ───────────────────────────── secrets ─────────────────────────────
+  /api/secrets:
+    get:
+      tags: [secrets]
+      operationId: listSecrets
+      summary: Known secrets with masked hints only; values are never returned (SEC-1)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecretInfo" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/secrets/{name}:
+    parameters:
+      - $ref: "#/components/parameters/SecretName"
+    put:
+      tags: [secrets]
+      operationId: putSecret
+      summary: Write-only; stores in OS keychain or encrypted file (SEC-2, SEC-3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecretWrite" }
+      responses:
+        "200":
+          description: Stored (masked info only)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecretInfo" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+    delete:
+      tags: [secrets]
+      operationId: deleteSecret
+      summary: Delete secret
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/secrets/{name}/validate:
+    parameters:
+      - $ref: "#/components/parameters/SecretName"
+    post:
+      tags: [secrets]
+      operationId: validateSecret
+      summary: Check the stored secret against its service (e.g. Gemini API key) (SEC-5)
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecretValidation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────────── glossaries ─────────────────────────────
+  /api/glossaries:
+    get:
+      tags: [glossaries]
+      operationId: listGlossaries
+      summary: List glossaries
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Glossary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [glossaries]
+      operationId: createGlossary
+      summary: Create glossary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlossaryInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Glossary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/glossaries/{glossaryId}:
+    parameters:
+      - name: glossaryId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [glossaries]
+      operationId: getGlossary
+      summary: Get glossary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Glossary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [glossaries]
+      operationId: updateGlossary
+      summary: Update glossary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlossaryInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Glossary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [glossaries]
+      operationId: deleteGlossary
+      summary: Delete glossary
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────────── overlay presets ─────────────────────────────
+  /api/overlay-presets:
+    get:
+      tags: [overlays]
+      operationId: listOverlayPresets
+      security: []
+      summary: Public, the overlay page loads its preset without auth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OverlayPreset" }
+    post:
+      tags: [overlays]
+      operationId: createOverlayPreset
+      summary: Create overlay preset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OverlayPresetInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OverlayPreset" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/overlay-presets/{presetId}:
+    parameters:
+      - name: presetId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [overlays]
+      operationId: getOverlayPreset
+      summary: Get overlay preset
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OverlayPreset" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [overlays]
+      operationId: updateOverlayPreset
+      summary: Update overlay preset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OverlayPresetInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OverlayPreset" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [overlays]
+      operationId: deleteOverlayPreset
+      summary: Delete overlay preset
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────────── network ─────────────────────────────
+  /api/network:
+    get:
+      tags: [network]
+      operationId: getNetworkInfo
+      summary: LAN addresses and the base URL used for QR codes (OUT-4)
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkInfo" }
+
+  # ───────────────────────────── recordings ─────────────────────────────
+  /api/recordings:
+    get:
+      tags: [recordings]
+      operationId: listRecordings
+      summary: List recordings
+      security: []
+      parameters:
+        - name: sessionId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Recording" }
+
+  /api/recordings/usage:
+    get:
+      tags: [recordings]
+      operationId: getRecordingUsage
+      summary: Disk usage of recordings (REC-5)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageUsage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/recordings/{recordingId}:
+    parameters:
+      - $ref: "#/components/parameters/RecordingId"
+    get:
+      tags: [recordings]
+      operationId: getRecording
+      summary: Get recording
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Recording" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [recordings]
+      operationId: deleteRecording
+      summary: Delete recording
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/recordings/{recordingId}/audio:
+    parameters:
+      - $ref: "#/components/parameters/RecordingId"
+    get:
+      tags: [recordings]
+      operationId: getRecordingAudio
+      summary: Recorded audio (AAC in fragmented MP4); supports HTTP Range (REC-2)
+      security: []
+      parameters:
+        - name: Range
+          in: header
+          schema: { type: string }
+      responses:
+        "200":
+          description: Full file
+          content:
+            audio/mp4:
+              schema: { type: string, format: binary }
+        "206":
+          description: Partial content
+          content:
+            audio/mp4:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/recordings/{recordingId}/reprocess:
+    parameters:
+      - $ref: "#/components/parameters/RecordingId"
+    post:
+      tags: [recordings]
+      operationId: reprocessRecording
+      summary: Re-transcribe/translate a recording offline (REC-6, stretch)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReprocessRequest" }
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────────── local models ─────────────────────────────
+  /api/models:
+    get:
+      tags: [models]
+      operationId: listModels
+      summary: Local models (whisper, Gemma) and their download status (AI-13)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LocalModel" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/models/{modelId}/download:
+    parameters:
+      - name: modelId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [models]
+      operationId: downloadModel
+      summary: Start (or resume) a model download; progress is polled via GET /api/models and pushed on /ws/admin
+      responses:
+        "202":
+          description: Download started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LocalModel" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  # ───────────────────────────── TLS ─────────────────────────────
+  /api/tls:
+    get:
+      tags: [tls]
+      operationId: getTlsInfo
+      summary: Get TLS info
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TlsInfo" }
+
+  /api/tls/ca.crt:
+    get:
+      tags: [tls]
+      operationId: downloadCaCert
+      summary: Local CA certificate to install on LAN devices (TLS-4)
+      security: []
+      responses:
+        "200":
+          description: PEM certificate
+          content:
+            application/x-x509-ca-cert:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: ls_admin
+    adminToken:
+      type: http
+      scheme: bearer
+    ingestToken:
+      type: apiKey
+      in: query
+      name: token
+
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: Session slug (URL-safe, e.g. `main-stage`)
+      schema: { $ref: "#/components/schemas/Slug" }
+    RecordingId:
+      name: recordingId
+      in: path
+      required: true
+      schema: { type: string }
+    SecretName:
+      name: name
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/SecretName" }
+    LangQuery:
+      name: lang
+      in: query
+      required: true
+      description: Caption track, a target language code or `source`
+      schema: { type: string, example: es }
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Conflicts with current state
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unprocessable:
+      description: Valid request that cannot be fulfilled (e.g. provider unavailable)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limited
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    # ── primitives ──
+    Slug:
+      type: string
+      pattern: "^[a-z0-9][a-z0-9-]{0,62}$"
+      example: main-stage
+    LanguageCode:
+      type: string
+      description: ISO 639-1 code
+      pattern: "^[a-z]{2}$"
+      example: es
+    SourceLanguage:
+      type: string
+      description: "`auto` detects between English and Spanish per segment (AI-10)"
+      enum: [auto, en, es]
+      default: auto
+    ProviderKind:
+      type: string
+      enum: [gemini, local, mock]
+      description: "`mock` is dev-only (scripted captions)"
+    ProviderChoice:
+      type: string
+      enum: [default, gemini, local, mock]
+      description: "`default` resolves via the default-provider rule (AI-11)"
+      default: default
+    SessionState:
+      type: string
+      enum: [idle, starting, live, paused, stopping, error]
+    AudioSourceKind:
+      type: string
+      enum: [browser, file, srt, device]
+    SubtitleFormat:
+      type: string
+      enum: [vtt, srt, txt, json]
+    SecretName:
+      type: string
+      enum: [google_api_key, obs_websocket_password]
+      description: Known secret names; extended as providers are added
+    Timestamp:
+      type: string
+      format: date-time
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable, translatable error code (UI-4)
+          example: session.not_found
+        message:
+          type: string
+          description: English fallback text
+        params:
+          type: object
+          additionalProperties: true
+          description: Interpolation values for the translated message
+        fields:
+          type: object
+          additionalProperties: { type: string }
+          description: Per-field error codes for form validation
+
+    # ── system ──
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        checks:
+          type: object
+          additionalProperties: { type: string }
+    SystemInfo:
+      type: object
+      required: [version, mode, features]
+      properties:
+        version: { type: string }
+        commit: { type: string }
+        mode: { type: string, enum: [dev, edge, cloud] }
+        features:
+          type: object
+          required: [srtIngest, recording, tls]
+          properties:
+            srtIngest: { type: boolean, description: ffmpeg with libsrt detected }
+            recording: { type: boolean, description: ffmpeg available }
+            tls: { type: boolean }
+    Language:
+      type: object
+      required: [code, name, nativeName, canBeSource]
+      properties:
+        code: { $ref: "#/components/schemas/LanguageCode" }
+        name: { type: string, example: Spanish }
+        nativeName: { type: string, example: Español }
+        canBeSource: { type: boolean }
+    HardwareReport:
+      type: object
+      required: [os, arch, cpu, memoryBytes, gpus, runtimes, recommendation]
+      properties:
+        os: { type: string }
+        arch: { type: string }
+        cpu:
+          type: object
+          required: [model, cores]
+          properties:
+            model: { type: string }
+            cores: { type: integer }
+        memoryBytes: { type: integer, format: int64 }
+        gpus:
+          type: array
+          items:
+            type: object
+            required: [name, backend]
+            properties:
+              name: { type: string }
+              backend: { type: string, enum: [metal, cuda, vulkan, none] }
+              memoryBytes: { type: integer, format: int64 }
+        runtimes:
+          type: object
+          required: [whisper, ollama, ffmpeg]
+          properties:
+            whisper: { $ref: "#/components/schemas/RuntimeStatus" }
+            ollama: { $ref: "#/components/schemas/RuntimeStatus" }
+            ffmpeg: { $ref: "#/components/schemas/RuntimeStatus" }
+        recommendation:
+          type: object
+          required: [whisperModel, gemmaModel, localRealtimeLikely]
+          properties:
+            whisperModel: { type: string, example: large-v3-turbo }
+            gemmaModel: { type: string, example: "gemma3:4b" }
+            localRealtimeLikely: { type: boolean }
+        lastBenchmark: { $ref: "#/components/schemas/BenchmarkResult" }
+    RuntimeStatus:
+      type: object
+      required: [reachable]
+      properties:
+        reachable: { type: boolean }
+        version: { type: string }
+        url: { type: string }
+        detail: { type: string }
+    BenchmarkResult:
+      type: object
+      required: [realTimeFactor, asrMs, translationMs, ok, ranAt]
+      properties:
+        realTimeFactor:
+          type: number
+          description: Processing time / audio duration; < 1 means faster than real time
+        asrMs: { type: integer }
+        translationMs: { type: integer }
+        ok: { type: boolean }
+        ranAt: { $ref: "#/components/schemas/Timestamp" }
+
+    # ── setup & auth ──
+    SetupStatus:
+      type: object
+      required: [completed, adminPinSet, googleApiKeySet, localModelsReady]
+      properties:
+        completed: { type: boolean }
+        adminPinSet: { type: boolean }
+        googleApiKeySet: { type: boolean }
+        localModelsReady: { type: boolean }
+    SetupRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin: { type: string, minLength: 4, maxLength: 64 }
+    LoginRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin: { type: string }
+    Me:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated: { type: boolean }
+
+    # ── sessions ──
+    SessionBase:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120, example: Main stage }
+        room: { type: string, maxLength: 120, example: Sala Konex }
+        sourceLanguage: { $ref: "#/components/schemas/SourceLanguage" }
+        targetLanguages:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/LanguageCode" }
+          description: Defaults to settings.defaultTargetLanguages (`[es, en]`)
+        provider: { $ref: "#/components/schemas/ProviderChoice" }
+        glossaryId: { type: string, nullable: true }
+        recordingEnabled: { type: boolean, description: Defaults to settings.recording.enabledByDefault }
+        stageStyle: { $ref: "#/components/schemas/StageStyle" }
+        streamCaptions: { $ref: "#/components/schemas/StreamCaptionsConfig" }
+    SessionCreate:
+      allOf:
+        - $ref: "#/components/schemas/SessionBase"
+        - type: object
+          required: [slug, name]
+          properties:
+            slug: { $ref: "#/components/schemas/Slug" }
+    SessionUpdate:
+      $ref: "#/components/schemas/SessionBase"
+    Session:
+      allOf:
+        - $ref: "#/components/schemas/SessionBase"
+        - type: object
+          required: [id, name, sourceLanguage, targetLanguages, provider, effectiveProvider, recordingEnabled, state, urls, createdAt, updatedAt]
+          properties:
+            id: { $ref: "#/components/schemas/Slug" }
+            effectiveProvider: { $ref: "#/components/schemas/ProviderKind" }
+            state: { $ref: "#/components/schemas/SessionState" }
+            urls: { $ref: "#/components/schemas/SessionUrls" }
+            createdAt: { $ref: "#/components/schemas/Timestamp" }
+            updatedAt: { $ref: "#/components/schemas/Timestamp" }
+    SessionWithToken:
+      allOf:
+        - $ref: "#/components/schemas/Session"
+        - type: object
+          required: [ingestToken]
+          properties:
+            ingestToken: { type: string }
+    IngestToken:
+      type: object
+      required: [ingestToken]
+      properties:
+        ingestToken: { type: string }
+    SessionUrls:
+      type: object
+      description: Absolute URLs built from NetworkInfo.viewerBaseUrl
+      required: [viewer, stage, overlay, capture, replay]
+      properties:
+        viewer: { type: string, example: "http://192.168.1.20:8080/s/main-stage" }
+        stage: { type: string }
+        overlay: { type: string }
+        capture: { type: string, description: Without token; the admin UI appends it }
+        replay: { type: string }
+        srtIngest: { type: string, nullable: true, example: "srt://192.168.1.20:9000?streamid=main-stage" }
+    StageStyle:
+      type: object
+      properties:
+        preset: { type: string, enum: [white-on-black, yellow-on-black, black-on-white], default: white-on-black }
+        dualLanguage: { type: boolean, default: false }
+        showQr: { type: boolean, default: true }
+        lines: { type: integer, minimum: 1, maximum: 5, default: 3 }
+    SessionStartRequest:
+      type: object
+      properties:
+        source: { $ref: "#/components/schemas/AudioSourceKind" }
+    FileSourceRequest:
+      type: object
+      required: [uri]
+      properties:
+        uri:
+          type: string
+          description: Local path under the data/testdata dir, or http(s) URL
+        loop: { type: boolean, default: false }
+        startAtSec: { type: number, default: 0 }
+    PublicSession:
+      type: object
+      required: [id, name, state, languages]
+      properties:
+        id: { $ref: "#/components/schemas/Slug" }
+        name: { type: string }
+        room: { type: string }
+        state: { $ref: "#/components/schemas/SessionState" }
+        detectedLanguage: { $ref: "#/components/schemas/LanguageCode" }
+        languages:
+          type: array
+          description: Available caption tracks (target languages; `source` is always available)
+          items: { $ref: "#/components/schemas/LanguageCode" }
+        recording: { type: boolean, description: Show the "this session is recorded" notice (REC-5) }
+        stageStyle: { $ref: "#/components/schemas/StageStyle" }
+    SessionStatus:
+      type: object
+      required: [sessionId, state, viewers]
+      properties:
+        sessionId: { $ref: "#/components/schemas/Slug" }
+        state: { $ref: "#/components/schemas/SessionState" }
+        provider: { $ref: "#/components/schemas/ProviderKind" }
+        startedAt: { $ref: "#/components/schemas/Timestamp" }
+        detectedLanguage: { $ref: "#/components/schemas/LanguageCode" }
+        audio: { $ref: "#/components/schemas/AudioStatus" }
+        latency:
+          type: object
+          description: Per caption track (`source` + target languages)
+          additionalProperties: { $ref: "#/components/schemas/LatencyStats" }
+        usage: { $ref: "#/components/schemas/UsageStats" }
+        viewers: { type: integer }
+        recordingId: { type: string, nullable: true }
+        srt: { $ref: "#/components/schemas/SrtStats" }
+        streamCaptions: { $ref: "#/components/schemas/StreamCaptionStatus" }
+        error: { $ref: "#/components/schemas/Error" }
+    AudioStatus:
+      type: object
+      required: [connected]
+      properties:
+        connected: { type: boolean }
+        source: { $ref: "#/components/schemas/AudioSourceKind" }
+        levelDbfs: { type: number, description: RMS over the last window }
+        peakDbfs: { type: number }
+        silent: { type: boolean }
+        clipping: { type: boolean }
+        lastGapMs: { type: integer, description: Duration of the last reconnect gap (SES-5) }
+    LatencyStats:
+      type: object
+      required: [p50Ms, p95Ms]
+      properties:
+        p50Ms: { type: integer }
+        p95Ms: { type: integer }
+        lastMs: { type: integer }
+    UsageStats:
+      type: object
+      properties:
+        audioSeconds: { type: number }
+        inputTokens: { type: integer, format: int64 }
+        outputTokens: { type: integer, format: int64 }
+        estimatedCostUsd: { type: number }
+    SrtStats:
+      type: object
+      properties:
+        connected: { type: boolean }
+        rttMs: { type: number }
+        packetLossPct: { type: number }
+        bitrateKbps: { type: number }
+
+    # ── stream closed captions (§4.11) ──
+    StreamCaptionTarget:
+      type: string
+      enum: [youtube_http, obs_websocket]
+      description: "`youtube_http` = Route A (HTTP POST ingestion URL); `obs_websocket` = Route B (OBS SendStreamCaption, CEA-608)"
+    StreamCaptionsConfig:
+      type: object
+      properties:
+        enabled: { type: boolean, default: false }
+        target: { $ref: "#/components/schemas/StreamCaptionTarget" }
+        track:
+          type: string
+          description: Caption track sent to the stream (a target language or `source`). YouTube supports one track.
+          default: en
+        maxCharsPerLine: { type: integer, minimum: 20, maximum: 64, default: 32 }
+        youtubeUrlSet: { type: boolean, readOnly: true, description: Whether the ingestion URL secret is stored }
+    StreamCaptionStatus:
+      type: object
+      required: [state]
+      properties:
+        target: { $ref: "#/components/schemas/StreamCaptionTarget" }
+        state: { type: string, enum: [disabled, idle, ok, retrying, error] }
+        lastSeq: { type: integer, format: int64 }
+        lastSentAt: { $ref: "#/components/schemas/Timestamp" }
+        clockOffsetMs: { type: integer, description: Local clock minus YouTube server clock }
+        error: { $ref: "#/components/schemas/Error" }
+
+    # ── captions ──
+    Caption:
+      type: object
+      required: [sessionId, lang, segmentId, final, text, start, end, sourceLang]
+      properties:
+        sessionId: { $ref: "#/components/schemas/Slug" }
+        lang:
+          type: string
+          description: Track, a target language code, or `source`
+          example: es
+        segmentId: { type: string, example: s-000123 }
+        final:
+          type: boolean
+          description: false = interim text that will be replaced by a later event with the same segmentId (AI-6)
+        text: { type: string }
+        start: { type: number, description: Seconds from the session clock origin (= recording start) (REC-3) }
+        end: { type: number }
+        sourceLang: { $ref: "#/components/schemas/LanguageCode" }
+        latencyMs: { type: integer }
+        edited: { type: boolean, default: false }
+        hidden: { type: boolean, default: false }
+    CaptionPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Caption" }
+        nextCursor: { type: string, nullable: true }
+    CaptionPatch:
+      type: object
+      properties:
+        text: { type: string }
+        hidden: { type: boolean }
+
+    # ── realtime messages ──
+    IngestHello:
+      type: object
+      description: First client → server text frame on /ws/ingest
+      required: [type, format, sampleRate, channels]
+      properties:
+        type: { type: string, enum: [hello] }
+        format: { type: string, enum: [s16le] }
+        sampleRate: { type: integer, enum: [16000] }
+        channels: { type: integer, enum: [1] }
+        source: { $ref: "#/components/schemas/AudioSourceKind" }
+        deviceLabel: { type: string }
+        clientTime: { type: number, description: "Client epoch ms, for clock sync" }
+    IngestServerMessage:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [ready, level, state, error] }
+        state: { $ref: "#/components/schemas/SessionState" }
+        levelDbfs: { type: number }
+        peakDbfs: { type: number }
+        silent: { type: boolean }
+        clipping: { type: boolean }
+        error: { $ref: "#/components/schemas/Error" }
+    CaptionsServerMessage:
+      type: object
+      description: Server → client text frame on /ws/captions
+      required: [type]
+      properties:
+        type: { type: string, enum: [history, caption, state, viewers, error] }
+        captions:
+          type: array
+          description: Present when type=history
+          items: { $ref: "#/components/schemas/Caption" }
+        caption: { $ref: "#/components/schemas/Caption" }
+        state: { $ref: "#/components/schemas/SessionState" }
+        detectedLanguage: { $ref: "#/components/schemas/LanguageCode" }
+        viewers: { type: integer }
+        error: { $ref: "#/components/schemas/Error" }
+    AdminEvent:
+      type: object
+      description: Server → client text frame on /ws/admin
+      required: [type, at]
+      properties:
+        type: { type: string, enum: [sessionStatus, sessionCreated, sessionUpdated, sessionDeleted, modelProgress, streamCaptionStatus, log] }
+        at: { $ref: "#/components/schemas/Timestamp" }
+        status: { $ref: "#/components/schemas/SessionStatus" }
+        session: { $ref: "#/components/schemas/Session" }
+        sessionId: { $ref: "#/components/schemas/Slug" }
+        model: { $ref: "#/components/schemas/LocalModel" }
+        log:
+          type: object
+          required: [level, code]
+          properties:
+            level: { type: string, enum: [info, warn, error] }
+            code: { type: string }
+            params: { type: object, additionalProperties: true }
+            sessionId: { $ref: "#/components/schemas/Slug" }
+
+    # ── settings & providers ──
+    Settings:
+      type: object
+      required: [defaultSourceLanguage, defaultTargetLanguages, providers, network, recording]
+      properties:
+        defaultSourceLanguage: { $ref: "#/components/schemas/SourceLanguage" }
+        defaultTargetLanguages:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/LanguageCode" }
+          default: [es, en]
+        defaultGlossaryId: { type: string, nullable: true }
+        providers:
+          type: object
+          required: [gemini, local]
+          properties:
+            gemini:
+              type: object
+              required: [liveModel, translationModel]
+              properties:
+                liveModel: { type: string, description: Gemini Live model id }
+                translationModel: { type: string }
+            local:
+              type: object
+              required: [whisperUrl, whisperModel, ollamaUrl, gemmaModel]
+              properties:
+                whisperUrl: { type: string, default: "http://127.0.0.1:8178" }
+                whisperModel: { type: string, default: large-v3-turbo }
+                ollamaUrl: { type: string, default: "http://127.0.0.1:11434" }
+                gemmaModel: { type: string, default: "gemma3:4b" }
+            fallback:
+              type: boolean
+              default: false
+              description: Fall back to the other provider on failure (AI-8, stretch)
+        translation:
+          type: object
+          properties:
+            contextSentences: { type: integer, minimum: 0, maximum: 10, default: 3 }
+        captions:
+          type: object
+          properties:
+            maxCharsPerLine: { type: integer, default: 42 }
+            maxLines: { type: integer, default: 2 }
+        network:
+          type: object
+          properties:
+            publicBaseUrl: { type: string, nullable: true, description: Overrides the LAN URL in QR codes }
+            preferredInterface: { type: string, nullable: true }
+        recording:
+          type: object
+          required: [enabledByDefault, bitrateKbps, retentionDays]
+          properties:
+            enabledByDefault: { type: boolean, default: true }
+            bitrateKbps: { type: integer, enum: [32, 48, 64], default: 32 }
+            retentionDays: { type: integer, minimum: 0, default: 30, description: 0 = keep forever }
+        obs:
+          type: object
+          description: Route B (CC-4); the password is stored as the `obs_websocket_password` secret
+          properties:
+            websocketUrl: { type: string, default: "ws://127.0.0.1:4455" }
+        srt:
+          type: object
+          properties:
+            enabled: { type: boolean, default: true }
+            port: { type: integer, default: 9000 }
+            latencyMs: { type: integer, default: 200 }
+            passphraseSet: { type: boolean, readOnly: true }
+    ProvidersResponse:
+      type: object
+      required: [defaultProvider, providers]
+      properties:
+        defaultProvider:
+          $ref: "#/components/schemas/ProviderKind"
+        defaultReason:
+          type: string
+          enum: [google_api_key_valid, no_google_api_key, google_api_key_invalid]
+        providers:
+          type: array
+          items: { $ref: "#/components/schemas/ProviderInfo" }
+    ProviderInfo:
+      type: object
+      required: [kind, available]
+      properties:
+        kind: { $ref: "#/components/schemas/ProviderKind" }
+        available: { type: boolean }
+        reasonCode: { type: string, description: "Why unavailable (translatable code)" }
+        realtimeCapable: { type: boolean, description: From the last benchmark (local only) }
+
+    # ── secrets ──
+    SecretInfo:
+      type: object
+      required: [name, set]
+      properties:
+        name: { $ref: "#/components/schemas/SecretName" }
+        set: { type: boolean }
+        hint: { type: string, description: "Last 4 chars, e.g. ••••abcd" }
+        source: { type: string, enum: [keychain, encrypted_file, env] }
+        updatedAt: { $ref: "#/components/schemas/Timestamp" }
+        valid: { type: boolean, nullable: true, description: Result of the last validation }
+    SecretWrite:
+      type: object
+      required: [value]
+      properties:
+        value: { type: string, writeOnly: true, minLength: 1 }
+        validate: { type: boolean, default: true }
+    SecretValidation:
+      type: object
+      required: [valid]
+      properties:
+        valid: { type: boolean }
+        code: { type: string, description: Translatable reason when invalid }
+
+    # ── glossaries ──
+    GlossaryInput:
+      type: object
+      required: [name, terms, doNotTranslate]
+      properties:
+        name: { type: string }
+        terms:
+          type: array
+          items: { $ref: "#/components/schemas/GlossaryTerm" }
+        doNotTranslate:
+          type: array
+          items: { type: string }
+          example: [Kubernetes, React, Nerdearla]
+    Glossary:
+      allOf:
+        - $ref: "#/components/schemas/GlossaryInput"
+        - type: object
+          required: [id, updatedAt]
+          properties:
+            id: { type: string }
+            updatedAt: { $ref: "#/components/schemas/Timestamp" }
+    GlossaryTerm:
+      type: object
+      required: [term]
+      properties:
+        term: { type: string, description: Term as spoken/written in the source language }
+        translations:
+          type: object
+          additionalProperties: { type: string }
+          description: Preferred translation per language code
+        note: { type: string, description: Context hint for the model }
+
+    # ── overlays ──
+    OverlayStyle:
+      type: object
+      properties:
+        fontFamily: { type: string, default: "Inter, system-ui, sans-serif" }
+        fontSizePx: { type: integer, default: 44 }
+        fontWeight: { type: integer, default: 600 }
+        color: { type: string, default: "#FFFFFF" }
+        outlineColor: { type: string, default: "#000000" }
+        outlineWidthPx: { type: integer, default: 3 }
+        background: { type: string, default: "rgba(0,0,0,0.55)", description: CSS color or `transparent` }
+        position: { type: string, enum: [bottom, top], default: bottom }
+        align: { type: string, enum: [left, center, right], default: center }
+        marginPx: { type: integer, default: 60 }
+        maxLines: { type: integer, minimum: 1, maximum: 4, default: 2 }
+        fadeAfterMs: { type: integer, default: 6000, description: Hide after silence; 0 = never }
+        showInterim: { type: boolean, default: true }
+    OverlayPresetInput:
+      type: object
+      required: [name, style]
+      properties:
+        name: { type: string }
+        style: { $ref: "#/components/schemas/OverlayStyle" }
+    OverlayPreset:
+      allOf:
+        - $ref: "#/components/schemas/OverlayPresetInput"
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string }
+
+    # ── network ──
+    NetworkInfo:
+      type: object
+      required: [interfaces, httpPort, viewerBaseUrl]
+      properties:
+        hostname: { type: string }
+        interfaces:
+          type: array
+          items:
+            type: object
+            required: [name, ip, family]
+            properties:
+              name: { type: string, example: en0 }
+              ip: { type: string, example: 192.168.1.20 }
+              family: { type: string, enum: [ipv4, ipv6] }
+        preferredIp: { type: string }
+        httpPort: { type: integer, example: 8080 }
+        httpsPort: { type: integer, nullable: true, example: 8443 }
+        srtPort: { type: integer, nullable: true, example: 9000 }
+        publicBaseUrl: { type: string, nullable: true }
+        viewerBaseUrl:
+          type: string
+          description: publicBaseUrl if set, else http://<preferredIp>:<httpPort>
+          example: "http://192.168.1.20:8080"
+
+    # ── recordings ──
+    Recording:
+      type: object
+      required: [id, sessionId, startedAt, status, languages]
+      properties:
+        id: { type: string }
+        sessionId: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+        startedAt: { $ref: "#/components/schemas/Timestamp" }
+        endedAt: { $ref: "#/components/schemas/Timestamp" }
+        durationSec: { type: number }
+        sizeBytes: { type: integer, format: int64 }
+        status: { type: string, enum: [recording, complete, failed] }
+        languages:
+          type: array
+          items: { type: string }
+        expiresAt: { $ref: "#/components/schemas/Timestamp" }
+    StorageUsage:
+      type: object
+      required: [usedBytes, recordings]
+      properties:
+        usedBytes: { type: integer, format: int64 }
+        freeBytes: { type: integer, format: int64 }
+        recordings: { type: integer }
+    ReprocessRequest:
+      type: object
+      properties:
+        provider: { $ref: "#/components/schemas/ProviderKind" }
+        glossaryId: { type: string }
+        targetLanguages:
+          type: array
+          items: { $ref: "#/components/schemas/LanguageCode" }
+    Job:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, done, failed] }
+        progress: { type: number, minimum: 0, maximum: 1 }
+        error: { $ref: "#/components/schemas/Error" }
+
+    # ── local models ──
+    LocalModel:
+      type: object
+      required: [id, kind, name, status]
+      properties:
+        id: { type: string, example: whisper-large-v3-turbo }
+        kind: { type: string, enum: [whisper, gemma] }
+        name: { type: string }
+        sizeBytes: { type: integer, format: int64 }
+        recommended: { type: boolean }
+        status: { type: string, enum: [missing, downloading, verifying, ready, error] }
+        progress: { type: number, minimum: 0, maximum: 1 }
+        error: { $ref: "#/components/schemas/Error" }
+
+    # ── TLS ──
+    TlsInfo:
+      type: object
+      required: [enabled, mode]
+      properties:
+        enabled: { type: boolean }
+        mode: { type: string, enum: [local-ca, provided, acme, disabled] }
+        httpsPort: { type: integer }
+        sans:
+          type: array
+          items: { type: string }
+        notAfter: { $ref: "#/components/schemas/Timestamp" }
+        caFingerprintSha256: { type: string }
