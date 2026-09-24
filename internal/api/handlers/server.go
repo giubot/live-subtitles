@@ -15,6 +15,9 @@ import (
 // yet fall through to api.Unimplemented (501 not_implemented).
 type Server struct {
 	api.Unimplemented
+
+	// Network describes the LAN addresses and base URL for QR codes.
+	Network func() api.NetworkInfo
 }
 
 var _ api.StrictServerInterface = (*Server)(nil)

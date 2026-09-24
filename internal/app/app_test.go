@@ -24,7 +24,9 @@ var testDist = fstest.MapFS{
 }
 
 func newTestApp(dist fstest.MapFS) *App {
-	return New(config.Config{Addr: "127.0.0.1:0"}, slog.New(slog.DiscardHandler), dist)
+	a := New(config.Config{Addr: "127.0.0.1:0"}, slog.New(slog.DiscardHandler), dist)
+	a.out = io.Discard
+	return a
 }
 
 func TestRoutes(t *testing.T) {
@@ -36,6 +38,7 @@ func TestRoutes(t *testing.T) {
 		wantCache          string
 	}{
 		{"health", "GET", "/healthz", testDist, 200, `"status":"ok"`, ""},
+		{"network on loopback", "GET", "/api/network", testDist, 200, `"viewerBaseUrl":"http://localhost:0"`, ""},
 		{"unimplemented operation", "GET", "/api/sessions", testDist, 501, `"code":"not_implemented"`, ""},
 		{"unknown api path", "GET", "/api/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"unknown ws path", "GET", "/ws/nope", testDist, 404, `"code":"route.not_found"`, ""},
@@ -87,5 +90,20 @@ func TestServeShutsDownOnCancel(t *testing.T) {
 		}
 	case <-time.After(ShutdownTimeout):
 		t.Fatal("Serve did not return after cancel")
+	}
+}
+
+func TestBanner(t *testing.T) {
+	a := New(config.Config{Addr: ":8080", PublicBaseURL: "https://subs.example.com"}, slog.New(slog.DiscardHandler), testDist)
+	var out strings.Builder
+	a.out = &out
+	a.banner()
+	for _, want := range []string{"Audience  https://subs.example.com/s", "Admin     https://subs.example.com/admin"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("banner %q does not contain %q", out.String(), want)
+		}
+	}
+	if strings.Contains(out.String(), "\x1b[") {
+		t.Error("banner printed a QR code to a non-terminal")
 	}
 }
