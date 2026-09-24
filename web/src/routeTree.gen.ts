@@ -17,6 +17,7 @@ import { Route as OverlayIdRouteImport } from './routes/overlay/$id'
 import { Route as StageIdRouteImport } from './routes/stage/$id'
 import { Route as ThemedAdminIndexRouteImport } from './routes/_themed/admin/index'
 import { Route as ThemedCaptureIdRouteImport } from './routes/_themed/capture/$id'
+import { Route as ThemedDevDesignRouteImport } from './routes/_themed/dev/design'
 import { Route as ThemedReplayIdRouteImport } from './routes/_themed/replay/$id'
 import { Route as ThemedSIndexRouteImport } from './routes/_themed/s/index'
 import { Route as ThemedSIdRouteImport } from './routes/_themed/s/$id'
@@ -60,6 +61,11 @@ const ThemedCaptureIdRoute = ThemedCaptureIdRouteImport.update({
   path: '/capture/$id',
   getParentRoute: () => ThemedRoute,
 } as any)
+const ThemedDevDesignRoute = ThemedDevDesignRouteImport.update({
+  id: '/dev/design',
+  path: '/dev/design',
+  getParentRoute: () => ThemedRoute,
+} as any)
 const ThemedReplayIdRoute = ThemedReplayIdRouteImport.update({
   id: '/replay/$id',
   path: '/replay/$id',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/overlay/$id': typeof OverlayIdRoute
   '/stage/$id': typeof StageIdRoute
   '/capture/$id': typeof ThemedCaptureIdRoute
+  '/dev/design': typeof ThemedDevDesignRoute
   '/replay/$id': typeof ThemedReplayIdRoute
   '/s/$id': typeof ThemedSIdRoute
   '/admin/': typeof ThemedAdminIndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/stage/$id': typeof StageIdRoute
   '/': typeof ThemedIndexRoute
   '/capture/$id': typeof ThemedCaptureIdRoute
+  '/dev/design': typeof ThemedDevDesignRoute
   '/replay/$id': typeof ThemedReplayIdRoute
   '/s/$id': typeof ThemedSIdRoute
   '/admin': typeof ThemedAdminIndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/stage/$id': typeof StageIdRoute
   '/_themed/': typeof ThemedIndexRoute
   '/_themed/capture/$id': typeof ThemedCaptureIdRoute
+  '/_themed/dev/design': typeof ThemedDevDesignRoute
   '/_themed/replay/$id': typeof ThemedReplayIdRoute
   '/_themed/s/$id': typeof ThemedSIdRoute
   '/_themed/admin/': typeof ThemedAdminIndexRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/overlay/$id'
     | '/stage/$id'
     | '/capture/$id'
+    | '/dev/design'
     | '/replay/$id'
     | '/s/$id'
     | '/admin/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/stage/$id'
     | '/'
     | '/capture/$id'
+    | '/dev/design'
     | '/replay/$id'
     | '/s/$id'
     | '/admin'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/stage/$id'
     | '/_themed/'
     | '/_themed/capture/$id'
+    | '/_themed/dev/design'
     | '/_themed/replay/$id'
     | '/_themed/s/$id'
     | '/_themed/admin/'
@@ -216,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThemedCaptureIdRouteImport
       parentRoute: typeof ThemedRoute
     }
+    '/_themed/dev/design': {
+      id: '/_themed/dev/design'
+      path: '/dev/design'
+      fullPath: '/dev/design'
+      preLoaderRoute: typeof ThemedDevDesignRouteImport
+      parentRoute: typeof ThemedRoute
+    }
     '/_themed/replay/$id': {
       id: '/_themed/replay/$id'
       path: '/replay/$id'
@@ -256,6 +275,7 @@ interface ThemedRouteChildren {
   ThemedSetupRoute: typeof ThemedSetupRoute
   ThemedIndexRoute: typeof ThemedIndexRoute
   ThemedCaptureIdRoute: typeof ThemedCaptureIdRoute
+  ThemedDevDesignRoute: typeof ThemedDevDesignRoute
   ThemedReplayIdRoute: typeof ThemedReplayIdRoute
   ThemedSIdRoute: typeof ThemedSIdRoute
   ThemedSIndexRoute: typeof ThemedSIndexRoute
@@ -266,6 +286,7 @@ const ThemedRouteChildren: ThemedRouteChildren = {
   ThemedSetupRoute: ThemedSetupRoute,
   ThemedIndexRoute: ThemedIndexRoute,
   ThemedCaptureIdRoute: ThemedCaptureIdRoute,
+  ThemedDevDesignRoute: ThemedDevDesignRoute,
   ThemedReplayIdRoute: ThemedReplayIdRoute,
   ThemedSIdRoute: ThemedSIdRoute,
   ThemedSIndexRoute: ThemedSIndexRoute,

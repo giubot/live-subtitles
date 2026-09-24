@@ -8,5 +8,11 @@
     "title": "Page not found",
     "body": "There's nothing at this address. Check the link, or go back to the start.",
     "action": "Go to the start"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
   }
 }

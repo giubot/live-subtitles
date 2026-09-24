@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   contract:
-    name: Contract, codegen drift, SPDX
+    name: Contract, codegen drift, design tokens, SPDX
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -37,7 +37,7 @@ jobs:
       - uses: arduino/setup-task@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: task check:spdx check:spec check:gen
+      - run: task check:spdx check:spec check:gen check:design
 
   go:
     name: Go (lint, vet, test -race)

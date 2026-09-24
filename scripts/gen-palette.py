@@ -6,41 +6,14 @@ MUI's colour utilities (alpha, darken, contrast text) don't parse oklch(), so th
 MUI palette is fed hex values mirrored from the canonical OKLCH tokens.
 Run: python3 scripts/gen-palette.py
 """
-import math, re, pathlib
+from tokens import ROOT, TOKENS as SRC, oklch_to_hex, schemes
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / "web/src/theme/tokens.css"
 OUT = ROOT / "web/src/theme/palette.ts"
 
-def oklch_to_hex(L, C, H, A=None):
-    L /= 100; a = C * math.cos(math.radians(H)); b = C * math.sin(math.radians(H))
-    l_ = L + 0.3963377774*a + 0.2158037573*b
-    m_ = L - 0.1055613458*a - 0.0638541728*b
-    s_ = L - 0.0894841775*a - 1.2914855480*b
-    l, m, s = l_**3, m_**3, s_**3
-    lin = (4.0767416621*l - 3.3077115913*m + 0.2309699292*s,
-           -1.2684380046*l + 2.6097574011*m - 0.3413193965*s,
-           -0.0041960863*l - 0.7034186147*m + 1.7076147010*s)
-    def enc(x):
-        x = min(1, max(0, x))
-        x = 12.92*x if x <= 0.0031308 else 1.055*x**(1/2.4) - 0.055
-        return round(x*255)
-    h = "#" + "".join(f"{enc(x):02x}" for x in lin)
-    if A is not None:
-        h += f"{round(A*255):02x}"
-    return h
+def colours(tokens):
+    return {k[len("color-"):]: oklch_to_hex(*v) for k, v in tokens.items() if k.startswith("color-")}
 
-css = SRC.read_text()
-TOKEN = re.compile(r"--color-([a-z0-9-]+):\s*oklch\(([\d.]+)%\s+([\d.]+)\s+([\d.]+)(?:\s*/\s*([\d.]+))?\)")
-
-def block(selector):
-    start = css.index(selector)
-    end = css.index("}", start)
-    return {m[0]: oklch_to_hex(float(m[1]), float(m[2]), float(m[3]), float(m[4]) if m[4] else None)
-            for m in TOKEN.findall(css[start:end])}
-
-light = block(":root {")
-dark = {**light, **block(':root[data-theme="dark"] {')}
+light, dark = map(colours, schemes())
 
 def camel(k):
     p = k.split("-"); return p[0] + "".join(x.title() for x in p[1:])

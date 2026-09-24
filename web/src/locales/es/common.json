@@ -8,5 +8,11 @@
     "title": "No encontramos la página",
     "body": "No hay nada en esta dirección. Revisá el enlace o volvé al inicio.",
     "action": "Ir al inicio"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
   }
 }

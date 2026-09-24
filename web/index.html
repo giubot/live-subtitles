@@ -5,9 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Live Subtitles</title>
     <script>
-      // Caption overlays for OBS/vMix must be transparent from the first paint.
-      if (location.pathname.startsWith('/overlay/'))
-        document.documentElement.dataset.surface = 'overlay'
+      // Before first paint: the stored Light/Dark/System choice (AppThemeProvider
+      // keeps it in sync afterwards), and transparency for OBS/vMix overlays.
+      ;(function () {
+        var root = document.documentElement
+        var mode = 'system'
+        try {
+          mode = localStorage.getItem('ls.theme') || 'system'
+        } catch (e) {}
+        if (mode === 'system')
+          mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        root.dataset.theme = mode
+        if (location.pathname.startsWith('/overlay/')) root.dataset.surface = 'overlay'
+      })()
     </script>
   </head>
   <body>

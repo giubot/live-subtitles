@@ -1,0 +1,35 @@
+{
+  "title": "Sistema de diseño",
+  "intro": "Tema, tokens y componentes en todos sus estados. Comparalo con design/preview.html en claro y oscuro.",
+  "colour": "Color",
+  "type": "Tipografía",
+  "buttons": "Botones",
+  "inputs": "Campos",
+  "surfaces": "Superficies",
+  "captions": "Superficies de subtítulos",
+  "state": {
+    "default": "Normal",
+    "focus": "Foco",
+    "disabled": "Deshabilitado",
+    "loading": "Cargando",
+    "error": "Error",
+    "success": "Correcto"
+  },
+  "sample": {
+    "start": "Iniciar sesión",
+    "copy": "Copiar URL del overlay",
+    "cancel": "Cancelar",
+    "stop": "Detener sesión",
+    "sessionName": "Nombre de la sesión",
+    "sessionHelper": "Lo ve el público",
+    "sessionError": "Usá 120 caracteres o menos.",
+    "saved": "Guardado",
+    "sessionValue": "Escenario principal",
+    "card": "Escenario principal · Sala Konex",
+    "cardBody": "Dos idiomas de destino, grabación activada.",
+    "tooltip": "Con el mouse espera 800 ms; con el teclado aparece al instante",
+    "interim": "y cómo se combinan métricas, logs y",
+    "final": "Hoy vamos a hablar de observabilidad en Kubernetes.",
+    "reason": "Disponible cuando la sesión esté en vivo"
+  }
+}

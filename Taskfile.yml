@@ -118,7 +118,7 @@ tasks:
 
   gen:palette:
     desc: palette.ts (sRGB hex) from tokens.css (OKLCH)
-    sources: [web/src/theme/tokens.css, scripts/gen-palette.py]
+    sources: [web/src/theme/tokens.css, scripts/gen-palette.py, scripts/tokens.py]
     generates: [web/src/theme/palette.ts]
     cmds:
       - python3 scripts/gen-palette.py
@@ -129,6 +129,7 @@ tasks:
       - task: check:spdx
       - task: check:spec
       - task: check:gen
+      - task: check:design
       - task: check:go
       - task: check:web
       - task: test
@@ -137,6 +138,12 @@ tasks:
     desc: Lint the OpenAPI spec with Redocly
     cmds:
       - '{{.REDOCLY}} lint {{.SPEC}}'
+
+  check:design:
+    desc: WCAG contrast of the design tokens (light + dark) and no raw colour/font literals outside web/src/theme/
+    cmds:
+      - python3 scripts/check-contrast.py
+      - python3 scripts/check-raw-colors.py
 
   check:gen:
     desc: Fail if generated code is out of date with its sources

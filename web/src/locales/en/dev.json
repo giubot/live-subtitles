@@ -1,0 +1,35 @@
+{
+  "title": "Design system",
+  "intro": "Theme, tokens and primitives in every state. Compare with design/preview.html in light and dark.",
+  "colour": "Colour",
+  "type": "Type",
+  "buttons": "Buttons",
+  "inputs": "Inputs",
+  "surfaces": "Surfaces",
+  "captions": "Caption surfaces",
+  "state": {
+    "default": "Default",
+    "focus": "Focus",
+    "disabled": "Disabled",
+    "loading": "Loading",
+    "error": "Error",
+    "success": "Success"
+  },
+  "sample": {
+    "start": "Start session",
+    "copy": "Copy overlay URL",
+    "cancel": "Cancel",
+    "stop": "Stop session",
+    "sessionName": "Session name",
+    "sessionHelper": "Shown to the audience",
+    "sessionError": "Use 120 characters or fewer.",
+    "saved": "Saved",
+    "sessionValue": "Main stage",
+    "card": "Main stage · Sala Konex",
+    "cardBody": "Two target languages, recording on.",
+    "tooltip": "Hover waits 800 ms; keyboard focus shows it at once",
+    "interim": "and how metrics, logs and",
+    "final": "Today we're going to talk about observability in Kubernetes.",
+    "reason": "Available once the session is live"
+  }
+}

@@ -2,6 +2,16 @@
  * Global styles that apply before any theme. */
 
 @import './theme/tokens.css';
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/atkinson-hyperlegible-next';
+@import '@fontsource-variable/atkinson-hyperlegible-mono';
+
+/* The page colour is right from the first paint, before React mounts. */
+html {
+  background: var(--color-paper);
+  color: var(--color-ink-2);
+  font-family: var(--font-body);
+}
 
 /* OBS/vMix overlay: transparent from the first paint (set in index.html). */
 html[data-surface='overlay'],
