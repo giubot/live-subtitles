@@ -384,11 +384,14 @@ type audioStatuser interface {
 }
 
 func (r *run) status() api.SessionStatus {
+	r.mu.Lock()
+	src := r.source
+	r.mu.Unlock()
 	var audio api.AudioStatus
-	if s, ok := r.source.(audioStatuser); ok {
+	if s, ok := src.(audioStatuser); ok {
 		audio = s.Status()
-	} else if r.source != nil {
-		kind := r.source.Kind()
+	} else if src != nil {
+		kind := src.Kind()
 		audio = api.AudioStatus{Connected: true, Source: &kind}
 	}
 	viewers := r.m.opts.Bus.Viewers(r.id)

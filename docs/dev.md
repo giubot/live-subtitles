@@ -93,6 +93,12 @@ task dev:ai:down
 - **Committed fixtures**: `testdata/audio/fixtures/{en,es}.wav`, about 8 s each, 16 kHz mono s16le. They're synthetic (macOS text-to-speech, `scripts/make-fixtures.sh`) so CI can use them without third-party rights. whisper `tiny` transcribes both and detects the right language.
 - **Real talks**: `task audio:fetch` downloads one English and one Spanish Nerdearla talk from YouTube and trims each to a 10-minute 16 kHz mono clip in `testdata/audio/{en,es}.m4a` (gitignored). Change the talks or the window with `EN_URL`, `ES_URL`, `START` and `DURATION`.
 
+### Feeding a file to a session
+
+`task demo:file SESSION=main FILE=testdata/audio/en.m4a` plays a file into a session in real time, as if someone were speaking (`LOOP=true` repeats it, `PORT=18080` or `URL=…` picks the server). It calls `POST /api/sessions/{id}/sources/file` with the admin bearer token, so export the same `LIVESUBS_ADMIN_TOKEN` in the server's environment and in your shell. The session must be idle; `DELETE` on the same URL stops it.
+
+The server decodes the file with ffmpeg (`--ffmpeg` / `LIVESUBS_FFMPEG` if it isn't in `PATH`). Only files under the data directory and `./testdata`, or `http(s)` URLs, are accepted; relative paths are resolved from the server's working directory.
+
 ## Troubleshooting
 
 - **`localhost:8080` answers with another app's 404.** Another process is listening on `127.0.0.1:8080`, and the Go server binds `*:8080` alongside it without an error. Check with `lsof -nP -iTCP:8080 -sTCP:LISTEN`, then stop it or use `task dev PORT=18080`.

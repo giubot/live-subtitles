@@ -133,9 +133,9 @@ func New(opts Options) *Manager {
 func (m *Manager) Events() *Events { return m.events }
 
 // Start starts the session with src as its audio, or with its browser
-// ingest source when src is nil. A paused session resumes (src is then
-// ignored). It returns ErrState while the session is starting, live or
-// stopping, and ErrUnavailable when the provider or source can't start.
+// ingest source when src is nil. With a nil src a paused session resumes.
+// It returns ErrState while the session is running (or paused, for a new
+// src), and ErrUnavailable when the provider or source can't start.
 func (m *Manager) Start(ctx context.Context, id string, src domain.AudioSource) (api.SessionStatus, error) {
 	sess, err := m.opts.Sessions.GetSession(ctx, id)
 	if err != nil {
@@ -149,7 +149,7 @@ func (m *Manager) Start(ctx context.Context, id string, src domain.AudioSource) 
 	}
 	if r := m.runs[id]; r != nil {
 		defer m.mu.Unlock()
-		if r.state() != api.SessionStatePaused {
+		if r.state() != api.SessionStatePaused || src != nil {
 			return api.SessionStatus{}, ErrState
 		}
 		r.setState(api.SessionStateLive)
@@ -185,13 +185,14 @@ func (m *Manager) launch(ctx context.Context, r *run, src domain.AudioSource) er
 			Params: &map[string]any{"provider": kind}})
 		return fmt.Errorf("%w: provider %s", ErrUnavailable, kind)
 	}
-	r.provider, r.asr, r.translator = kind, p.ASR, p.Translator
-
 	if src == nil {
 		src = m.opts.IngestSource(r.id)
 	}
-	r.source = src
-	r.offset = m.clockOrigin(ctx, r.id)
+	offset := m.clockOrigin(ctx, r.id)
+	r.mu.Lock() // status() and SourceKind read these concurrently
+	r.provider, r.asr, r.translator = kind, p.ASR, p.Translator
+	r.source, r.offset = src, offset
+	r.mu.Unlock()
 	if err := r.start(ctx); err != nil {
 		return err
 	}
@@ -315,6 +316,23 @@ func (m *Manager) finished(r *run) {
 	}
 	m.publishStatus(context.Background(), r.id)
 	m.log.Info("session stopped", "session", r.id)
+}
+
+// SourceKind reports the audio source of a running session.
+func (m *Manager) SourceKind(id string) (api.AudioSourceKind, bool) {
+	m.mu.Lock()
+	r := m.runs[id]
+	m.mu.Unlock()
+	if r == nil {
+		return "", false
+	}
+	r.mu.Lock()
+	src := r.source
+	r.mu.Unlock()
+	if src == nil {
+		return "", false
+	}
+	return src.Kind(), true
 }
 
 // State is the session's runtime state (idle when it isn't running).

@@ -25,6 +25,7 @@ type Config struct {
 	LogLevel      slog.Level
 	PublicBaseURL string // overrides LAN detection for generated URLs
 	NoKeychain    bool   // never use the OS keychain for secrets
+	FFmpeg        string // ffmpeg executable for file, URL and SRT sources
 	Version       bool   // print the version and exit
 
 	// AdminToken is accepted as a bearer token on admin endpoints. It is
@@ -56,6 +57,7 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 		return c, fmt.Errorf("LIVESUBS_NO_KEYCHAIN: %w", err)
 	}
 	fs.BoolVar(&c.NoKeychain, "no-keychain", noKeychain, "keep secrets in the encrypted file only, never the OS keychain (LIVESUBS_NO_KEYCHAIN)")
+	fs.StringVar(&c.FFmpeg, "ffmpeg", env("FFMPEG", "ffmpeg"), "ffmpeg executable (LIVESUBS_FFMPEG)")
 	fs.BoolVar(&c.Version, "version", false, "print the version and exit")
 	c.AdminToken = getenv("LIVESUBS_ADMIN_TOKEN")
 

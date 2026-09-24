@@ -21,6 +21,7 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/api/handlers"
+	"github.com/iencodev/live-subtitles/internal/audio/ffmpeg"
 	"github.com/iencodev/live-subtitles/internal/audio/ingest"
 	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/bus"
@@ -109,6 +110,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		Logger:        log,
 	})
 	srv.Manager = a.manager
+	// Test sources may read files from the data directory and ./testdata.
+	srv.Files = &ffmpeg.Files{Binary: cfg.FFmpeg, Roots: []string{cfg.DataDir, "testdata"}}
 	srv.CaptionsWS = bus.NewCaptionsHandler(captionBus, log, bus.WithSessionLookup(func(ctx context.Context, id string) error {
 		_, err := st.GetSession(ctx, id)
 		return err

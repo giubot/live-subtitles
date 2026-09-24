@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/audio/ffmpeg"
 	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/session"
@@ -34,6 +35,8 @@ type Server struct {
 	// Manager runs sessions (start, pause, stop, status); nil: those
 	// operations answer 501.
 	Manager *session.Manager
+	// Files opens file and URL test sources (sources/file); nil: 501.
+	Files *ffmpeg.Files
 
 	// WebSocket endpoints need the raw connection, so they are served
 	// outside the strict handler; nil: 501.

@@ -184,6 +184,21 @@
         "title": "Esa fuente de audio no se inicia desde acá",
         "why": "Desde el botón Iniciar solo arranca la captura del navegador; el audio {{source}} tiene sus propios controles o todavía no está disponible.",
         "fix": "Usá la página de captura, o iniciá la fuente desde su propia sección."
+      },
+      "file_not_found": {
+        "title": "No se encontró el archivo de audio",
+        "why": "No hay ningún archivo en esa ruta del servidor.",
+        "fix": "Revisá la ruta. Las rutas relativas parten de la carpeta donde corre el servidor."
+      },
+      "file_not_allowed": {
+        "title": "Esa entrada de audio no está permitida",
+        "why": "El audio de prueba tiene que ser un archivo en la carpeta de datos o testdata del servidor, o un enlace http(s).",
+        "fix": "Mové el archivo a una de esas carpetas, o usá un enlace web."
+      },
+      "not_running": {
+        "title": "No se está reproduciendo ningún archivo de prueba",
+        "why": "Esta sesión no está recibiendo audio de un archivo ahora.",
+        "fix": "No hay nada que detener. Para cortar la captura del navegador, detené la sesión."
       }
     }
   }

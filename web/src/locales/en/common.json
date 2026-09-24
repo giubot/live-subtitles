@@ -184,6 +184,21 @@
         "title": "That audio source can't be started here",
         "why": "Only browser capture starts from the Start button; {{source}} audio has its own controls or isn't available yet.",
         "fix": "Use the capture page, or start the source from its own section."
+      },
+      "file_not_found": {
+        "title": "Audio file not found",
+        "why": "There's no file at that path on the server.",
+        "fix": "Check the path. Relative paths start from the folder the server runs in."
+      },
+      "file_not_allowed": {
+        "title": "That audio input isn't allowed",
+        "why": "Test audio must be a file in the server's data or testdata folder, or an http(s) link.",
+        "fix": "Move the file into one of those folders, or use a web link."
+      },
+      "not_running": {
+        "title": "No test file is playing",
+        "why": "This session isn't fed by a file right now.",
+        "fix": "Nothing to stop. To stop browser capture, stop the session."
       }
     }
   }

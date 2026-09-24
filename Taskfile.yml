@@ -54,6 +54,13 @@ tasks:
     cmds:
       - scripts/fetch-test-audio.sh
 
+  demo:file:
+    desc: Feed an audio file to a session in real time (SESSION=main FILE=testdata/audio/en.m4a [LOOP=true]; needs LIVESUBS_ADMIN_TOKEN)
+    requires:
+      vars: [SESSION, FILE]
+    cmds:
+      - scripts/demo-file.sh "{{.SESSION}}" "{{.FILE}}" "{{.URL | default (printf "http://localhost:%s" .PORT)}}" "{{.LOOP | default "false"}}"
+
   design:preview:
     desc: Open design/preview.html in the browser
     cmds:
