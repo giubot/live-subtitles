@@ -3,6 +3,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { useColorScheme } from '@mui/material/styles'
 import { useTranslation } from 'react-i18next'
+import { segmentedSx } from './segmented'
 
 const modes = ['light', 'dark', 'system'] as const
 type Mode = (typeof modes)[number]
@@ -13,11 +14,11 @@ export function ThemeToggle() {
   const { mode, setMode } = useColorScheme()
   return (
     <ToggleButtonGroup
-      size="small"
       exclusive
       value={mode ?? 'system'}
       onChange={(_, next: Mode | null) => next && setMode(next)}
       aria-label={t('theme.label')}
+      sx={segmentedSx}
     >
       {modes.map((m) => (
         <ToggleButton key={m} value={m}>

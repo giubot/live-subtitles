@@ -14,5 +14,89 @@
     "light": "Claro",
     "dark": "Oscuro",
     "system": "Sistema"
+  },
+  "status": {
+    "live": "En vivo",
+    "ok": "OK",
+    "warn": "Atención",
+    "error": "Error",
+    "idle": "Inactiva",
+    "starting": "Iniciando"
+  },
+  "meter": {
+    "label": "Nivel de entrada",
+    "value": "{{value}} dBFS",
+    "clipping": "{{value}} dBFS, saturando",
+    "silent": "Silencio"
+  },
+  "copy": {
+    "action": "Copiar",
+    "done": "Copiado",
+    "retry": "Copiar de nuevo",
+    "failed": "El navegador bloqueó el acceso al portapapeles. El texto quedó seleccionado: apretá Ctrl+C (⌘C en Mac) para copiarlo."
+  },
+  "qr": {
+    "label": "Código QR de {{value}}"
+  },
+  "captionLanguage": {
+    "label": "Idioma de los subtítulos",
+    "source": "Original (como se habla)"
+  },
+  "errors": {
+    "codeLabel": "Código de error:",
+    "generic": {
+      "title": "La solicitud falló",
+      "why": "El servidor devolvió un error que esta versión de la app no sabe describir.",
+      "fix": "Probá de nuevo. Si sigue fallando, buscá el código en el log del servidor."
+    },
+    "network": {
+      "unreachable": {
+        "title": "No se puede conectar con el servidor",
+        "why": "La solicitud no tuvo respuesta: puede que el servidor esté detenido o que este dispositivo no tenga conexión.",
+        "fix": "Revisá la red y que Subtítulos en vivo esté corriendo, y probá de nuevo."
+      }
+    },
+    "request": {
+      "invalid": {
+        "title": "El servidor rechazó la solicitud",
+        "why": "No pudo leer los datos que se enviaron.",
+        "fix": "Revisá los campos y probá de nuevo. Si sigue pasando, recargá la página: puede que la app sea más vieja que el servidor."
+      }
+    },
+    "route": {
+      "not_found": {
+        "title": "El servidor no conoce esta acción",
+        "why": "No hay nada en esa dirección de la API, lo que suele indicar que la app y el servidor son de versiones distintas.",
+        "fix": "Recargá la página. Si sigue pasando, actualizá el servidor."
+      }
+    },
+    "method": {
+      "not_allowed": {
+        "title": "El servidor rechazó esta acción",
+        "why": "Esa dirección de la API no acepta este tipo de solicitud, lo que suele indicar que la app y el servidor son de versiones distintas.",
+        "fix": "Recargá la página. Si sigue pasando, actualizá el servidor."
+      }
+    },
+    "session": {
+      "not_found": {
+        "title": "No encontramos la sesión",
+        "why": "Puede que la hayan borrado o que el enlace tenga un error.",
+        "fix": "Revisá el enlace o elegí la sesión de la lista."
+      }
+    },
+    "ingest": {
+      "replaced": {
+        "title": "Otro dispositivo tomó esta entrada de audio",
+        "why": "Una segunda página de captura se conectó con el mismo enlace, y el servidor se queda con la más reciente.",
+        "fix": "Cerrá la otra página de captura, o recargá esta para recuperar la entrada."
+      }
+    },
+    "provider": {
+      "key_invalid": {
+        "title": "Google rechazó la clave de API",
+        "why": "La clave es incorrecta, fue revocada o no tiene acceso a la API de Gemini.",
+        "fix": "Revisala en Google AI Studio y volvé a pegarla en Configuración."
+      }
+    }
   }
 }

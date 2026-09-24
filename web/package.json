@@ -38,6 +38,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-i18next": "^17.0.15",
+    "uqr": "^0.1.3",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

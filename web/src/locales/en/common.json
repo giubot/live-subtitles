@@ -14,5 +14,89 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System"
+  },
+  "status": {
+    "live": "Live",
+    "ok": "OK",
+    "warn": "Attention",
+    "error": "Error",
+    "idle": "Idle",
+    "starting": "Starting"
+  },
+  "meter": {
+    "label": "Input level",
+    "value": "{{value}} dBFS",
+    "clipping": "{{value}} dBFS, clipping",
+    "silent": "Silence"
+  },
+  "copy": {
+    "action": "Copy",
+    "done": "Copied",
+    "retry": "Copy again",
+    "failed": "The browser blocked clipboard access. The text is selected: press Ctrl+C (⌘C on a Mac) to copy it."
+  },
+  "qr": {
+    "label": "QR code for {{value}}"
+  },
+  "captionLanguage": {
+    "label": "Caption language",
+    "source": "Original (as spoken)"
+  },
+  "errors": {
+    "codeLabel": "Error code:",
+    "generic": {
+      "title": "The request failed",
+      "why": "The server returned an error this version of the app has no description for.",
+      "fix": "Try again. If it keeps failing, look for the code in the server log."
+    },
+    "network": {
+      "unreachable": {
+        "title": "Can't reach the server",
+        "why": "The request got no answer: the server may be stopped, or this device may be offline.",
+        "fix": "Check the network and that Live Subtitles is running, then try again."
+      }
+    },
+    "request": {
+      "invalid": {
+        "title": "The server rejected the request",
+        "why": "It couldn't read the data that was sent.",
+        "fix": "Check the fields and try again. If it keeps happening, reload the page: the app may be older than the server."
+      }
+    },
+    "route": {
+      "not_found": {
+        "title": "The server doesn't know this action",
+        "why": "There's nothing at that API address, which usually means the app and the server are different versions.",
+        "fix": "Reload the page. If it keeps happening, update the server."
+      }
+    },
+    "method": {
+      "not_allowed": {
+        "title": "The server refused this action",
+        "why": "That API address doesn't accept this kind of request, which usually means the app and the server are different versions.",
+        "fix": "Reload the page. If it keeps happening, update the server."
+      }
+    },
+    "session": {
+      "not_found": {
+        "title": "Session not found",
+        "why": "It may have been deleted, or the link has a typo.",
+        "fix": "Check the link, or pick the session from the list."
+      }
+    },
+    "ingest": {
+      "replaced": {
+        "title": "Another device took over this audio input",
+        "why": "A second capture page connected with the same link, and the server keeps the newest one.",
+        "fix": "Close the other capture page, or reload this one to take the input back."
+      }
+    },
+    "provider": {
+      "key_invalid": {
+        "title": "Google rejected the API key",
+        "why": "The key is wrong, revoked, or can't use the Gemini API.",
+        "fix": "Check it in Google AI Studio, then paste it again in Settings."
+      }
+    }
   }
 }

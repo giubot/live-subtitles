@@ -3,27 +3,23 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { useTranslation } from 'react-i18next'
 import { uiLanguages } from '../i18n'
+import { nativeLanguageName } from './languageNames'
+import { segmentedSx } from './segmented'
 
-/** Language names in their own language, so each is recognisable whatever the UI language. */
-function nativeName(lang: string): string {
-  const name = new Intl.DisplayNames([lang], { type: 'language' }).of(lang) ?? lang
-  return name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)
-}
-
-/** Segmented UI language switch (UI-2). P1-12 gives it the design-system look. */
+/** Segmented UI language switch (UI-2). Each language is named in itself. */
 export function UiLanguageSwitcher() {
   const { t, i18n } = useTranslation()
   return (
     <ToggleButtonGroup
-      size="small"
       exclusive
       value={i18n.resolvedLanguage}
       onChange={(_, lang: string | null) => lang && void i18n.changeLanguage(lang)}
       aria-label={t('uiLanguage.label')}
+      sx={segmentedSx}
     >
       {uiLanguages.map((lang) => (
         <ToggleButton key={lang} value={lang} lang={lang}>
-          {nativeName(lang)}
+          {nativeLanguageName(lang)}
         </ToggleButton>
       ))}
     </ToggleButtonGroup>
