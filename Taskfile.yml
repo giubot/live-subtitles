@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: Apache-2.0
+# Task runner (https://taskfile.dev). Run `task --list` for the commands.
+# Stubs are filled in by the Phase 0 tasks noted next to them (docs/plan.md §4).
+version: '3'
+
+vars:
+  BINARY: bin/livesubs
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  LDFLAGS: -s -w -X main.version={{.VERSION}}
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  dev:
+    desc: Run the web app (Vite HMR) and the Go server (air) together
+    cmds:
+      # P0-06 replaces this with Vite + air behind one proxy.
+      - go run ./cmd/livesubs
+
+  gen:
+    desc: Regenerate code (palette.ts from tokens.css; OpenAPI Go/TS clients from P0-02)
+    cmds:
+      - python3 scripts/gen-palette.py
+
+  check:
+    desc: Everything CI runs (lint, typecheck, tests, spec lint, codegen drift, SPDX…)
+    cmds:
+      - task: check:spdx
+      - task: check:go
+      - task: test
+
+  check:spdx:
+    desc: Fail on source files without the Apache-2.0 SPDX header
+    cmds:
+      - python3 scripts/check-spdx.py
+
+  check:go:
+    desc: gofmt and go vet
+    cmds:
+      - cmd: test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; echo "run gofmt -w on the files above"; exit 1; }
+        silent: true
+      - go vet ./...
+
+  test:
+    desc: Run the Go tests (web tests join in P0-04)
+    cmds:
+      - go test -race ./...
+
+  build:
+    desc: Build a single binary for the host platform ({{.BINARY}})
+    env:
+      CGO_ENABLED: '0'
+    cmds:
+      # P0-03/P0-04 add the web build and embed it before this step.
+      - go build -trimpath -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} ./cmd/livesubs

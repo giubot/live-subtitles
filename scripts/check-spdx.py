@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Fail if a source file is missing the Apache-2.0 SPDX header.
+
+Checks tracked and untracked (non-ignored) files with a source extension.
+The header must appear in the first 10 lines. Generated Go files
+("Code generated ... DO NOT EDIT.") are skipped.
+Run: python3 scripts/check-spdx.py
+"""
+import pathlib, subprocess, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+HEADER = "SPDX-License-Identifier: Apache-2.0"
+EXTENSIONS = {
+    ".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".css", ".py", ".sh", ".yaml", ".yml",
+}
+HEAD_LINES = 10
+
+def source_files():
+    out = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        cwd=ROOT, check=True, capture_output=True, text=True,
+    ).stdout
+    for name in filter(None, out.split("\0")):
+        path = ROOT / name
+        if path.suffix in EXTENSIONS and path.is_file():
+            yield path
+
+def missing_header(path):
+    with path.open(encoding="utf-8", errors="replace") as f:
+        head = "".join(line for _, line in zip(range(HEAD_LINES), f))
+    if path.suffix == ".go" and "Code generated" in head and "DO NOT EDIT" in head:
+        return False
+    return HEADER not in head
+
+def main():
+    bad = sorted(p.relative_to(ROOT) for p in source_files() if missing_header(p))
+    for p in bad:
+        print(f"missing SPDX header: {p}", file=sys.stderr)
+    if bad:
+        print(f'\n{len(bad)} file(s) need "{HEADER}" in the first {HEAD_LINES} lines.', file=sys.stderr)
+        return 1
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
