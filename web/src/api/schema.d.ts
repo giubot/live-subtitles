@@ -2362,6 +2362,10 @@ export interface operations {
             /** @description Subtitle file */
             200: {
                 headers: {
+                    /** @description `no-store` with `live=true` */
+                    "Cache-Control"?: string;
+                    /** @description `attachment; filename=…` without `live` */
+                    "Content-Disposition"?: string;
                     [name: string]: unknown;
                 };
                 content: {

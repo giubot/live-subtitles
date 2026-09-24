@@ -544,6 +544,13 @@ paths:
       responses:
         "200":
           description: Subtitle file
+          headers:
+            Cache-Control:
+              description: "`no-store` with `live=true`"
+              schema: { type: string }
+            Content-Disposition:
+              description: "`attachment; filename=…` without `live`"
+              schema: { type: string }
           content:
             text/vtt:
               schema: { type: string }
