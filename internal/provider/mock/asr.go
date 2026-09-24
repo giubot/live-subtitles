@@ -47,6 +47,7 @@ func (a *ASR) Start(ctx context.Context, cfg domain.ASRConfig) (chan<- domain.Au
 	go func() {
 		defer close(events)
 		s := speaker{script: script, every: every, lang: cfg.SourceLanguage}
+		started := false
 		for {
 			select {
 			case f, ok := <-in:
@@ -55,6 +56,9 @@ func (a *ASR) Start(ctx context.Context, cfg domain.ASRConfig) (chan<- domain.Au
 						send(ctx, events, ev)
 					}
 					return
+				}
+				if !started { // the session clock may not start at 0
+					s.nextWord, started = f.T, true
 				}
 				for _, ev := range s.advance(f.End()) {
 					if !send(ctx, events, ev) {
