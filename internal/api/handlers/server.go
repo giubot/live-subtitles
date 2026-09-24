@@ -24,6 +24,12 @@ type Server struct {
 	// Secrets stores API keys and passwords; nil: secrets operations answer 501.
 	Secrets domain.SecretStore
 
+	// Sessions, Captions and Settings are the stores; nil: the operations
+	// that need them answer 501.
+	Sessions domain.SessionStore
+	Captions domain.CaptionStore
+	Settings domain.SettingsStore
+
 	// Auth checks admin credentials and ingest tokens; nil: setup and auth
 	// operations answer 501 and admin operations are not protected.
 	Auth *auth.Service

@@ -34,6 +34,18 @@ curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/api/
 
 To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db` (this also deletes sessions and captions).
 
+## Subtitle files
+
+Final captions of every track can be downloaded while a session runs or afterwards (`lang` is a target language or `source`):
+
+| URL | What you get |
+|---|---|
+| `/api/public/sessions/main/subtitles?lang=es&format=vtt` | WebVTT download (`srt`, `txt` and `json` also work) |
+| `…&live=true` | The same, served with `Cache-Control: no-store` for players and tools that poll it |
+| `/api/public/sessions/main/captions?lang=es` | JSON pages of 200 captions; pass `nextCursor` back as `after` |
+
+VTT and SRT cues hold at most 2 lines of 42 characters (settings `captions.maxLines` / `maxCharsPerLine`), break between sentences where they can, and stay on screen 5/6 s to 7 s. Captions an admin hid are left out.
+
 ## Local AI provider
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.

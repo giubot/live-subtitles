@@ -1,0 +1,26 @@
+1
+00:00:00,400 --> 00:00:03,100
+Hola a todos, bienvenidos a Nerdearla.
+
+2
+00:00:03,600 --> 00:00:05,977
+Hoy vamos a hablar de
+observabilidad en Kubernetes,
+
+3
+00:00:05,977 --> 00:00:09,800
+y de por qué los logs solos no alcanzan
+cuando algo falla a las tres de la mañana.
+
+4
+00:00:10,200 --> 00:00:12,000
+¿Quién usa Prometheus? ¡Muchos!
+
+5
+00:00:12,500 --> 00:00:16,900
+El equipo dijo: "medimos todo", pero nadie
+miraba los paneles <en serio> & a tiempo.
+
+6
+01:02:05,250 --> 01:02:07,500
+Gracias.

@@ -1,0 +1,5 @@
+Hola a todos, bienvenidos a Nerdearla.
+Hoy vamos a hablar de observabilidad en Kubernetes, y de por qué los logs solos no alcanzan cuando algo falla a las tres de la mañana.
+¿Quién usa Prometheus? ¡Muchos!
+El equipo dijo: "medimos todo", pero nadie miraba los paneles <en serio> & a tiempo.
+Gracias.
