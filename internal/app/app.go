@@ -120,18 +120,22 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	// Realtime: browser audio in (/ws/ingest), sessions, captions out
 	// (/ws/captions) and admin events (/ws/admin).
 	captionBus := bus.New()
+	// The Gemini key and model are read at each session start (AI-11).
+	geminiKey := googleAPIKey(sec)
 	a.hub = ingest.NewHub(srv.Auth.VerifyIngestToken, ingest.Options{Logger: log})
 	a.manager = session.New(session.Options{
 		Sessions: st,
 		Captions: st,
 		Settings: st,
 		Bus:      captionBus,
-		// Gemini (P2-01) and local (P2-03) register here; until the
-		// default-provider rule (P2-07), `default` resolves to mock.
+		// Until the default-provider rule (P2-07), `default` resolves to mock.
 		Providers: map[domain.ProviderKind]session.Provider{
-			api.ProviderKindMock:   {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
-			api.ProviderKindGemini: {Translator: &gemini.Translator{APIKey: googleAPIKey(sec), Settings: st.Settings}},
-			api.ProviderKindLocal:  {Translator: &gemma.Translator{Settings: st.Settings}},
+			api.ProviderKindMock: {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
+			api.ProviderKindGemini: {
+				ASR:        &gemini.ASR{APIKey: geminiKey, Settings: st.Settings, Logger: log},
+				Translator: &gemini.Translator{APIKey: geminiKey, Settings: st.Settings},
+			},
+			api.ProviderKindLocal: {Translator: &gemma.Translator{Settings: st.Settings}},
 		},
 		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
 		IngestStatus:  a.hub.Status,
@@ -158,6 +162,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 func googleAPIKey(sec domain.SecretStore) func(ctx context.Context) (string, error) {
 	return func(ctx context.Context) (string, error) {
 		v, _, err := sec.GetSecret(ctx, string(api.GoogleApiKey))
+		if errors.Is(err, secrets.ErrNotFound) {
+			return "", gemini.ErrNoAPIKey
+		}
 		return v, err
 	}
 }

@@ -80,8 +80,8 @@ The answer includes the session's `ingestToken` (shown only here and on rotation
 
 A running session is one pipeline: audio source → speech recognition → one translator per target language → the caption bus (`/ws/captions/{id}?lang=es&lang=source`) and, for final captions, the database. `POST /api/sessions/{id}/start` uses browser audio from `/ws/ingest/{id}?token=…` (the token comes from `POST /api/sessions/{id}/ingest-token`); `pause` stops feeding the provider without dropping the capture connection, `start` resumes, and `stop` waits for the provider to flush its last sentence.
 
-- Until the Gemini and local providers land, sessions run on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
 - Translation (`internal/translate`) runs one queue per target language. Final captions are translated in order and never dropped; interim captions are debounced to the translator's pace (only the newest waits); a target equal to the detected source language shows the original text without a translation call. Each request carries the last `translation.contextSentences` final sentences (default 3) as context. All text translators share one prompt template (`internal/translate/prompt.go`), which also renders the session glossary's terms and do-not-translate list. With Gemini, finals stream in as interims while they're translated; the model is `providers.gemini.translationModel` (default `gemini-2.5-flash-lite`) and the key is the `google_api_key` secret, both read at call time.
+- Until the default-provider rule (P2-07), `provider: default` runs on the **mock provider** (pick `gemini` explicitly for the [Gemini provider](#gemini-provider)): it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
 - Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
 - `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
 
@@ -110,6 +110,20 @@ Final captions of every track can be downloaded while a session runs or afterwar
 | `/api/public/sessions/main/captions?lang=es` | JSON pages of 200 captions; pass `nextCursor` back as `after` |
 
 VTT and SRT cues hold at most 2 lines of 42 characters (settings `captions.maxLines` / `maxCharsPerLine`), break between sentences where they can, and stay on screen 5/6 s to 7 s. Captions an admin hid are left out.
+
+## Gemini provider
+
+A session with `provider: gemini` transcribes with the [Gemini Live API](https://ai.google.dev/gemini-api/docs/live). It needs a Google API key (Google AI Studio) in the `google_api_key` secret: paste it in Settings, or export `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) before starting the server. The key and the model are read when a session starts, so changing them only affects the next start. Without a key the start fails with `provider.unavailable`.
+
+- **Model**: settings `providers.gemini.liveModel`, default `gemini-2.5-flash-native-audio-preview-09-2025`. Native-audio models answer with audio, other Live models with text; either works.
+- **Captions**: the Live API's input transcription gives the text. Interim captions grow while the speaker talks; a final is cut at each sentence end, at the end of a turn (the server's voice activity detection, 600 ms of silence) and after 1.5 s without new text. The transcription has no timestamps, so caption times are estimates on the session clock: a caption ends where the audio was when its last words arrived.
+- **Language**: with source language `auto`, the system prompt limits the talk to English and Spanish and asks the model to reply to each utterance with only `en` or `es`. Each segment takes the language the API reports for the transcription, else that reply, else a guess from common words, else the previous segment's. A pinned `en`/`es` is used as is.
+- **Long talks**: the connection asks for session resumption and context window compression (sliding window). When the server announces a disconnect (`GoAway`), the provider opens the next connection with the latest resumption handle and switches to it. A dropped connection is reopened with backoff (0.5 s doubling to 10 s, 8 tries); meanwhile up to 15 s of audio is kept and sent on reconnect, and anything older is logged as an audio gap (`gemini live reconnected; audio was lost`, with the session-clock range). Each drop also shows as a `provider.error` on the session.
+- **Usage**: audio seconds sent and the prompt/response tokens the API reports go into the session's `usage`.
+
+The Gemini translator comes with P2-02; until it lands, the session manager refuses to start a Gemini session.
+
+`go test -tags gemini -run Integration -v ./internal/provider/gemini/` with `GEMINI_API_KEY` set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency (`GEMINI_LIVE_MODEL` overrides the model). Without the tag or the key it's skipped, so CI never calls Google.
 
 ## Local AI provider
 
