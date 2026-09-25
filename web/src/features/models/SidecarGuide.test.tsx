@@ -113,13 +113,15 @@ describe('SidecarGuide', () => {
       ],
     },
     {
-      name: 'Linux, Ollama script and whisper-server in Docker',
+      name: 'Linux, Ollama script and whisper.cpp built natively',
       tab: 'Linux',
       over: { runtimes: runtimes(false, false, { w: 'http://127.0.0.1:9000' }) },
       model: 'medium',
       want: [
         'curl -fsSL https://ollama.com/install.sh | sh',
-        'docker run -d --name whisper-server -p 9000:8178 -v "/Users/ana/livesubs/models:/models:ro" ghcr.io/ggml-org/whisper.cpp:main "./build/bin/whisper-server --host 0.0.0.0 --port 8178 --model /models/ggml-medium.bin"',
+        'git clone https://github.com/ggml-org/whisper.cpp && cd whisper.cpp',
+        'cmake -B build && cmake --build build -j --config Release',
+        './build/bin/whisper-server --host 127.0.0.1 --port 9000 --model "/Users/ana/livesubs/models/ggml-medium.bin"',
       ],
     },
     {
@@ -247,6 +249,14 @@ describe('SidecarGuide', () => {
       '/admin/settings',
     )
     expect(screen.getByText(/loads one model when it starts/)).toBeInTheDocument()
+  })
+
+  it('keeps Docker out of the Linux tab and gives it the CUDA build flag', async () => {
+    await renderGuide({ report: report() })
+    await pickOs('Linux')
+    expect(screen.queryByText(/docker run/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/main-cuda/)).not.toBeInTheDocument()
+    expect(screen.getByText(/-DGGML_CUDA=1/)).toBeInTheDocument()
   })
 
   it('tells Mac users that Docker is slower there', async () => {

@@ -104,7 +104,8 @@
       },
       "linux": {
         "ollama": "Install Ollama. It runs as a service, so it keeps running and starts with the computer.",
-        "whisper": "Start whisper-server in Docker with the speech model {{whisper}}. It keeps running in the background."
+        "build": "Build whisper.cpp from source. It needs git, CMake and a C++ compiler (on Debian or Ubuntu: sudo apt install git cmake build-essential). Or use the Docker steps instead.",
+        "whisper": "Start whisper-server from the whisper.cpp folder with the speech model {{whisper}} and keep the terminal open."
       },
       "windows": {
         "ollama": "Install Ollama with winget, or with the installer from https://ollama.com/download. It keeps running in the system tray.",
@@ -119,6 +120,7 @@
       "check": "Press “Check again” to confirm that both answer."
     },
     "gpu": "The whisper.cpp image is for x86-64 computers and runs on the CPU. With an NVIDIA GPU, use the image ghcr.io/ggml-org/whisper.cpp:main-cuda and add --gpus all after docker run; it needs the NVIDIA Container Toolkit.",
+    "gpuLinux": "With an NVIDIA GPU, build with cmake -B build -DGGML_CUDA=1 instead; it needs the CUDA toolkit.",
     "dockerMac": "Containers can’t use the Apple GPU, so on a Mac the macOS steps are faster.",
     "restart": "whisper-server loads one model when it starts. After you download or choose a different speech model, stop it and start it again with that model’s file.",
     "addresses": "If they run at other addresses, change them in Settings.",

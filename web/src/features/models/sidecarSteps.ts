@@ -72,6 +72,7 @@ export interface GuideInput {
 export type StepKey =
   | `${'macos' | 'linux' | 'windows' | 'docker'}.${'ollama' | 'whisper'}`
   | 'macos.install'
+  | 'linux.build'
   | 'windows.download'
   | 'models'
   | 'check'
@@ -139,7 +140,19 @@ export function guideSteps(i: GuideInput): GuideStep[] {
           commands: ['curl -fsSL https://ollama.com/install.sh | sh'],
         },
         { key: 'models', commands: [] },
-        w && { key: 'linux.whisper', sidecar: 'whisper', commands: [dockerWhisper(i)] },
+        w && {
+          key: 'linux.build',
+          sidecar: 'whisper',
+          commands: [
+            'git clone https://github.com/ggml-org/whisper.cpp && cd whisper.cpp',
+            'cmake -B build && cmake --build build -j --config Release',
+          ],
+        },
+        w && {
+          key: 'linux.whisper',
+          sidecar: 'whisper',
+          commands: [`./build/bin/whisper-server ${nativeWhisper}`],
+        },
       )
       break
     case 'windows':

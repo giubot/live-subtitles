@@ -107,19 +107,22 @@ export function SidecarGuide({ report, whisperModel, gemmaModel }: SidecarGuideP
               </Box>
             )
           )}
-          <ToggleButtonGroup
-            exclusive
-            value={os}
-            onChange={(_, v: GuideOs | null) => v && setOs(v)}
-            aria-label={t('guide.osLabel')}
-            sx={segmentedSx}
-          >
-            {guideOses.map((o) => (
-              <ToggleButton key={o} value={o}>
-                {t(`guide.os.${o}`)}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+          {/* In its own block so the grid doesn't stretch the tabs to full width. */}
+          <Box>
+            <ToggleButtonGroup
+              exclusive
+              value={os}
+              onChange={(_, v: GuideOs | null) => v && setOs(v)}
+              aria-label={t('guide.osLabel')}
+              sx={segmentedSx}
+            >
+              {guideOses.map((o) => (
+                <ToggleButton key={o} value={o}>
+                  {t(`guide.os.${o}`)}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Box>
           <Box
             component="ol"
             sx={{
@@ -142,9 +145,9 @@ export function SidecarGuide({ report, whisperModel, gemmaModel }: SidecarGuideP
                 {s.commands.map((c) => (
                   <CopyField key={c} value={c} variant="command" />
                 ))}
-                {s.sidecar === 'whisper' && (os === 'linux' || os === 'docker') && (
+                {(s.key === 'linux.build' || s.key === 'docker.whisper') && (
                   <Typography variant="body2" sx={{ color: 'var(--color-muted)' }}>
-                    {t('guide.gpu')}
+                    {t(s.key === 'linux.build' ? 'guide.gpuLinux' : 'guide.gpu')}
                   </Typography>
                 )}
               </Box>

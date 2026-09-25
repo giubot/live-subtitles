@@ -106,7 +106,8 @@
       },
       "linux": {
         "ollama": "Instale o Ollama. Ele roda como serviço, então continua rodando e inicia com o computador.",
-        "whisper": "Inicie o whisper-server no Docker com o modelo de fala {{whisper}}. Ele continua rodando em segundo plano."
+        "build": "Compile o whisper.cpp a partir do código. Ele precisa de git, CMake e um compilador C++ (no Debian ou Ubuntu: sudo apt install git cmake build-essential). Ou use os passos do Docker.",
+        "whisper": "Inicie o whisper-server na pasta do whisper.cpp com o modelo de fala {{whisper}} e deixe o terminal aberto."
       },
       "windows": {
         "ollama": "Instale o Ollama com o winget, ou com o instalador de https://ollama.com/download. Ele continua rodando na bandeja do sistema.",
@@ -121,6 +122,7 @@
       "check": "Clique em “Verificar de novo” para confirmar que os dois respondem."
     },
     "gpu": "A imagem do whisper.cpp é para computadores x86-64 e usa a CPU. Com uma GPU NVIDIA, use a imagem ghcr.io/ggml-org/whisper.cpp:main-cuda e adicione --gpus all depois de docker run; ela precisa do NVIDIA Container Toolkit.",
+    "gpuLinux": "Com uma GPU NVIDIA, compile com cmake -B build -DGGML_CUDA=1; é preciso o CUDA Toolkit.",
     "dockerMac": "Contêineres não podem usar a GPU da Apple, então em um Mac os passos do macOS são mais rápidos.",
     "restart": "O whisper-server carrega um só modelo ao iniciar. Depois de baixar ou escolher outro modelo de fala, pare-o e inicie de novo com o arquivo desse modelo.",
     "addresses": "Se eles rodam em outros endereços, altere-os nas Configurações.",
