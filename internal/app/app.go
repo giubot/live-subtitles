@@ -147,6 +147,16 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	}
 	a.rec.StartRetention()
 	srv.Recordings = a.rec
+	// Metrics (P3-13): gauges read the manager and recorder at scrape time.
+	var mt *metrics.App
+	var observer session.Observer
+	if cfg.Metrics {
+		mt = metrics.NewApp(metrics.Sources{Sessions: func(ctx context.Context) ([]api.SessionStatus, error) {
+			return a.manager.Snapshot(ctx)
+		}, Recordings: a.rec.Usage})
+		observer = mt
+	}
+	mux.Handle("GET "+MetricsPath, metricsHandler(mt, srv.Auth, log))
 	a.manager = session.New(session.Options{
 		Sessions:        st,
 		Captions:        st,
@@ -172,6 +182,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		ReleaseIngest: a.hub.Remove,
 		Pricing:       &metrics.Pricing{GeminiASR: cfg.GeminiASRPrices, GeminiTranslation: cfg.GeminiTranslationPrices},
 		Recorder:      a.rec,
+		Observer:      observer,
 		Logger:        log,
 	})
 	srv.Manager = a.manager
@@ -185,7 +196,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.IngestWS = a.hub.ServeIngest
 	srv.AdminWS = a.manager.AdminHandler(log)
 
-	a.handler = srv.Handler(mux, log)
+	a.handler = observe(srv.Handler(mux, log), log, mt)
 	return a, nil
 }
 

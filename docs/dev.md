@@ -164,6 +164,38 @@ Each recording has `offsetSec`, where it starts on the session clock: a session 
 
 Recordings older than `settings.recording.retentionDays` (default 30, counted from when they ended; `0` keeps them forever) are deleted at startup and then hourly. Deleting a session keeps its recordings.
 
+## Logs and metrics
+
+Every HTTP request is logged once it finishes, as `http request` with `method`, `path` (never the query string, which can carry an ingest token), `route` (the matched pattern, such as `/api/sessions/{sessionId}`), `status`, `bytes`, `duration_ms`, `remote` and, on session routes, `session`. A WebSocket is logged when it closes, with `websocket=true`. API and WebSocket calls log at `info` and server errors at `warn`; `/healthz`, `/metrics` and the web app's files log at `debug` (`--log-level debug` or `task dev:server`). `--log-format json` (`LIVESUBS_LOG_FORMAT=json`) gives one JSON object per line for a log collector.
+
+`--metrics` (`LIVESUBS_METRICS=true`) serves Prometheus metrics at `GET /metrics`. It's off by default (404) and, when on, admin-only like the admin API: send the `LIVESUBS_ADMIN_TOKEN` bearer token (or be logged in).
+
+```sh
+curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/metrics
+```
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: livesubs
+    metrics_path: /metrics
+    authorization: { credentials_file: /etc/prometheus/livesubs-token }
+    static_configs: [{ targets: ['livesubs.lan:8080'] }]
+```
+
+| Metric | Type | Labels | What |
+|---|---|---|---|
+| `livesubs_sessions` | gauge | `state` | Sessions by runtime state (`idle`, `starting`, `live`, `paused`, `stopping`, `error`) |
+| `livesubs_session_viewers` | gauge | `session` | Caption viewers of each running or watched session |
+| `livesubs_ws_clients` | gauge | `endpoint` | Open WebSockets on `/ws/captions`, `/ws/ingest` and `/ws/admin` |
+| `livesubs_caption_latency_seconds` | histogram | `provider`, `track` | Latency of final captions, as in [Latency and cost](#latency-and-cost) |
+| `livesubs_session_errors_total` | counter | `provider`, `code` | Errors reported by running sessions: `provider.error`, `provider.unavailable`, `translation.failed`, `source.*` or a provider's own code |
+| `livesubs_recordings_bytes`, `livesubs_recordings`, `livesubs_recordings_free_bytes` | gauge | | Recordings on disk: bytes, count and free space, as in `/api/recordings/usage` |
+| `livesubs_http_requests_total` | counter | `route`, `method`, `code` | HTTP requests (WebSocket upgrades answer `101`) |
+| `livesubs_http_request_duration_seconds` | histogram | `route` | HTTP request duration, WebSockets excluded |
+
+Counters and histograms start at zero when the server starts. The gauges are read from the running services at each scrape.
+
 ## Local AI provider
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.

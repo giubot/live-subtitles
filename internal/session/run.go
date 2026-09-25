@@ -250,6 +250,9 @@ func (r *run) publish(c api.Caption) {
 		}
 		l.Add(*c.LatencyMs)
 		r.mu.Unlock()
+		if o := r.m.opts.Observer; o != nil {
+			o.CaptionLatency(r.provider, c.Lang, *c.LatencyMs)
+		}
 	}
 	if st := r.m.opts.Captions; st != nil {
 		// A stopped run still stores its last finals, so don't use r.ctx.
@@ -279,6 +282,7 @@ func (r *run) providerError(err error) {
 	r.mu.Lock()
 	r.err = api.Error{Code: CodeProviderError, Message: err.Error(), Params: &map[string]any{"provider": r.provider}}
 	r.mu.Unlock()
+	r.observeError(CodeProviderError)
 	r.m.log.Warn("provider error", "session", r.id, "provider", r.provider, "err", err)
 	r.m.logEvent(api.AdminEventLogLevelWarn, CodeProviderError, r.id, map[string]any{"provider": r.provider})
 }
@@ -299,12 +303,20 @@ func (r *run) fail(e api.Error) {
 	r.mu.Lock()
 	r.err = e
 	r.mu.Unlock()
+	r.observeError(e.Code)
 }
 
 func (r *run) failFatal(e api.Error) {
 	r.mu.Lock()
 	r.err, r.fatal = e, true
 	r.mu.Unlock()
+	r.observeError(e.Code)
+}
+
+func (r *run) observeError(code string) {
+	if o := r.m.opts.Observer; o != nil {
+		o.SessionError(r.provider, code)
+	}
 }
 
 func (r *run) lastError() api.Error {

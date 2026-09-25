@@ -64,6 +64,19 @@ type Options struct {
 	// Pricing estimates the cost of provider usage in
 	// SessionStatus.usage (AI-9); nil uses metrics.DefaultPricing.
 	Pricing *metrics.Pricing
+	// Observer, if set, gets caption latencies and run errors as they
+	// happen, for /metrics (P3-13).
+	Observer Observer
+}
+
+// Observer receives pipeline measurements (metrics.App implements it).
+// Calls must be quick: they run on the pipeline goroutines.
+type Observer interface {
+	// CaptionLatency: a final caption on track was emitted ms after its
+	// audio reached the server.
+	CaptionLatency(provider domain.ProviderKind, track string, ms int)
+	// SessionError: a run reported an error with this code.
+	SessionError(provider domain.ProviderKind, code string)
 }
 
 // Errors returned by Manager methods, besides domain.ErrNotFound.

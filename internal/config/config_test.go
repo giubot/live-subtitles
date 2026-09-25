@@ -55,6 +55,18 @@ func TestLoad(t *testing.T) {
 				GeminiASRPrices:         metrics.Prices{OutputPerMTok: 20, AudioPerMin: 0.01},
 				GeminiTranslationPrices: metrics.Prices{InputPerMTok: 0.5}},
 		},
+		{
+			name: "metrics from env",
+			env:  map[string]string{"LIVESUBS_METRICS": "true"},
+			want: Config{Addr: "0.0.0.0:8080", DataDir: "./data", LogFormat: "text", LogLevel: slog.LevelInfo, FFmpeg: "ffmpeg", Metrics: true},
+		},
+		{
+			name: "metrics flag beats env",
+			args: []string{"-metrics=false"},
+			env:  map[string]string{"LIVESUBS_METRICS": "1"},
+			want: Config{Addr: "0.0.0.0:8080", DataDir: "./data", LogFormat: "text", LogLevel: slog.LevelInfo, FFmpeg: "ffmpeg"},
+		},
+		{name: "bad metrics bool", env: map[string]string{"LIVESUBS_METRICS": "sometimes"}, wantErr: true},
 		{name: "bad price", env: map[string]string{"LIVESUBS_GEMINI_ASR_AUDIO_USD_PER_MIN": "cheap"}, wantErr: true},
 		{name: "negative price", args: []string{"-gemini-translation-input-usd-per-mtok", "-1"}, wantErr: true},
 		{name: "short admin token", env: map[string]string{"LIVESUBS_ADMIN_TOKEN": "short"}, wantErr: true},

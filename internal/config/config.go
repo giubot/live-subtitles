@@ -29,6 +29,7 @@ type Config struct {
 	NoKeychain    bool   // never use the OS keychain for secrets
 	FFmpeg        string // ffmpeg executable for file, URL and SRT sources
 	Version       bool   // print the version and exit
+	Metrics       bool   // serve Prometheus metrics at /metrics (admin only)
 
 	// AdminToken is accepted as a bearer token on admin endpoints. It is
 	// only read from LIVESUBS_ADMIN_TOKEN: a flag would show in `ps`.
@@ -70,6 +71,11 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	fs.BoolVar(&c.NoKeychain, "no-keychain", noKeychain, "keep secrets in the encrypted file only, never the OS keychain (LIVESUBS_NO_KEYCHAIN)")
 	fs.StringVar(&c.FFmpeg, "ffmpeg", env("FFMPEG", "ffmpeg"), "ffmpeg executable (LIVESUBS_FFMPEG)")
 	fs.BoolVar(&c.Version, "version", false, "print the version and exit")
+	metricsOn, err := strconv.ParseBool(env("METRICS", "false"))
+	if err != nil {
+		return c, fmt.Errorf("LIVESUBS_METRICS: %w", err)
+	}
+	fs.BoolVar(&c.Metrics, "metrics", metricsOn, "serve Prometheus metrics at /metrics to admins (LIVESUBS_METRICS)")
 	c.AdminToken = getenv("LIVESUBS_ADMIN_TOKEN")
 	for _, p := range []struct {
 		flag, env string
