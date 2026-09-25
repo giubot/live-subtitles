@@ -119,6 +119,9 @@ type CaptionQuery struct {
 	// Cursor comes from a previous page's next cursor; empty starts at the beginning.
 	Cursor string
 	Limit  int
+	// From and To, when To > From, keep only captions whose start is in
+	// [From, To) on the session clock (a recording's window).
+	From, To time.Duration
 }
 
 // CaptionStore persists final captions for exports and replay.
