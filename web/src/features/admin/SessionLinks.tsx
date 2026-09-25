@@ -9,10 +9,14 @@ import { api } from '../../api/client'
 import { CopyField } from '../../components/CopyField'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { QrCode } from '../../components/QrCode'
+import { Notice } from '../../components/Notice'
 import { captureBase, captureUrl, type Session } from './sessionForm'
+import { useSrtAvailability, type LiveSource } from './sessionSource'
 
 export interface SessionLinksProps {
   session: Session
+  /** Where its audio comes from: SRT sessions show the encoder address instead of the capture page. */
+  source?: LiveSource | 'file' | 'device'
   token?: string
   onToken: (token: string) => void
 }
@@ -21,10 +25,14 @@ export interface SessionLinksProps {
  * Links to share for a session (OUT-4): viewer (with a QR code for the
  * audience), stage, overlay and capture. The ingest token is stored
  * hashed, so the capture link can only be shown right after creating the
- * session or after making a new token, which retires older links.
+ * session or after making a new token, which retires older links. An SRT
+ * session (AUD-5) gets the encoder's address instead: its audio doesn't
+ * come from a capture page.
  */
-export function SessionLinks({ session, token, onToken }: SessionLinksProps) {
+export function SessionLinks({ session, source = 'browser', token, onToken }: SessionLinksProps) {
   const { t } = useTranslation('admin')
+  const srt = source === 'srt'
+  const srtState = useSrtAvailability(srt ? session : undefined)
   const [confirm, setConfirm] = useState(false)
   const rotate = api.useMutation('post', '/api/sessions/{sessionId}/ingest-token', {
     onSuccess: (data) => {
@@ -47,7 +55,26 @@ export function SessionLinks({ session, token, onToken }: SessionLinksProps) {
         <CopyField label={t('links.viewer')} value={session.urls.viewer} />
         <CopyField label={t('links.stage')} value={session.urls.stage} />
         <CopyField label={t('links.overlay')} value={session.urls.overlay} />
-        {token ? (
+        {srt ? (
+          session.urls.srtIngest ? (
+            <>
+              <CopyField label={t('links.srt')} value={session.urls.srtIngest} />
+              <Typography
+                variant="body2"
+                sx={{ color: 'var(--color-muted)', maxInlineSize: 'var(--measure)' }}
+              >
+                {t('links.srtHint')}
+              </Typography>
+            </>
+          ) : (
+            <Box sx={{ display: 'grid', gap: 'var(--space-xs)' }}>
+              <Typography variant="overline" component="span">
+                {t('links.srt')}
+              </Typography>
+              <Notice>{t(`form.srtBlocked.${srtState.blocker ?? 'unknown'}`)}</Notice>
+            </Box>
+          )
+        ) : token ? (
           <CopyField label={t('links.capture')} value={captureUrl(captureBase(session), token)} />
         ) : (
           <Box sx={{ display: 'grid', gap: 'var(--space-xs)', justifyItems: 'start' }}>
@@ -96,7 +123,7 @@ export function SessionLinks({ session, token, onToken }: SessionLinksProps) {
             </Box>
           </Box>
         )}
-        {token && (
+        {token && !srt && (
           <Typography variant="body2" sx={{ color: 'var(--color-muted)' }}>
             {t('links.captureHint')}
           </Typography>

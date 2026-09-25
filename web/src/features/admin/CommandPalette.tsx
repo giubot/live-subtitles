@@ -16,6 +16,7 @@ import { uiLanguages } from '../../i18n'
 import { useAdminEventsStore } from '../../realtime/admin'
 import { adminNav, useCaptureTokens } from './nav'
 import { captureBase, captureUrl } from './sessionForm'
+import { useSessionSources } from './sessionSource'
 
 interface Command {
   id: string
@@ -78,7 +79,16 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
           id: `start-${s.id}`,
           label: t(state === 'paused' ? 'palette.resume' : 'palette.start', { name }),
           group,
-          run: () => start.mutate(path),
+          // Resume takes no body: a paused session keeps its source.
+          run: () =>
+            start.mutate(
+              state === 'paused'
+                ? path
+                : {
+                    ...path,
+                    body: { source: useSessionSources.getState().sources[s.id] ?? 'browser' },
+                  },
+            ),
         })
       if (state === 'live')
         out.push({

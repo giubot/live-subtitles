@@ -76,7 +76,14 @@
     "cost": "Est. cost",
     "tokens": "{{value}} tokens",
     "audio": "Audio",
-    "minutes": "{{value}} min"
+    "minutes": "{{value}} min",
+    "recovering": {
+      "provider": "Restarting the AI provider — attempt {{attempt}} of {{max}}",
+      "source": "Restarting the audio input — attempt {{attempt}} of {{max}}"
+    },
+    "retryIn": "next try in {{value}} s",
+    "noEncoder": "No encoder connected",
+    "restarts": "Restarted automatically: {{value}}"
   },
   "file": {
     "title": "Play a file into {{name}}",
@@ -100,7 +107,9 @@
     "rotateYes": "Replace the capture link",
     "rotateNo": "Keep the old one",
     "captureHint": "Open it on the computer that has the audio input. It stays valid until you make a new one.",
-    "qr": "Scan to follow the captions"
+    "qr": "Scan to follow the captions",
+    "srt": "SRT input for the encoder",
+    "srtHint": "In OBS: Settings → Stream → Service: Custom → Server: paste this address and leave the Stream Key empty. If Settings has an SRT passphrase, the encoder needs it too (append &passphrase=… in OBS)."
   },
   "form": {
     "createTitle": "New session",
@@ -144,7 +153,22 @@
     "glossary": "Glossary",
     "glossaryNone": "No glossary",
     "glossaryHelp": "Terms to spell right and names to leave untranslated.",
-    "glossaryUnavailable": "Glossaries couldn’t be loaded, so only the current choice is listed."
+    "glossaryUnavailable": "Glossaries couldn’t be loaded, so only the current choice is listed.",
+    "audioSource": "Audio input",
+    "audioSources": {
+      "browser": "Capture page (browser)",
+      "srt": "SRT from an encoder (OBS, vMix…)"
+    },
+    "audioSourceHelp": {
+      "browser": "A computer with the mixer’s audio opens the capture page.",
+      "srt": "An encoder pushes the stream to this server over SRT. Its address is in the session’s links."
+    },
+    "audioSourceRunning": "Used when the session starts. Stop it to change the input.",
+    "srtBlocked": {
+      "noLibsrt": "SRT isn’t available: this server’s ffmpeg was built without SRT (libsrt).",
+      "disabled": "SRT is turned off in Settings.",
+      "unknown": "SRT isn’t available on this server right now."
+    }
   },
   "live": {
     "reconnecting": "Live status is reconnecting. Readouts may be a few seconds old."
@@ -179,7 +203,8 @@
       "ok": "Sending",
       "retrying": "Retrying",
       "error": "Error"
-    }
+    },
+    "youtubeUrlInvalid": "Paste the whole http:// or https:// URL from YouTube."
   },
   "palette": {
     "trigger": "Search or run a command",

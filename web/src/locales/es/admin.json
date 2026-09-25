@@ -76,7 +76,14 @@
     "cost": "Costo est.",
     "tokens": "{{value}} tokens",
     "audio": "Audio",
-    "minutes": "{{value}} min"
+    "minutes": "{{value}} min",
+    "recovering": {
+      "provider": "Reiniciando el proveedor de IA — intento {{attempt}} de {{max}}",
+      "source": "Reiniciando la entrada de audio — intento {{attempt}} de {{max}}"
+    },
+    "retryIn": "próximo intento en {{value}} s",
+    "noEncoder": "No hay codificador conectado",
+    "restarts": "Reinicios automáticos: {{value}}"
   },
   "file": {
     "title": "Reproducir un archivo en {{name}}",
@@ -100,7 +107,9 @@
     "rotateYes": "Reemplazar el enlace de captura",
     "rotateNo": "Mantener el anterior",
     "captureHint": "Abrilo en la computadora que tiene la entrada de audio. Sigue siendo válido hasta que crees uno nuevo.",
-    "qr": "Escaneá para seguir los subtítulos"
+    "qr": "Escaneá para seguir los subtítulos",
+    "srt": "Entrada SRT para el codificador",
+    "srtHint": "En OBS: Configuración → Emisión → Servicio: Personalizado → Servidor: pegá esta dirección y dejá vacía la clave de transmisión. Si Configuración tiene una contraseña SRT, el codificador también la necesita (en OBS, agregá &passphrase=… al final)."
   },
   "form": {
     "createTitle": "Nueva sesión",
@@ -144,7 +153,22 @@
     "glossary": "Glosario",
     "glossaryNone": "Sin glosario",
     "glossaryHelp": "Términos para escribir bien y nombres que no se traducen.",
-    "glossaryUnavailable": "No se pudieron cargar los glosarios, así que solo aparece la opción actual."
+    "glossaryUnavailable": "No se pudieron cargar los glosarios, así que solo aparece la opción actual.",
+    "audioSource": "Entrada de audio",
+    "audioSources": {
+      "browser": "Página de captura (navegador)",
+      "srt": "SRT desde un codificador (OBS, vMix…)"
+    },
+    "audioSourceHelp": {
+      "browser": "Una computadora con el audio de la consola abre la página de captura.",
+      "srt": "Un codificador envía la señal a este servidor por SRT. La dirección está en los enlaces de la sesión."
+    },
+    "audioSourceRunning": "Se usa al iniciar la sesión. Detenela para cambiar la entrada.",
+    "srtBlocked": {
+      "noLibsrt": "SRT no está disponible: el ffmpeg de este servidor no incluye SRT (libsrt).",
+      "disabled": "SRT está desactivado en Configuración.",
+      "unknown": "SRT no está disponible en este servidor por ahora."
+    }
   },
   "live": {
     "reconnecting": "El estado en vivo se está reconectando. Los datos pueden tener unos segundos de atraso."
@@ -179,7 +203,8 @@
       "ok": "Enviando",
       "retrying": "Reintentando",
       "error": "Error"
-    }
+    },
+    "youtubeUrlInvalid": "Pegá la URL completa de YouTube, con http:// o https://."
   },
   "palette": {
     "trigger": "Buscar o ejecutar un comando",

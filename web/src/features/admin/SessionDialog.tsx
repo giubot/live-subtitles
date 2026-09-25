@@ -23,6 +23,7 @@ import { toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { nativeLanguageName } from '../../components/languageNames'
 import { StreamCaptionsFields } from './StreamCaptionsFields'
+import { liveSources, useSessionSources, useSrtAvailability } from './sessionSource'
 import {
   newSessionValues,
   providers,
@@ -53,15 +54,21 @@ export interface SessionDialogProps {
 /**
  * Create or edit a session (SES-1). Name, room, recording and styles can
  * change any time; languages and provider only while it isn't running,
- * which the server enforces (409).
+ * which the server enforces (409). The audio input applies at the next
+ * start, so it's locked while the session runs.
  */
 export function SessionDialog({ session, onClose, onCreated }: SessionDialogProps) {
   const { t } = useTranslation('admin')
   const queryClient = useQueryClient()
   const creating = !session
+  const setSource = useSessionSources((s) => s.setSource)
   const [v, setV] = useState<SessionFormValues>(() =>
-    session ? valuesFrom(session) : newSessionValues,
+    session
+      ? valuesFrom(session, useSessionSources.getState().sources[session.id])
+      : newSessionValues,
   )
+  const srt = useSrtAvailability(session)
+  const running = !!session && !['idle', 'error'].includes(session.state)
   const [slugEdited, setSlugEdited] = useState(false)
   const [touched, setTouched] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -70,13 +77,15 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
   const create = api.useMutation('post', '/api/sessions', {
     onSuccess: (data) => {
       void refresh()
+      setSource(data.id, v.source)
       onCreated?.(data.id, data.ingestToken)
       onClose()
     },
   })
   const update = api.useMutation('patch', '/api/sessions/{sessionId}', {
-    onSuccess: () => {
+    onSuccess: (data) => {
       void refresh()
+      setSource(data.id, v.source)
       onClose()
     },
   })
@@ -262,6 +271,34 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
               <option value={v.glossaryId}>{v.glossaryId}</option>
             )}
           </TextField>
+          <TextField
+            select
+            label={t('form.audioSource')}
+            value={v.source}
+            disabled={running}
+            onChange={(e) => set('source', e.target.value as SessionFormValues['source'])}
+            helperText={
+              running
+                ? t('form.audioSourceRunning')
+                : v.source === 'srt' && !srt.available && !srt.loading
+                  ? t(`form.srtBlocked.${srt.blocker ?? 'unknown'}`)
+                  : !srt.available && !srt.loading
+                    ? `${t('form.audioSourceHelp.browser')} ${t(`form.srtBlocked.${srt.blocker ?? 'unknown'}`)}`
+                    : t(`form.audioSourceHelp.${v.source}`)
+            }
+            error={!running && v.source === 'srt' && !srt.available && !srt.loading}
+            slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+          >
+            {liveSources.map((src) => (
+              <option
+                key={src}
+                value={src}
+                disabled={src === 'srt' && !srt.available && v.source !== 'srt'}
+              >
+                {t(`form.audioSources.${src}`)}
+              </option>
+            ))}
+          </TextField>
           <FormControlLabel
             control={
               <Switch
@@ -271,7 +308,7 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
             }
             label={t('form.recording')}
           />
-          <StreamCaptionsFields session={session} values={v} set={set} />
+          <StreamCaptionsFields session={session} values={v} set={set} urlError={server.value} />
         </DialogContent>
         <DialogActions
           sx={{ flexWrap: 'wrap', gap: 'var(--space-xs)', padding: 'var(--space-md)' }}

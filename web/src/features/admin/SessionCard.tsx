@@ -11,7 +11,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useQueryClient } from '@tanstack/react-query'
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { SessionStatus } from '../../api/types'
@@ -26,6 +26,25 @@ import { stateChip } from '../viewer/format'
 import { FileSourceDialog } from './FileSourceDialog'
 import { SessionLinks } from './SessionLinks'
 import { ccChip, type Session } from './sessionForm'
+import { useSessionSource } from './sessionSource'
+
+/** Seconds until `at`, ticking every second while there is one. */
+function useSecondsUntil(at: string | undefined): number | undefined {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!at) return
+    const tick = () => setNow(Date.now())
+    const first = setTimeout(tick, 0)
+    const timer = setInterval(tick, 1000)
+    return () => {
+      clearTimeout(first)
+      clearInterval(timer)
+    }
+  }, [at])
+  if (!at) return undefined
+  const ms = new Date(at).getTime() - now
+  return Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 1000)) : undefined
+}
 
 export interface SessionCardProps {
   session: Session
@@ -66,6 +85,7 @@ export function SessionCard({
     onSettled: refresh,
   })
   const [fileOpen, setFileOpen] = useState(false)
+  const chosenSource = useSessionSource(session.id)
   const actionError: unknown = start.error ?? pause.error ?? stop.error ?? stopFile.error
   const busy = start.isPending || pause.isPending || stop.isPending || stopFile.isPending
 
@@ -76,6 +96,11 @@ export function SessionCard({
   const usage = status?.usage
   const running = state === 'live' || state === 'paused' || state === 'starting'
   const playingFile = running && audio?.source === 'file'
+  // What feeds it now while it runs, otherwise what Start will open.
+  const source = running && audio?.source ? audio.source : chosenSource
+  const recovering = status?.recovering
+  const retryIn = useSecondsUntil(recovering?.retryAt)
+  const restarts = status?.restarts ?? 0
   const logs = useAdminEventsStore((st) => st.logs)
   const recent = useMemo(
     () =>
@@ -140,6 +165,20 @@ export function SessionCard({
             {session.name}
           </Typography>
           <StatusChip status={stateChip[state]} label={t(`state.${state}`)} />
+          {recovering && (
+            <StatusChip
+              status="warn"
+              label={[
+                t(`card.recovering.${recovering.component}`, {
+                  attempt: recovering.attempt,
+                  max: recovering.maxAttempts,
+                }),
+                retryIn != null && retryIn > 0 && t('card.retryIn', { value: retryIn }),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            />
+          )}
           <Typography variant="body2" sx={{ color: 'var(--color-muted)', marginInlineEnd: 'auto' }}>
             {room}
           </Typography>
@@ -152,7 +191,7 @@ export function SessionCard({
                 startIcon={<PlayArrowOutlined aria-hidden />}
                 loading={start.isPending}
                 disabled={busy}
-                onClick={() => start.mutate(path)}
+                onClick={() => start.mutate({ ...path, body: { source: chosenSource } })}
               >
                 {t('card.start')}
               </Button>
@@ -254,16 +293,23 @@ export function SessionCard({
           }}
         >
           <Stat
-            label={t('card.input', { source: t(`source.${audio?.source ?? 'browser'}`) })}
+            label={t('card.input', { source: t(`source.${source}`) })}
             value={
               <LevelMeter db={audio?.connected ? (audio.levelDbfs ?? -Infinity) : -Infinity} />
             }
-            detail={audio?.connected ? undefined : t('card.noCapture')}
+            detail={
+              audio?.connected
+                ? undefined
+                : source === 'srt'
+                  ? t('card.noEncoder')
+                  : t('card.noCapture')
+            }
             sx={{ gridColumn: '1 / -1', '@media (min-width: 30rem)': { gridColumn: 'span 2' } }}
           />
           <Stat
             label={t('card.provider')}
             value={t(`provider.${status?.provider ?? session.effectiveProvider}`)}
+            detail={restarts > 0 ? t('card.restarts', { count: restarts }) : undefined}
           />
           <Stat label={t('card.speaking')} value={status?.detectedLanguage?.toUpperCase() ?? '—'} />
           {latency.length > 0 && (
@@ -339,7 +385,7 @@ export function SessionCard({
 
         {expanded && (
           <Box id={linksId}>
-            <SessionLinks session={session} token={token} onToken={onToken} />
+            <SessionLinks session={session} source={source} token={token} onToken={onToken} />
           </Box>
         )}
       </Box>

@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
+import { toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { nativeLanguageName } from '../../components/languageNames'
 import { StatusChip } from '../../components/StatusChip'
@@ -19,6 +20,8 @@ export interface StreamCaptionsFieldsProps {
   session?: Session
   values: SessionFormValues
   set: <K extends keyof SessionFormValues>(k: K, value: SessionFormValues[K]) => void
+  /** The server's field error for the ingestion URL (`fields.value` of a failed PUT). */
+  urlError?: string
 }
 
 /**
@@ -26,17 +29,25 @@ export interface StreamCaptionsFieldsProps {
  * (CC-3): target, track, the write-only YouTube ingestion URL and a test
  * caption. The URL and the test need a saved session.
  */
-export function StreamCaptionsFields({ session, values: v, set }: StreamCaptionsFieldsProps) {
+export function StreamCaptionsFields({
+  session,
+  values: v,
+  set,
+  urlError,
+}: StreamCaptionsFieldsProps) {
   const { t } = useTranslation('admin')
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['get', '/api/sessions'] })
   const removeUrl = api.useMutation(
     'delete',
     '/api/sessions/{sessionId}/stream-captions/youtube-url',
-    { onSuccess: refresh },
+    { onSettled: refresh },
   )
   const test = api.useMutation('post', '/api/sessions/{sessionId}/stream-captions/test')
-  const urlSet = !!session?.streamCaptions?.youtubeUrlSet && !removeUrl.isSuccess
+  // Already gone (404 secret.not_found) is as good as removed.
+  const removeGone = toApiError(removeUrl.error)?.code === 'secret.not_found'
+  const removed = removeUrl.isSuccess || removeGone
+  const urlSet = !!session?.streamCaptions?.youtubeUrlSet && !removed
   const tracks = [...new Set([...v.targetLanguages, 'source', v.ccTrack])]
   const youtube = v.ccTarget === 'youtube_http'
 
@@ -114,7 +125,14 @@ export function StreamCaptionsFields({ session, values: v, set }: StreamCaptions
                   value={v.ccYoutubeUrl}
                   onChange={(e) => set('ccYoutubeUrl', e.target.value)}
                   placeholder={urlSet ? '••••••••' : undefined}
-                  helperText={urlSet ? t('cc.youtubeUrlSet') : t('cc.youtubeUrlHelp')}
+                  error={!!urlError}
+                  helperText={
+                    urlError
+                      ? t('cc.youtubeUrlInvalid')
+                      : urlSet
+                        ? t('cc.youtubeUrlSet')
+                        : t('cc.youtubeUrlHelp')
+                  }
                   autoComplete="off"
                   slotProps={{
                     inputLabel: { shrink: true },
@@ -136,7 +154,7 @@ export function StreamCaptionsFields({ session, values: v, set }: StreamCaptions
                     </Button>
                   </Box>
                 )}
-                {removeUrl.error != null && <ErrorAlert error={removeUrl.error} />}
+                {removeUrl.error != null && !removeGone && <ErrorAlert error={removeUrl.error} />}
               </Box>
             ) : (
               <Typography variant="body2" sx={{ color: 'var(--color-muted)' }}>
