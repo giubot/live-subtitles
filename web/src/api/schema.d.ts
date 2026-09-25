@@ -1303,8 +1303,11 @@ export interface components {
             items: components["schemas"]["Caption"][];
             nextCursor?: string | null;
         };
+        /** @description An operator correction of one stored final caption (ADM-4). Omitted fields keep their value; at least one must be given. Any change sets the caption's `edited` flag. */
         CaptionPatch: {
+            /** @description Replacement text; must not be blank (hide the line instead) */
             text?: string;
+            /** @description true removes the line from viewers, exports and replay; false shows it again */
             hidden?: boolean;
         };
         /** @description First client → server text frame on /ws/ingest */
@@ -2473,6 +2476,7 @@ export interface operations {
                     "application/json": components["schemas"]["Caption"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };
