@@ -97,3 +97,14 @@ type CodedError struct {
 }
 
 func (e *CodedError) Error() string { return e.Message }
+
+// Codes of provider failures that retrying won't fix. A provider returns
+// them in a *CodedError (from ASRProvider.Start, in ASREvent.Err or from
+// Translate); with settings.providers.fallback on, a running session
+// switches to the other provider at once on them (AI-8).
+const (
+	// CodeProviderQuotaExhausted: the provider's quota or rate limit ran out.
+	CodeProviderQuotaExhausted = "provider.quota_exhausted"
+	// CodeProviderAuthFailed: the provider rejected the credentials.
+	CodeProviderAuthFailed = "provider.auth_failed"
+)
