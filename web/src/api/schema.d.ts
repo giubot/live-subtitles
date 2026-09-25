@@ -626,7 +626,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Check the stored secret against its service (e.g. Gemini API key) (SEC-5) */
+        /**
+         * Check the stored secret against its service (e.g. Gemini API key) (SEC-5)
+         * @description Results are cached per key value and a repeated check within a few seconds returns the previous result. 404 `secret.not_found` when the secret isn't set; 422 `secret.validation_unsupported` for a secret that has no check.
+         */
         post: operations["validateSecret"];
         delete?: never;
         options?: never;
@@ -1403,7 +1406,10 @@ export interface components {
         };
         ProvidersResponse: {
             defaultProvider: components["schemas"]["ProviderKind"];
-            /** @enum {string} */
+            /**
+             * @description Omitted when a Google API key is set but couldn't be checked yet (Google unreachable); the gemini entry's `reasonCode` then says why.
+             * @enum {string}
+             */
             defaultReason?: "google_api_key_valid" | "no_google_api_key" | "google_api_key_invalid";
             providers: components["schemas"]["ProviderInfo"][];
         };
@@ -2660,6 +2666,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listGlossaries: {
