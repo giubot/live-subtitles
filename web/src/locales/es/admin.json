@@ -3,7 +3,16 @@
   "appTitle": "Admin de Live Subtitles",
   "newSession": "Nueva sesión",
   "logout": "Cerrar sesión",
-  "nav": { "label": "Admin", "sessions": "Sesiones", "server": "Este servidor" },
+  "nav": {
+    "label": "Admin",
+    "sessions": "Sesiones",
+    "server": "Este servidor",
+    "glossaries": "Glosarios",
+    "overlays": "Overlays",
+    "providers": "Proveedores y claves",
+    "settings": "Ajustes",
+    "tls": "HTTPS"
+  },
   "login": {
     "title": "Ingresar",
     "intro": "Ingresá el PIN de admin que se eligió al configurar este servidor.",
@@ -22,7 +31,12 @@
     "stopping": "Deteniendo",
     "error": "Error"
   },
-  "source": { "browser": "navegador", "file": "archivo", "srt": "SRT", "device": "dispositivo" },
+  "source": {
+    "browser": "navegador",
+    "file": "archivo",
+    "srt": "SRT",
+    "device": "dispositivo"
+  },
   "provider": {
     "default": "Predeterminado",
     "gemini": "Gemini",
@@ -66,7 +80,11 @@
     "roomHelp": "Opcional, se le muestra al público.",
     "sourceLanguage": "Idioma hablado",
     "sourceLanguageHelp": "Automático distingue inglés de español oración por oración.",
-    "source": { "auto": "Automático (inglés o español)", "en": "Inglés", "es": "Español" },
+    "source": {
+      "auto": "Automático (inglés o español)",
+      "en": "Inglés",
+      "es": "Español"
+    },
     "provider": "Proveedor de IA",
     "providerHelp": {
       "default": "Gemini si hay una clave de API de Google; si no, local.",

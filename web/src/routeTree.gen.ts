@@ -16,6 +16,11 @@ import { Route as ThemedSetupRouteImport } from './routes/_themed/setup'
 import { Route as OverlayIdRouteImport } from './routes/overlay/$id'
 import { Route as StageIdRouteImport } from './routes/stage/$id'
 import { Route as ThemedAdminIndexRouteImport } from './routes/_themed/admin/index'
+import { Route as ThemedAdminGlossariesRouteImport } from './routes/_themed/admin/glossaries'
+import { Route as ThemedAdminOverlaysRouteImport } from './routes/_themed/admin/overlays'
+import { Route as ThemedAdminProvidersRouteImport } from './routes/_themed/admin/providers'
+import { Route as ThemedAdminSettingsRouteImport } from './routes/_themed/admin/settings'
+import { Route as ThemedAdminTlsRouteImport } from './routes/_themed/admin/tls'
 import { Route as ThemedCaptureIdRouteImport } from './routes/_themed/capture/$id'
 import { Route as ThemedDevDesignRouteImport } from './routes/_themed/dev/design'
 import { Route as ThemedReplayIdRouteImport } from './routes/_themed/replay/$id'
@@ -56,6 +61,31 @@ const ThemedAdminIndexRoute = ThemedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ThemedAdminRouteRoute,
 } as any)
+const ThemedAdminGlossariesRoute = ThemedAdminGlossariesRouteImport.update({
+  id: '/glossaries',
+  path: '/glossaries',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
+const ThemedAdminOverlaysRoute = ThemedAdminOverlaysRouteImport.update({
+  id: '/overlays',
+  path: '/overlays',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
+const ThemedAdminProvidersRoute = ThemedAdminProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
+const ThemedAdminSettingsRoute = ThemedAdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
+const ThemedAdminTlsRoute = ThemedAdminTlsRouteImport.update({
+  id: '/tls',
+  path: '/tls',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
 const ThemedCaptureIdRoute = ThemedCaptureIdRouteImport.update({
   id: '/capture/$id',
   path: '/capture/$id',
@@ -88,6 +118,11 @@ export interface FileRoutesByFullPath {
   '/setup': typeof ThemedSetupRoute
   '/overlay/$id': typeof OverlayIdRoute
   '/stage/$id': typeof StageIdRoute
+  '/admin/glossaries': typeof ThemedAdminGlossariesRoute
+  '/admin/overlays': typeof ThemedAdminOverlaysRoute
+  '/admin/providers': typeof ThemedAdminProvidersRoute
+  '/admin/settings': typeof ThemedAdminSettingsRoute
+  '/admin/tls': typeof ThemedAdminTlsRoute
   '/capture/$id': typeof ThemedCaptureIdRoute
   '/dev/design': typeof ThemedDevDesignRoute
   '/replay/$id': typeof ThemedReplayIdRoute
@@ -100,6 +135,11 @@ export interface FileRoutesByTo {
   '/overlay/$id': typeof OverlayIdRoute
   '/stage/$id': typeof StageIdRoute
   '/': typeof ThemedIndexRoute
+  '/admin/glossaries': typeof ThemedAdminGlossariesRoute
+  '/admin/overlays': typeof ThemedAdminOverlaysRoute
+  '/admin/providers': typeof ThemedAdminProvidersRoute
+  '/admin/settings': typeof ThemedAdminSettingsRoute
+  '/admin/tls': typeof ThemedAdminTlsRoute
   '/capture/$id': typeof ThemedCaptureIdRoute
   '/dev/design': typeof ThemedDevDesignRoute
   '/replay/$id': typeof ThemedReplayIdRoute
@@ -115,6 +155,11 @@ export interface FileRoutesById {
   '/overlay/$id': typeof OverlayIdRoute
   '/stage/$id': typeof StageIdRoute
   '/_themed/': typeof ThemedIndexRoute
+  '/_themed/admin/glossaries': typeof ThemedAdminGlossariesRoute
+  '/_themed/admin/overlays': typeof ThemedAdminOverlaysRoute
+  '/_themed/admin/providers': typeof ThemedAdminProvidersRoute
+  '/_themed/admin/settings': typeof ThemedAdminSettingsRoute
+  '/_themed/admin/tls': typeof ThemedAdminTlsRoute
   '/_themed/capture/$id': typeof ThemedCaptureIdRoute
   '/_themed/dev/design': typeof ThemedDevDesignRoute
   '/_themed/replay/$id': typeof ThemedReplayIdRoute
@@ -130,6 +175,11 @@ export interface FileRouteTypes {
     | '/setup'
     | '/overlay/$id'
     | '/stage/$id'
+    | '/admin/glossaries'
+    | '/admin/overlays'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/tls'
     | '/capture/$id'
     | '/dev/design'
     | '/replay/$id'
@@ -142,6 +192,11 @@ export interface FileRouteTypes {
     | '/overlay/$id'
     | '/stage/$id'
     | '/'
+    | '/admin/glossaries'
+    | '/admin/overlays'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/tls'
     | '/capture/$id'
     | '/dev/design'
     | '/replay/$id'
@@ -156,6 +211,11 @@ export interface FileRouteTypes {
     | '/overlay/$id'
     | '/stage/$id'
     | '/_themed/'
+    | '/_themed/admin/glossaries'
+    | '/_themed/admin/overlays'
+    | '/_themed/admin/providers'
+    | '/_themed/admin/settings'
+    | '/_themed/admin/tls'
     | '/_themed/capture/$id'
     | '/_themed/dev/design'
     | '/_themed/replay/$id'
@@ -221,6 +281,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThemedAdminIndexRouteImport
       parentRoute: typeof ThemedAdminRouteRoute
     }
+    '/_themed/admin/glossaries': {
+      id: '/_themed/admin/glossaries'
+      path: '/glossaries'
+      fullPath: '/admin/glossaries'
+      preLoaderRoute: typeof ThemedAdminGlossariesRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
+    '/_themed/admin/overlays': {
+      id: '/_themed/admin/overlays'
+      path: '/overlays'
+      fullPath: '/admin/overlays'
+      preLoaderRoute: typeof ThemedAdminOverlaysRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
+    '/_themed/admin/providers': {
+      id: '/_themed/admin/providers'
+      path: '/providers'
+      fullPath: '/admin/providers'
+      preLoaderRoute: typeof ThemedAdminProvidersRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
+    '/_themed/admin/settings': {
+      id: '/_themed/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof ThemedAdminSettingsRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
+    '/_themed/admin/tls': {
+      id: '/_themed/admin/tls'
+      path: '/tls'
+      fullPath: '/admin/tls'
+      preLoaderRoute: typeof ThemedAdminTlsRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
     '/_themed/capture/$id': {
       id: '/_themed/capture/$id'
       path: '/capture/$id'
@@ -260,10 +355,20 @@ declare module '@tanstack/react-router' {
 }
 
 interface ThemedAdminRouteRouteChildren {
+  ThemedAdminGlossariesRoute: typeof ThemedAdminGlossariesRoute
+  ThemedAdminOverlaysRoute: typeof ThemedAdminOverlaysRoute
+  ThemedAdminProvidersRoute: typeof ThemedAdminProvidersRoute
+  ThemedAdminSettingsRoute: typeof ThemedAdminSettingsRoute
+  ThemedAdminTlsRoute: typeof ThemedAdminTlsRoute
   ThemedAdminIndexRoute: typeof ThemedAdminIndexRoute
 }
 
 const ThemedAdminRouteRouteChildren: ThemedAdminRouteRouteChildren = {
+  ThemedAdminGlossariesRoute: ThemedAdminGlossariesRoute,
+  ThemedAdminOverlaysRoute: ThemedAdminOverlaysRoute,
+  ThemedAdminProvidersRoute: ThemedAdminProvidersRoute,
+  ThemedAdminSettingsRoute: ThemedAdminSettingsRoute,
+  ThemedAdminTlsRoute: ThemedAdminTlsRoute,
   ThemedAdminIndexRoute: ThemedAdminIndexRoute,
 }
 

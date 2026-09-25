@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+import HttpsOutlined from '@mui/icons-material/HttpsOutlined'
+import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import LogoutOutlined from '@mui/icons-material/LogoutOutlined'
+import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
+import SubtitlesOutlined from '@mui/icons-material/SubtitlesOutlined'
 import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -137,6 +142,21 @@ function Shell() {
         <RailLink to="/admin" icon={<ViewAgendaOutlined />}>
           {t('nav.sessions')}
         </RailLink>
+        <RailLink to="/admin/glossaries" icon={<MenuBookOutlined />}>
+          {t('nav.glossaries')}
+        </RailLink>
+        <RailLink to="/admin/overlays" icon={<SubtitlesOutlined />}>
+          {t('nav.overlays')}
+        </RailLink>
+        <RailLink to="/admin/providers" icon={<KeyOutlined />}>
+          {t('nav.providers')}
+        </RailLink>
+        <RailLink to="/admin/settings" icon={<SettingsOutlined />}>
+          {t('nav.settings')}
+        </RailLink>
+        <RailLink to="/admin/tls" icon={<HttpsOutlined />}>
+          {t('nav.tls')}
+        </RailLink>
         {host && (
           <Box
             sx={{
@@ -170,7 +190,15 @@ function Shell() {
   )
 }
 
-function RailLink({ to, icon, children }: { to: '/admin'; icon: ReactNode; children: ReactNode }) {
+type AdminPath =
+  | '/admin'
+  | '/admin/glossaries'
+  | '/admin/overlays'
+  | '/admin/providers'
+  | '/admin/settings'
+  | '/admin/tls'
+
+function RailLink({ to, icon, children }: { to: AdminPath; icon: ReactNode; children: ReactNode }) {
   return (
     <Box
       component={Link}

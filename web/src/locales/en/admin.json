@@ -3,7 +3,16 @@
   "appTitle": "Live Subtitles admin",
   "newSession": "New session",
   "logout": "Log out",
-  "nav": { "label": "Admin", "sessions": "Sessions", "server": "This server" },
+  "nav": {
+    "label": "Admin",
+    "sessions": "Sessions",
+    "server": "This server",
+    "glossaries": "Glossaries",
+    "overlays": "Overlays",
+    "providers": "Providers & keys",
+    "settings": "Settings",
+    "tls": "HTTPS"
+  },
   "login": {
     "title": "Log in",
     "intro": "Enter the admin PIN chosen when this server was set up.",
@@ -22,7 +31,12 @@
     "stopping": "Stopping",
     "error": "Error"
   },
-  "source": { "browser": "browser", "file": "file", "srt": "SRT", "device": "device" },
+  "source": {
+    "browser": "browser",
+    "file": "file",
+    "srt": "SRT",
+    "device": "device"
+  },
   "provider": {
     "default": "Default",
     "gemini": "Gemini",
@@ -66,7 +80,11 @@
     "roomHelp": "Optional, shown to the audience.",
     "sourceLanguage": "Spoken language",
     "sourceLanguageHelp": "Automatic tells English from Spanish sentence by sentence.",
-    "source": { "auto": "Automatic (English or Spanish)", "en": "English", "es": "Spanish" },
+    "source": {
+      "auto": "Automatic (English or Spanish)",
+      "en": "English",
+      "es": "Spanish"
+    },
     "provider": "AI provider",
     "providerHelp": {
       "default": "Gemini when a Google API key is set, otherwise local.",
