@@ -70,7 +70,7 @@ func TestDualListenersWithLocalCA(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}, ForceAttemptHTTP2: true}}
 	for _, host := range []string{"127.0.0.1", "localhost"} {
 		res, body := get(t, client, "https://"+net.JoinHostPort(host, strconv.Itoa(httpsPort))+"/healthz")
-		if res.StatusCode != 200 || !strings.Contains(string(body), `"status":"ok"`) {
+		if res.StatusCode != 200 || !strings.Contains(string(body), `"database":"ok"`) {
 			t.Errorf("https %s: %d %s", host, res.StatusCode, body)
 		}
 		if res.TLS == nil || res.TLS.Version < tls.VersionTLS12 {

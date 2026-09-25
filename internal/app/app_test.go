@@ -47,7 +47,8 @@ func TestRoutes(t *testing.T) {
 		wantBody           string
 		wantCache          string
 	}{
-		{"health", "GET", "/healthz", testDist, 200, `"status":"ok"`, ""},
+		// ok vs degraded depends on the host's ffmpeg; handlers/system_test.go covers it.
+		{"health", "GET", "/healthz", testDist, 200, `"database":"ok"`, ""},
 		{"network on loopback", "GET", "/api/network", testDist, 200, `"viewerBaseUrl":"http://localhost:0"`, ""},
 		{"admin operation needs login", "GET", "/api/sessions", testDist, 401, `"code":"auth.required"`, ""},
 		{"setup status", "GET", "/api/setup", testDist, 200, `"adminPinSet":false`, ""},
