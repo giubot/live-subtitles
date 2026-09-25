@@ -934,10 +934,10 @@ export interface components {
         /** @enum {string} */
         SubtitleFormat: "vtt" | "srt" | "txt" | "json";
         /**
-         * @description Known secret names; extended as providers are added
+         * @description Known secret names; extended as providers are added. `srt_passphrase` encrypts SRT ingest (10–79 characters).
          * @enum {string}
          */
-        SecretName: "google_api_key" | "obs_websocket_password";
+        SecretName: "google_api_key" | "obs_websocket_password" | "srt_passphrase";
         /**
          * Format: date-time
          * @example 2026-09-25T13:30:00Z
@@ -1102,7 +1102,10 @@ export interface components {
             capture: string;
             /** @example http://192.168.1.20:8080/replay/main-stage */
             replay: string;
-            /** @example srt://192.168.1.20:9000?streamid=main-stage */
+            /**
+             * @description Where an encoder pushes MPEG-TS over SRT; absent when ffmpeg lacks libsrt or SRT is disabled
+             * @example srt://192.168.1.20:9000?streamid=main-stage
+             */
             srtIngest?: string | null;
         };
         StageStyle: {
@@ -1118,6 +1121,7 @@ export interface components {
             /** @default 3 */
             lines: number;
         };
+        /** @description `source: browser` (the default) waits for /ws/ingest; `source: srt` opens the session's SRT listener (SessionUrls.srtIngest) */
         SessionStartRequest: {
             source?: components["schemas"]["AudioSourceKind"];
         };
@@ -1394,10 +1398,14 @@ export interface components {
                 /** @default ws://127.0.0.1:4455 */
                 websocketUrl: string;
             };
+            /** @description SRT ingest (AUD-5); the passphrase is stored as the `srt_passphrase` secret */
             srt?: {
                 /** @default true */
                 enabled: boolean;
-                /** @default 9000 */
+                /**
+                 * @description First UDP port: each session that uses SRT gets its own listener port from here up (see SessionUrls.srtIngest)
+                 * @default 9000
+                 */
                 port: number;
                 /** @default 200 */
                 latencyMs: number;
