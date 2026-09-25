@@ -121,6 +121,16 @@ task dev:ai:down
 
 `task dev:ai SERVICES=whisper` starts only one service, for example when Ollama already runs natively.
 
+### Gemma translation
+
+The local translator (`internal/provider/local/gemma`) talks to Ollama's `/api/chat` with streaming, using `providers.local.ollamaUrl` and `providers.local.gemmaModel` from the settings (read at call time). When a session starts it loads the model with an empty chat, and every request sends `keep_alive: 30m`, so the first caption doesn't wait for a model load and a pause doesn't unload it. It runs at most 2 requests at once per model and sends `think: false`, so thinking models such as Gemma 4 answer straight away. Measure it on your machine with:
+
+```sh
+GEMMA_MODEL=gemma3:4b go test -tags ollama -run TestLiveLatency -v ./internal/provider/local/gemma/
+```
+
+On an Apple M5 Pro (48 GB, Ollama 0.34, `gemma4:26b`), loading the model took about 7 s. After that, one caption took 270–440 ms (median 330 ms, first token after about 190 ms) for both es→en and en→es.
+
 ## Test audio
 
 - **Committed fixtures**: `testdata/audio/fixtures/{en,es}.wav`, about 8 s each, 16 kHz mono s16le. They're synthetic (macOS text-to-speech, `scripts/make-fixtures.sh`) so CI can use them without third-party rights. whisper `tiny` transcribes both and detects the right language.

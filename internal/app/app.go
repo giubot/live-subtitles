@@ -30,6 +30,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/metrics"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
 	"github.com/iencodev/live-subtitles/internal/provider/gemini"
+	"github.com/iencodev/live-subtitles/internal/provider/local/gemma"
 	"github.com/iencodev/live-subtitles/internal/provider/mock"
 	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/internal/session"
@@ -107,6 +108,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		Providers: map[domain.ProviderKind]session.Provider{
 			api.ProviderKindMock:   {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
 			api.ProviderKindGemini: {Translator: &gemini.Translator{APIKey: googleAPIKey(sec), Settings: st.Settings}},
+			api.ProviderKindLocal:  {Translator: &gemma.Translator{Settings: st.Settings}},
 		},
 		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
 		IngestStatus:  a.hub.Status,
