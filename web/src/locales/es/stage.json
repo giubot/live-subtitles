@@ -1,3 +1,10 @@
 {
-  "waiting": "Esperando subtítulos…"
+  "title": "Escenario · {{name}}",
+  "waiting": "Esperando subtítulos…",
+  "live": "En vivo · {{name}}",
+  "paused": "En pausa · {{name}}",
+  "reconnecting": "Reconectando…",
+  "followQr": "Seguí los subtítulos en tu celular",
+  "notFound": "No hay ninguna sesión llamada “{{id}}”. Revisá el enlace del escenario en el admin.",
+  "fullscreenHint": "Doble clic o tecla F para pantalla completa"
 }

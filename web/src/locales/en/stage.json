@@ -1,3 +1,10 @@
 {
-  "waiting": "Waiting for captions…"
+  "title": "Stage · {{name}}",
+  "waiting": "Waiting for captions…",
+  "live": "Live · {{name}}",
+  "paused": "Paused · {{name}}",
+  "reconnecting": "Reconnecting…",
+  "followQr": "Follow the captions on your phone",
+  "notFound": "There’s no session called “{{id}}”. Check the stage link in the admin.",
+  "fullscreenHint": "Double-click or press F for full screen"
 }
