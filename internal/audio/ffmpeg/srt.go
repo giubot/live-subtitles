@@ -32,23 +32,7 @@ func SupportsSRT(ctx context.Context, binary string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("ffmpeg -protocols: %w", err)
 	}
-	return hasInputProtocol(string(out), "srt"), nil
-}
-
-// hasInputProtocol finds name in the Input section of `ffmpeg -protocols`.
-func hasInputProtocol(out, name string) bool {
-	input := false
-	for line := range strings.Lines(out) {
-		switch l := strings.TrimSpace(line); {
-		case strings.EqualFold(l, "Input:"):
-			input = true
-		case strings.EqualFold(l, "Output:"):
-			input = false
-		case input && l == name:
-			return true
-		}
-	}
-	return false
+	return HasInputProtocol(out, "srt"), nil
 }
 
 // Passphrase length limits of libsrt (SRTO_PASSPHRASE).

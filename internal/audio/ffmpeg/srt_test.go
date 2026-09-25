@@ -15,39 +15,6 @@ import (
 	"github.com/iencodev/live-subtitles/internal/api"
 )
 
-const protocolsOutput = `Supported file protocols:
-Input:
-  async
-  file
-  http
-  srt
-  srtp
-Output:
-  file
-  srt
-  srtp
-`
-
-func TestHasInputProtocol(t *testing.T) {
-	tests := []struct {
-		name, out, proto string
-		want             bool
-	}{
-		{"srt input", protocolsOutput, "srt", true},
-		{"srtp is not srt", strings.ReplaceAll(protocolsOutput, "  srt\n", ""), "srt", false},
-		{"output only", "Input:\n  file\nOutput:\n  srt\n", "srt", false},
-		{"windows line ends", "Input:\r\n  srt\r\nOutput:\r\n", "srt", true},
-		{"empty", "", "srt", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := hasInputProtocol(tt.out, tt.proto); got != tt.want {
-				t.Errorf("hasInputProtocol = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestNewSRTSource(t *testing.T) {
 	tests := []struct {
 		name    string
