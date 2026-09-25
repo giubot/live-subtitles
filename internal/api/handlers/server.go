@@ -37,6 +37,8 @@ type Server struct {
 	// OverlayPresets stores saved overlay presets; nil: only the built-ins
 	// are listed and the write operations answer 501.
 	OverlayPresets OverlayPresets
+	// Glossaries stores glossaries (AI-7); nil: 501.
+	Glossaries domain.GlossaryStore
 
 	// Manager runs sessions (start, pause, stop, status); nil: those
 	// operations answer 501.

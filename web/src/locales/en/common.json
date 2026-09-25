@@ -402,6 +402,43 @@
         "why": "One of the sizes or times is outside the values the overlay accepts.",
         "fix": "Use a value within the range shown under the field, then save again."
       }
+    },
+    "glossary": {
+      "not_found": {
+        "title": "Glossary not found",
+        "why": "It may have been deleted, maybe from another admin tab.",
+        "fix": "Reload the glossary list and pick it again."
+      },
+      "invalid": {
+        "title": "The glossary has several problems",
+        "why": "More than one field needs fixing before it can be saved.",
+        "fix": "Fix the highlighted fields, then save again."
+      },
+      "name_required": {
+        "title": "The glossary needs a name",
+        "why": "The name is how you pick the glossary in a session.",
+        "fix": "Give it a name, such as the event or the track."
+      },
+      "term_required": {
+        "title": "A row has no term",
+        "why": "Each row needs the term as it is spoken or written in the talk; translations alone can't be matched.",
+        "fix": "Write the term, or remove the row."
+      },
+      "term_duplicate": {
+        "title": "A term is listed twice",
+        "why": "Each term can appear only once (upper and lower case count as the same), so the models get one preferred translation.",
+        "fix": "Merge the two rows into one."
+      },
+      "language_invalid": {
+        "title": "A translation column isn't a language code",
+        "why": "Translation columns are named by language code, like es, en or pt-BR.",
+        "fix": "Rename the column to a language code."
+      },
+      "too_large": {
+        "title": "The glossary is too long",
+        "why": "A glossary holds up to 1000 terms, entries of up to 200 characters and a name of up to 120, so it fits in the models' prompts.",
+        "fix": "Shorten the long entries, or split the glossary by talk or track."
+      }
     }
   }
 }

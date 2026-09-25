@@ -402,6 +402,43 @@
         "why": "Uno de los tamaños o tiempos está fuera de los valores que acepta el overlay.",
         "fix": "Usá un valor dentro del rango que se indica debajo del campo y volvé a guardar."
       }
+    },
+    "glossary": {
+      "not_found": {
+        "title": "No encontramos el glosario",
+        "why": "Puede que lo hayan borrado, tal vez desde otra pestaña de administración.",
+        "fix": "Recargá la lista de glosarios y elegilo de nuevo."
+      },
+      "invalid": {
+        "title": "El glosario tiene varios problemas",
+        "why": "Hay más de un campo para corregir antes de poder guardarlo.",
+        "fix": "Corregí los campos marcados y guardá de nuevo."
+      },
+      "name_required": {
+        "title": "El glosario necesita un nombre",
+        "why": "Con el nombre elegís el glosario en una sesión.",
+        "fix": "Ponele un nombre, como el del evento o el del track."
+      },
+      "term_required": {
+        "title": "Una fila no tiene término",
+        "why": "Cada fila necesita el término tal como se dice o se escribe en la charla; con las traducciones solas no se puede reconocer.",
+        "fix": "Escribí el término o borrá la fila."
+      },
+      "term_duplicate": {
+        "title": "Hay un término repetido",
+        "why": "Cada término puede aparecer una sola vez (mayúsculas y minúsculas cuentan igual), así los modelos reciben una única traducción preferida.",
+        "fix": "Uní las dos filas en una."
+      },
+      "language_invalid": {
+        "title": "Una columna de traducción no es un código de idioma",
+        "why": "Las columnas de traducción se nombran con el código del idioma, como es, en o pt-BR.",
+        "fix": "Cambiá el nombre de la columna por un código de idioma."
+      },
+      "too_large": {
+        "title": "El glosario es demasiado largo",
+        "why": "Un glosario admite hasta 1000 términos, entradas de hasta 200 caracteres y un nombre de hasta 120, para que entre en las instrucciones de los modelos.",
+        "fix": "Acortá las entradas largas o dividí el glosario por charla o por track."
+      }
     }
   }
 }
