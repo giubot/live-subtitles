@@ -1480,6 +1480,27 @@ components:
         recordingId: { type: string, nullable: true, example: rec-main-stage-20260925-133000 }
         srt: { $ref: "#/components/schemas/SrtStats" }
         streamCaptions: { $ref: "#/components/schemas/StreamCaptionStatus" }
+        recovering: { $ref: "#/components/schemas/RecoveryStatus" }
+        restarts:
+          type: integer
+          description: Automatic restarts of the provider stream or the audio source in this run (SES-5)
+        error: { $ref: "#/components/schemas/Error" }
+    RecoveryStatus:
+      type: object
+      description: >-
+        Present while the session restarts a crashed provider stream or a
+        failed audio source (SES-5). The session stays `live`; after
+        `maxAttempts` failed restarts in a row it goes to `error`.
+      required: [component, attempt, maxAttempts, since]
+      properties:
+        component:
+          type: string
+          enum: [provider, source]
+          x-enum-varnames: [RecoveryComponentProvider, RecoveryComponentSource]
+        attempt: { type: integer, description: "Restart attempt in progress (the first is 1)" }
+        maxAttempts: { type: integer }
+        since: { $ref: "#/components/schemas/Timestamp" }
+        retryAt: { $ref: "#/components/schemas/Timestamp" }
         error: { $ref: "#/components/schemas/Error" }
     AudioStatus:
       type: object
@@ -1560,6 +1581,14 @@ components:
         end: { type: number, example: 757.9 }
         sourceLang: { $ref: "#/components/schemas/LanguageCode" }
         latencyMs: { type: integer, example: 1720 }
+        gapBeforeMs:
+          type: integer
+          description: >-
+            Audio lost just before this caption, because the provider or the
+            audio source restarted or the capture station reconnected (SES-5).
+            Set on the first captions after the gap, on every track; live
+            only, not kept in the caption store.
+          example: 2400
         edited: { type: boolean, default: false }
         hidden: { type: boolean, default: false }
     CaptionPage:

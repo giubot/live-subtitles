@@ -1171,6 +1171,20 @@ export interface components {
             recordingId?: string | null;
             srt?: components["schemas"]["SrtStats"];
             streamCaptions?: components["schemas"]["StreamCaptionStatus"];
+            recovering?: components["schemas"]["RecoveryStatus"];
+            /** @description Automatic restarts of the provider stream or the audio source in this run (SES-5) */
+            restarts?: number;
+            error?: components["schemas"]["Error"];
+        };
+        /** @description Present while the session restarts a crashed provider stream or a failed audio source (SES-5). The session stays `live`; after `maxAttempts` failed restarts in a row it goes to `error`. */
+        RecoveryStatus: {
+            /** @enum {string} */
+            component: "provider" | "source";
+            /** @description Restart attempt in progress (the first is 1) */
+            attempt: number;
+            maxAttempts: number;
+            since: components["schemas"]["Timestamp"];
+            retryAt?: components["schemas"]["Timestamp"];
             error?: components["schemas"]["Error"];
         };
         AudioStatus: {
@@ -1263,6 +1277,11 @@ export interface components {
             sourceLang: components["schemas"]["LanguageCode"];
             /** @example 1720 */
             latencyMs?: number;
+            /**
+             * @description Audio lost just before this caption, because the provider or the audio source restarted or the capture station reconnected (SES-5). Set on the first captions after the gap, on every track; live only, not kept in the caption store.
+             * @example 2400
+             */
+            gapBeforeMs?: number;
             /** @default false */
             edited: boolean;
             /** @default false */
