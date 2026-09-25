@@ -1,19 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import Typography from '@mui/material/Typography'
 import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-import { AdminPage } from '../../../features/admin/AdminLayout'
+import { OverlayPresetsPage } from '../../../features/presets/OverlayPresetsPage'
 
 export const Route = createFileRoute('/_themed/admin/overlays')({
-  component: Page,
+  component: OverlayPresetsPage,
 })
-
-function Page() {
-  const { t } = useTranslation('admin')
-  const { t: tc } = useTranslation()
-  return (
-    <AdminPage title={t('nav.overlays')}>
-      <Typography>{tc('stub')}</Typography>
-    </AdminPage>
-  )
-}

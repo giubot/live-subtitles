@@ -5,6 +5,7 @@ import type capture from '../locales/en/capture.json'
 import type common from '../locales/en/common.json'
 import type dev from '../locales/en/dev.json'
 import type glossary from '../locales/en/glossary.json'
+import type presets from '../locales/en/presets.json'
 import type settings from '../locales/en/settings.json'
 import type overlay from '../locales/en/overlay.json'
 import type replay from '../locales/en/replay.json'
@@ -28,6 +29,7 @@ declare module 'i18next' {
       replay: typeof replay
       settings: typeof settings
       glossary: typeof glossary
+      presets: typeof presets
       dev: typeof dev
     }
   }

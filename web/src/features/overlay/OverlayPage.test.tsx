@@ -118,7 +118,7 @@ describe('overlay style', () => {
     })
     expect(
       parseOverlaySearch({
-        preset: 'neon',
+        preset: 'neon/../x',
         fontSize: 'big',
         maxLines: 9,
         color: 'url(x)"',

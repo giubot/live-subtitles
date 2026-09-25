@@ -1,8 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { Schemas } from '../../api/types'
 
-/** Built-in presets from docs/design.md; saved presets come with P3-14. */
+/** The OverlayStyle schema, as saved presets store it. */
+export type OverlayStyle = Schemas['OverlayStyle']
+
+/** Built-in presets from docs/design.md; saved presets (P3-14) are fetched by id. */
 export const overlayPresets = ['classic', 'outline', 'lower-third'] as const
 export type OverlayPreset = (typeof overlayPresets)[number]
+
+export function isBuiltinPreset(id: unknown): id is OverlayPreset {
+  return overlayPresets.includes(id as OverlayPreset)
+}
+
+/** What a saved preset's id may look like in a link. */
+const presetIdPattern = /^[A-Za-z0-9_-]{1,64}$/
 
 /** A resolved overlay style (the OverlayStyle schema, sizes in px at 1080p). */
 export interface OverlayLook {
@@ -42,10 +53,21 @@ export const presetLooks: Record<OverlayPreset, OverlayLook> = {
   'lower-third': { ...classic, align: 'left', fontSizePx: 38, marginPx: 80 },
 }
 
+/** Accepted ranges, shared by link parsing, saved presets and the editor. */
+export const lookLimits = {
+  fontSizePx: [12, 200],
+  fontWeight: [100, 900],
+  outlineWidthPx: [0, 12],
+  marginPx: [0, 400],
+  maxLines: [1, 4],
+  fadeAfterMs: [0, 600000],
+} as const satisfies Record<string, readonly [number, number]>
+
 /** Query parameters, named like OverlayStyle without the units. */
 export interface OverlaySearch {
   lang?: string
-  preset?: OverlayPreset
+  /** A built-in preset name or a saved preset's id. */
+  preset?: string
   fontSize?: number
   fontWeight?: number
   color?: string
@@ -69,7 +91,12 @@ export function safeColor(v: unknown): string | undefined {
   return /^[#a-zA-Z0-9(),.%\s/-]+$/.test(v) ? v : undefined
 }
 
-function int(v: unknown, min: number, max: number): number | undefined {
+/** A background: a CSS colour or `transparent`. */
+export function safeBackground(v: unknown): string | undefined {
+  return v === 'transparent' ? 'transparent' : safeColor(v)
+}
+
+function int(v: unknown, [min, max]: readonly [number, number]): number | undefined {
   const n = Number(v)
   return v !== '' && v != null && Number.isInteger(n) && n >= min && n <= max ? n : undefined
 }
@@ -80,18 +107,18 @@ export function parseOverlaySearch(s: Record<string, unknown>): OverlaySearch {
     if (v !== undefined) out[k] = v
   }
   if (typeof s.lang === 'string' && s.lang) out.lang = s.lang
-  if (overlayPresets.includes(s.preset as OverlayPreset)) out.preset = s.preset as OverlayPreset
-  set('fontSize', int(s.fontSize, 12, 200))
-  set('fontWeight', int(s.fontWeight, 100, 900))
+  if (typeof s.preset === 'string' && presetIdPattern.test(s.preset)) out.preset = s.preset
+  set('fontSize', int(s.fontSize, lookLimits.fontSizePx))
+  set('fontWeight', int(s.fontWeight, lookLimits.fontWeight))
   set('color', safeColor(s.color))
   set('outlineColor', safeColor(s.outlineColor))
-  set('outlineWidth', int(s.outlineWidth, 0, 12))
-  set('background', s.background === 'transparent' ? 'transparent' : safeColor(s.background))
+  set('outlineWidth', int(s.outlineWidth, lookLimits.outlineWidthPx))
+  set('background', safeBackground(s.background))
   if (s.position === 'top' || s.position === 'bottom') out.position = s.position
   if (s.align === 'left' || s.align === 'center' || s.align === 'right') out.align = s.align
-  set('margin', int(s.margin, 0, 400))
-  set('maxLines', int(s.maxLines, 1, 4))
-  set('fadeAfter', int(s.fadeAfter, 0, 600000))
+  set('margin', int(s.margin, lookLimits.marginPx))
+  set('maxLines', int(s.maxLines, lookLimits.maxLines))
+  set('fadeAfter', int(s.fadeAfter, lookLimits.fadeAfterMs))
   const interim = s.interim
   if (interim === 0 || interim === '0' || interim === false || interim === 'false')
     out.interim = false
@@ -99,9 +126,45 @@ export function parseOverlaySearch(s: Record<string, unknown>): OverlaySearch {
   return out
 }
 
-/** The preset's look with the link's overrides on top. */
-export function resolveLook(s: OverlaySearch): OverlayLook {
-  const base = presetLooks[s.preset ?? 'classic']
+/**
+ * A saved preset's style as a look: fields it leaves out, or values the
+ * browser wouldn't take, come from `base`.
+ */
+export function lookFromStyle(
+  style: Partial<OverlayStyle>,
+  base: OverlayLook = classic,
+): OverlayLook {
+  return {
+    fontSizePx: int(style.fontSizePx, lookLimits.fontSizePx) ?? base.fontSizePx,
+    fontWeight: int(style.fontWeight, lookLimits.fontWeight) ?? base.fontWeight,
+    color: safeColor(style.color) ?? base.color,
+    outlineColor: safeColor(style.outlineColor) ?? base.outlineColor,
+    outlineWidthPx: int(style.outlineWidthPx, lookLimits.outlineWidthPx) ?? base.outlineWidthPx,
+    background: safeBackground(style.background) ?? base.background,
+    position:
+      style.position === 'top' || style.position === 'bottom' ? style.position : base.position,
+    align:
+      style.align === 'left' || style.align === 'center' || style.align === 'right'
+        ? style.align
+        : base.align,
+    marginPx: int(style.marginPx, lookLimits.marginPx) ?? base.marginPx,
+    maxLines: int(style.maxLines, lookLimits.maxLines) ?? base.maxLines,
+    fadeAfterMs: int(style.fadeAfterMs, lookLimits.fadeAfterMs) ?? base.fadeAfterMs,
+    showInterim: typeof style.showInterim === 'boolean' ? style.showInterim : base.showInterim,
+  }
+}
+
+/** A look as the OverlayStyle a preset saves. The overlay always uses the body font. */
+export function styleFromLook(look: OverlayLook): OverlayStyle {
+  return { ...look, fontFamily: 'var(--font-body)' }
+}
+
+/**
+ * The look for a link: its preset (a built-in, or `saved` when the link
+ * names a saved preset) with the link's overrides on top.
+ */
+export function resolveLook(s: OverlaySearch, saved?: OverlayLook): OverlayLook {
+  const base = saved ?? (isBuiltinPreset(s.preset) ? presetLooks[s.preset] : classic)
   return {
     fontSizePx: s.fontSize ?? base.fontSizePx,
     fontWeight: s.fontWeight ?? base.fontWeight,
@@ -118,13 +181,23 @@ export function resolveLook(s: OverlaySearch): OverlayLook {
   }
 }
 
+/** Converts px at 1080p into a CSS length. */
+export type LengthUnit = (px: number) => string
+
 /** px at 1080p → a length that scales with the browser source's height. */
-export const vh = (px: number) => `${+(px / 10.8).toFixed(4)}vh`
+export const vh: LengthUnit = (px) => `${+(px / 10.8).toFixed(4)}vh`
+
+/** px at 1080p → a length that scales with a 16:9 container's width (previews). */
+export const cqw: LengthUnit = (px) => `${+(px / 19.2).toFixed(4)}cqw`
 
 /** An outline drawn with text-shadow in eight directions (OBS's CEF lacks paint-order for HTML text). */
-export function outlineShadow(widthPx: number, color: string): string | undefined {
+export function outlineShadow(
+  widthPx: number,
+  color: string,
+  unit: LengthUnit = vh,
+): string | undefined {
   if (widthPx <= 0) return undefined
-  const w = vh(widthPx)
+  const w = unit(widthPx)
   const dirs = [
     [1, 0],
     [-1, 0],
