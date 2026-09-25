@@ -1,19 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import Typography from '@mui/material/Typography'
 import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-import { AdminPage } from '../../../features/admin/AdminLayout'
+import { GlossariesPage } from '../../../features/glossary/GlossariesPage'
 
 export const Route = createFileRoute('/_themed/admin/glossaries')({
-  component: Page,
+  component: GlossariesPage,
 })
-
-function Page() {
-  const { t } = useTranslation('admin')
-  const { t: tc } = useTranslation()
-  return (
-    <AdminPage title={t('nav.glossaries')}>
-      <Typography>{tc('stub')}</Typography>
-    </AdminPage>
-  )
-}
