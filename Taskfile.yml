@@ -14,6 +14,8 @@ vars:
   # Redocly runs through pinned npx; the other Node tools are web/ devDependencies.
   REDOCLY: npx --yes @redocly/cli@2.54.2
   PRISM: npx --yes @stoplight/prism-cli@5.16.0
+  # Keep in step with .github/workflows/ci.yml.
+  GOLANGCI_LINT_VERSION: 2.12.2
   # air stays out of go.mod: as a `go tool` it pulls in Hugo and bumps shared deps.
   AIR: go run github.com/air-verse/air@v1.67.4
   # GoReleaser stays out of go.mod for the same reason; a local install wins.
@@ -155,6 +157,7 @@ tasks:
       - task: check:gen
       - task: check:design
       - task: check:go
+      - task: check:lint
       - task: check:web
       - task: test
 
@@ -194,6 +197,14 @@ tasks:
       - cmd: test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; echo "run gofmt -w on the files above"; exit 1; }
         silent: true
       - go vet ./...
+
+  check:lint:
+    desc: golangci-lint (install v{{.GOLANGCI_LINT_VERSION}}; CI pins the same version)
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: 'golangci-lint not found: install v{{.GOLANGCI_LINT_VERSION}} (https://golangci-lint.run/docs/welcome/install/)'
+    cmds:
+      - golangci-lint run ./...
 
   check:web:
     desc: ESLint, Prettier, TypeScript and i18n key parity for web/
