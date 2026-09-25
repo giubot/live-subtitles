@@ -37,6 +37,8 @@ type Config struct {
 	// GeminiPrices estimate the cost of Gemini usage in session status
 	// (AI-9). The defaults are list-price estimates; see metrics.DefaultGeminiPrices.
 	GeminiPrices metrics.Prices
+	// TLS configures the HTTPS listener next to the HTTP one (tls.go).
+	TLS TLS
 }
 
 // Load parses args (without the program name) with defaults taken from
@@ -89,6 +91,7 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 		}
 		fs.Float64Var(p.dst, p.flag, def, fmt.Sprintf("%s (LIVESUBS_%s)", p.what, p.env))
 	}
+	tlsFlags(fs, &c.TLS, env)
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -112,6 +115,9 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	}
 	if c.AdminToken != "" && len(c.AdminToken) < MinAdminTokenLength {
 		return c, fmt.Errorf("LIVESUBS_ADMIN_TOKEN must be at least %d characters", MinAdminTokenLength)
+	}
+	if err := c.TLS.finish(); err != nil {
+		return c, err
 	}
 	return c, nil
 }

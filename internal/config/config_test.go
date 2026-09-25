@@ -66,6 +66,9 @@ func TestLoad(t *testing.T) {
 			if tt.want.GeminiPrices == (metrics.Prices{}) { // cases that don't set prices expect the defaults
 				tt.want.GeminiPrices = metrics.DefaultGeminiPrices
 			}
+			if tt.want.TLS == (TLS{}) { // TLS cases live in tls_test.go
+				tt.want.TLS = TLS{Mode: TLSModeAuto}
+			}
 			if !tt.wantErr && got != tt.want {
 				t.Errorf("got %+v, want %+v", got, tt.want)
 			}

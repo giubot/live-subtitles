@@ -34,6 +34,30 @@ curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/api/
 
 To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db` (this also deletes sessions and captions).
 
+## HTTPS
+
+The server listens on HTTP `:8080` and HTTPS `:8443` side by side, with the same app on both. Audience phones, the QR code and every printed or generated link stay on plain HTTP (TLS-3). HTTPS is for capture pages and admin access from other computers, because browsers only allow the microphone on `https://` or `http://localhost`. The startup banner prints the HTTPS address and, in `local-ca` mode, where to download the CA.
+
+| Flag | Variable | Default | |
+|---|---|---|---|
+| `--tls` | `LIVESUBS_TLS` | `auto` | `auto`, `local-ca`, `provided`, `acme`, or `disabled` (`false`/`off`) for no HTTPS listener |
+| `--https-addr` | `LIVESUBS_HTTPS_ADDR` | `--addr` host on `:8443` | HTTPS listen address. A loopback `--addr` keeps HTTPS on loopback too. |
+| `--tls-cert`, `--tls-key` | `LIVESUBS_TLS_CERT`, `LIVESUBS_TLS_KEY` | | Your own certificate (PEM, chain included) and key |
+| `--acme-email` | `LIVESUBS_ACME_EMAIL` | | Optional contact address for Let's Encrypt |
+
+`auto` picks `provided` when `--tls-cert` is set, `acme` when `--public-base-url` is `https://` with a public domain (not an IP address, `localhost` or a LAN-only name such as `*.local`, `*.lan`, `*.internal`), and `local-ca` otherwise.
+
+- **`local-ca`**: on first run the server creates a CA (ECDSA P-256, valid 10 years) and a server certificate signed by it (397 days), with SANs `localhost`, `127.0.0.1`, `::1`, every LAN IP, the hostname and `<hostname>.local` (plus the `--public-base-url` host, if any). They live in `<data dir>/tls/` (`ca.crt`, `server.crt`, and the `0600` keys `ca.key`, `server.key`). Every 5 minutes, and at startup, the server reissues the server certificate if the LAN IPs or hostname changed, or if it expires within 30 days. The swap needs no restart. The CA stays the same, so devices install it only once: download it from `GET /api/tls/ca.crt` (public) and compare its SHA-256 fingerprint with `caFingerprintSha256` in `GET /api/tls`. If you delete `ca.key`, a new CA is created and every device has to install it again.
+- **`provided`**: the server serves your files and reloads them when they change on disk, so a certbot renewal needs no restart. If a reload fails, it keeps serving the last good pair.
+- **`acme`**: certificates come from Let's Encrypt through `autocert`, cached in `<data dir>/tls/acme/`. The HTTP listener answers the HTTP-01 challenge and the HTTPS listener answers TLS-ALPN-01, so the domain must reach them on ports 80 or 443, for example with `--addr :80 --https-addr :443` or a port forward. If a reverse proxy terminates TLS in front of the server, use `--tls=disabled`.
+
+`GET /api/tls` answers with `mode`, `httpsPort`, `sans`, `notAfter` and, for `local-ca`, `caFingerprintSha256`. Outside `local-ca`, `GET /api/tls/ca.crt` answers 404 `tls.no_local_ca`.
+
+```sh
+curl -o livesubs-ca.crt http://localhost:8080/api/tls/ca.crt
+curl --cacert livesubs-ca.crt https://localhost:8443/healthz
+```
+
 ## Sessions and realtime
 
 Manage sessions at `/admin` → **New session**: give it a name (the address, or slug, is derived from it), languages and provider, then use **Start**, **Pause** and **Stop** on its card. **Links** shows the viewer, stage, overlay and capture links with a QR code for the audience. The capture link carries the session's ingest token, which the server only stores hashed: it's shown right after creating the session, or after **Make a new capture link** (which retires the old one). When the admin runs on `localhost`, the capture link stays on `localhost` too, so the browser allows the microphone.

@@ -182,6 +182,13 @@
         "fix": "Iniciá sesión con ese PIN."
       }
     },
+    "tls": {
+      "no_local_ca": {
+        "title": "No hay un certificado para instalar",
+        "why": "Este servidor no usa su propia autoridad de certificación local: HTTPS está apagado, o usa un certificado que le diste o uno de Let's Encrypt, en el que los dispositivos ya confían.",
+        "fix": "No hace falta instalar nada. Para usar la CA local, iniciá el servidor sin --tls-cert y sin una dirección pública https, o con --tls=local-ca."
+      }
+    },
     "translation": {
       "failed": {
         "title": "No se pudo traducir un subtítulo",

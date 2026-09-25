@@ -48,6 +48,9 @@ type Server struct {
 	// operations answer 501 and admin operations are not protected.
 	Auth *auth.Service
 
+	// TLS describes HTTPS and serves the local CA (tls.go); nil: 501.
+	TLS TLSService
+
 	log *slog.Logger
 }
 

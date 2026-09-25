@@ -182,6 +182,13 @@
         "fix": "Log in with that PIN."
       }
     },
+    "tls": {
+      "no_local_ca": {
+        "title": "There's no certificate to install",
+        "why": "This server doesn't use its own local certificate authority: HTTPS is off, or it uses a certificate you provided or one from Let's Encrypt, which devices already trust.",
+        "fix": "Nothing to install. To use the local CA, start the server without --tls-cert and without a public https address, or with --tls=local-ca."
+      }
+    },
     "translation": {
       "failed": {
         "title": "A caption couldn't be translated",

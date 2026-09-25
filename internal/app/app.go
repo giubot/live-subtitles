@@ -4,18 +4,22 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	stdlog "log"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,6 +39,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/internal/session"
 	"github.com/iencodev/live-subtitles/internal/store"
+	"github.com/iencodev/live-subtitles/internal/tlsutil"
 )
 
 // mockLatency makes the mock provider feel like a real one in the UI.
@@ -56,6 +61,7 @@ type App struct {
 	store   *store.Store
 	hub     *ingest.Hub
 	manager *session.Manager
+	tls     *tlsutil.Manager // HTTPS certificate; mode disabled when off
 }
 
 // New opens the data directory and wires services and routes. dist is the
@@ -68,6 +74,22 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 			a.port.Store(int32(n))
 		}
 	}
+
+	// HTTPS (TLS-1, TLS-5): load or create the certificate first, so a bad
+	// --tls-cert fails before anything else is opened.
+	tlsm, err := tlsutil.New(tlsutil.Options{
+		Mode:          cfg.TLS.Mode,
+		DataDir:       cfg.DataDir,
+		CertFile:      cfg.TLS.CertFile,
+		KeyFile:       cfg.TLS.KeyFile,
+		PublicBaseURL: cfg.PublicBaseURL,
+		ACMEEmail:     cfg.TLS.ACMEEmail,
+		Logger:        log,
+	})
+	if err != nil {
+		return nil, err
+	}
+	a.tls = tlsm
 
 	st, err := store.Open(ctx, filepath.Join(cfg.DataDir, DBFile))
 	if err != nil {
@@ -93,6 +115,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.Secrets = sec
 	srv.Sessions, srv.Captions, srv.Settings = st, st, st
 	srv.Auth = auth.New(st, auth.Options{AdminToken: cfg.AdminToken})
+	srv.TLS = a.tls
 
 	// Realtime: browser audio in (/ws/ingest), sessions, captions out
 	// (/ws/captions) and admin events (/ws/admin).
@@ -157,6 +180,7 @@ func (a *App) network() api.NetworkInfo {
 	}
 	return netinfo.Info(ifs, netinfo.Options{
 		HTTPPort:      int(a.port.Load()),
+		HTTPSPort:     a.tls.HTTPSPort(),
 		PublicBaseURL: a.cfg.PublicBaseURL,
 	})
 }
@@ -186,6 +210,7 @@ func (a *App) banner() {
 			fmt.Fprintf(&b, "  Also on   http://%s:%d (%s)\n", i.Ip, info.HttpPort, i.Name)
 		}
 	}
+	a.httpsBanner(&b, info)
 	if f, ok := a.out.(*os.File); ok && isTerminal(f) {
 		if qr, err := netinfo.TerminalQR(base + "/s"); err == nil {
 			b.WriteString("\n" + qr)
@@ -193,6 +218,25 @@ func (a *App) banner() {
 	}
 	b.WriteString("\n")
 	_, _ = io.WriteString(a.out, b.String())
+}
+
+// httpsBanner adds the HTTPS address for remote capture and admin (TLS-2)
+// and, with the local CA, where devices download it. The audience URL and
+// its QR code stay on plain HTTP (TLS-3).
+func (a *App) httpsBanner(b *strings.Builder, info api.NetworkInfo) {
+	if info.HttpsPort == nil {
+		return
+	}
+	if !strings.HasPrefix(info.ViewerBaseUrl, "https://") {
+		host := "localhost"
+		if u, err := url.Parse(info.ViewerBaseUrl); err == nil && u.Hostname() != "" {
+			host = u.Hostname()
+		}
+		fmt.Fprintf(b, "  HTTPS     https://%s/admin (remote capture and admin)\n", net.JoinHostPort(host, strconv.Itoa(*info.HttpsPort)))
+	}
+	if a.tls.Mode() == tlsutil.ModeLocalCA {
+		fmt.Fprintf(b, "  Local CA  %s/api/tls/ca.crt (install it on devices that use HTTPS)\n", info.ViewerBaseUrl)
+	}
 }
 
 func isTerminal(f *os.File) bool {
@@ -203,44 +247,125 @@ func isTerminal(f *os.File) bool {
 // Handler is the root HTTP handler.
 func (a *App) Handler() http.Handler { return a.handler }
 
-// Run serves until ctx is cancelled, then shuts down gracefully.
+// Run serves HTTP and, unless TLS is disabled, HTTPS until ctx is
+// cancelled, then shuts both down gracefully. A busy default HTTPS port
+// only costs HTTPS, since the audience needs nothing but HTTP (TLS-3); an
+// explicit --https-addr that can't be bound is an error.
 func (a *App) Run(ctx context.Context) error {
 	ln, err := net.Listen("tcp", a.cfg.Addr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	return a.Serve(ctx, ln)
+	var tlsLn net.Listener
+	if a.tls.Enabled() {
+		addr := a.cfg.TLS.HTTPSAddr
+		if addr == "" {
+			addr = config.DefaultHTTPSAddr(a.cfg.Addr)
+		}
+		if tlsLn, err = net.Listen("tcp", addr); err != nil {
+			if a.cfg.TLS.HTTPSAddr != "" {
+				_ = ln.Close()
+				return fmt.Errorf("listen https: %w", err)
+			}
+			a.log.Warn("HTTPS is off: its port is taken; set --https-addr to use another", "addr", addr, "err", err)
+			tlsLn = nil
+		}
+	}
+	return a.ServeListeners(ctx, ln, tlsLn)
 }
 
-// Serve is Run on an existing listener.
+// Serve is Run on an existing HTTP listener, without HTTPS.
 func (a *App) Serve(ctx context.Context, ln net.Listener) error {
-	srv := &http.Server{
-		Handler:           a.handler,
-		ReadHeaderTimeout: 10 * time.Second,
-		ErrorLog:          slog.NewLogLogger(a.log.Handler(), slog.LevelWarn),
-		BaseContext:       func(net.Listener) context.Context { return ctx },
+	return a.ServeListeners(ctx, ln, nil)
+}
+
+// ServeListeners serves HTTP on ln and, when tlsLn isn't nil, HTTPS on it
+// with the same handler. While running it renews the local-CA leaf when
+// the LAN addresses change (TLS-1). If either listener fails, both stop.
+func (a *App) ServeListeners(ctx context.Context, ln, tlsLn net.Listener) error {
+	ctx, stop := context.WithCancel(ctx)
+	defer stop()
+	servers := []*http.Server{a.server(ctx, a.tls.HTTPHandler(a.handler), nil)}
+	listeners := []net.Listener{ln}
+	if tlsLn != nil {
+		servers = append(servers, a.server(ctx, a.handler, a.tls.TLSConfig()))
+		listeners = append(listeners, tlsLn)
 	}
-	errc := make(chan error, 1)
-	go func() { errc <- srv.Serve(ln) }()
-	a.log.Info("listening", "addr", ln.Addr().String())
+
+	errc := make(chan error, len(servers))
+	for i, srv := range servers {
+		go func() {
+			if srv.TLSConfig != nil {
+				errc <- srv.ServeTLS(listeners[i], "", "") // the certificate comes from GetCertificate
+			} else {
+				errc <- srv.Serve(listeners[i])
+			}
+		}()
+	}
 	if tcp, ok := ln.Addr().(*net.TCPAddr); ok {
 		a.port.Store(int32(tcp.Port))
 	}
+	a.log.Info("listening", "addr", ln.Addr().String())
+	if tlsLn != nil {
+		if tcp, ok := tlsLn.Addr().(*net.TCPAddr); ok {
+			a.tls.SetHTTPSPort(tcp.Port)
+		}
+		defer a.tls.SetHTTPSPort(0)
+		a.log.Info("listening", "addr", tlsLn.Addr().String(), "tls", a.tls.Mode())
+	}
+	var renew sync.WaitGroup
+	renew.Go(func() { a.tls.Run(ctx) })
+	defer func() { stop(); renew.Wait() }()
 	a.banner()
 
+	var first error
+	pending := len(servers)
 	select {
-	case err := <-errc:
-		return err
+	case first = <-errc:
+		pending--
 	case <-ctx.Done():
 	}
 	a.log.Info("shutting down")
 	sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ShutdownTimeout)
 	defer cancel()
-	if err := srv.Shutdown(sctx); err != nil {
-		return fmt.Errorf("shutdown: %w", err)
+	for _, srv := range servers {
+		if err := srv.Shutdown(sctx); err != nil && first == nil {
+			first = fmt.Errorf("shutdown: %w", err)
+		}
 	}
-	if err := <-errc; !errors.Is(err, http.ErrServerClosed) {
-		return err
+	for ; pending > 0; pending-- {
+		if err := <-errc; first == nil {
+			first = err
+		}
 	}
-	return nil
+	if errors.Is(first, http.ErrServerClosed) {
+		return nil
+	}
+	return first
+}
+
+// server builds the HTTP or, with a tlsConfig, the HTTPS server.
+func (a *App) server(ctx context.Context, h http.Handler, tlsConfig *tls.Config) *http.Server {
+	return &http.Server{
+		Handler:           h,
+		TLSConfig:         tlsConfig,
+		ReadHeaderTimeout: 10 * time.Second,
+		ErrorLog:          stdlog.New(serverErrorLog{a.log}, "", 0),
+		BaseContext:       func(net.Listener) context.Context { return ctx },
+	}
+}
+
+// serverErrorLog sends net/http's own errors to the log at warn, except
+// TLS handshake failures: every device that hasn't installed the local CA
+// causes one per visit, so those go to debug.
+type serverErrorLog struct{ log *slog.Logger }
+
+func (l serverErrorLog) Write(p []byte) (int, error) {
+	msg := strings.TrimSpace(string(p))
+	level := slog.LevelWarn
+	if strings.Contains(msg, "TLS handshake error") {
+		level = slog.LevelDebug
+	}
+	l.log.Log(context.Background(), level, msg)
+	return len(p), nil
 }
