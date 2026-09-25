@@ -99,15 +99,15 @@ function DefaultBanner({ data }: { data: ProvidersResponse }) {
         </span>
       </Box>
     )
+  // No defaultReason: a key is set but Google couldn't be reached to check it.
   const [title, body] =
     data.defaultProvider === 'mock'
       ? [t('keys.banner.mock'), t('keys.banner.mockBody')]
-      : [
-          data.defaultReason === 'google_api_key_invalid'
-            ? t('keys.banner.localInvalid')
-            : t('keys.banner.local'),
-          t('keys.banner.localBody'),
-        ]
+      : data.defaultReason === 'google_api_key_invalid'
+        ? [t('keys.banner.localInvalid'), t('keys.banner.localBody')]
+        : data.defaultReason == null
+          ? [t('keys.banner.localUnverified'), t('keys.banner.localUnverifiedBody')]
+          : [t('keys.banner.local'), t('keys.banner.localBody')]
   return (
     <Notice>
       <Box component="strong" sx={{ color: 'var(--color-ink)' }}>

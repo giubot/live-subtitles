@@ -25,6 +25,8 @@ export interface SecretPanelProps {
   primary?: boolean
   /** Offer "Check key" (POST /api/secrets/{name}/validate). */
   validatable?: boolean
+  /** Accepted length, checked before saving (the server doesn't check it). */
+  length?: { min: number; max: number }
 }
 
 /**
@@ -32,15 +34,18 @@ export interface SecretPanelProps {
  * page only shows the masked hint, where it's stored and whether it passed
  * its last check (SEC-5).
  */
-export function SecretPanel({ name, info, primary, validatable }: SecretPanelProps) {
+export function SecretPanel({ name, info, primary, validatable, length }: SecretPanelProps) {
   const { t, i18n } = useTranslation('settings')
   const queryClient = useQueryClient()
   const formId = useId()
   const [value, setValue] = useState('')
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [tooShort, setTooShort] = useState(false)
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['get', '/api/secrets'] })
     void queryClient.invalidateQueries({ queryKey: ['get', '/api/providers'] })
+    // Settings report srt.passphraseSet.
+    void queryClient.invalidateQueries({ queryKey: ['get', '/api/settings'] })
   }
   const path = { params: { path: { name } } }
 
@@ -56,6 +61,7 @@ export function SecretPanel({ name, info, primary, validatable }: SecretPanelPro
     onSuccess: () => {
       setConfirmRemove(false)
       check.reset()
+      put.reset()
       refresh()
     },
   })
@@ -65,10 +71,17 @@ export function SecretPanel({ name, info, primary, validatable }: SecretPanelPro
   const fromEnv = info?.source === 'env'
   const busy = put.isPending || check.isPending || remove.isPending
   const valid = check.data?.valid ?? info?.valid
+  // Saving a key checks it too: say why when Google rejected it.
+  const rejected = check.data ? !check.data.valid : put.data?.valid === false
+  const rejectedCode = check.data?.code ?? 'provider.key_invalid'
+  const badLength =
+    length != null && (value.trim().length < length.min || value.trim().length > length.max)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!value.trim()) return
+    setTooShort(badLength)
+    if (badLength) return
     put.mutate({ ...path, body: { value: value.trim(), validate: validatable ?? false } })
   }
 
@@ -130,9 +143,7 @@ export function SecretPanel({ name, info, primary, validatable }: SecretPanelPro
       )}
 
       {error != null && <ErrorAlert error={error} />}
-      {check.data && !check.data.valid && (
-        <ErrorAlert error={{ code: check.data.code ?? 'provider.key_invalid' }} />
-      )}
+      {rejected && <ErrorAlert error={{ code: rejectedCode }} />}
       {check.data?.valid && (
         <Box
           role="status"
@@ -159,12 +170,18 @@ export function SecretPanel({ name, info, primary, validatable }: SecretPanelPro
             label={t(`keys.secret.${name}.field`)}
             type="password"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
-            helperText={t('keys.fieldHelp')}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setTooShort(false)
+            }}
+            error={tooShort}
+            helperText={tooShort && length ? t('invalid.passphrase', length) : t('keys.fieldHelp')}
             fullWidth
             slotProps={{
               inputLabel: { shrink: true },
               htmlInput: {
+                'aria-invalid': tooShort || undefined,
+                ...(length && { maxLength: length.max }),
                 autoComplete: 'new-password',
                 spellCheck: false,
                 sx: { fontFamily: 'var(--font-mono)' },
@@ -184,7 +201,7 @@ export function SecretPanel({ name, info, primary, validatable }: SecretPanelPro
             loading={put.isPending}
             disabled={busy || !value.trim()}
           >
-            {t('keys.save')}
+            {t(`keys.secret.${name}.save`)}
           </Button>
         )}
         {validatable && set && (
@@ -214,7 +231,7 @@ export function SecretPanel({ name, info, primary, validatable }: SecretPanelPro
                 component="span"
                 sx={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}
               >
-                {t('keys.removeConfirm')}
+                {t(`keys.secret.${name}.removeConfirm`)}
               </Box>
               <Button
                 variant="outlined"

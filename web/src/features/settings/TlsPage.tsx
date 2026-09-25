@@ -145,7 +145,7 @@ function InstallGuide({ localCa }: { localCa: boolean }) {
             <Button
               variant="contained"
               href={caCertUrl}
-              download="live-subtitles-ca.crt"
+              download="livesubs-ca.crt"
               startIcon={<DownloadOutlined aria-hidden />}
             >
               {t('tls.download')}
