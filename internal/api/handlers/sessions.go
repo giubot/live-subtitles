@@ -424,6 +424,9 @@ func (s *Server) CreateSession(ctx context.Context, req api.CreateSessionRequest
 	if !slugPattern.MatchString(b.Slug) {
 		bad["slug"] = "session.slug_invalid"
 	}
+	if err := s.checkGlossaryRef(ctx, b.GlossaryId, "glossaryId", bad); err != nil {
+		return nil, err
+	}
 	if len(bad) > 0 {
 		return api.CreateSession400JSONResponse{BadRequestJSONResponse: invalidSession(bad)}, nil
 	}
@@ -481,7 +484,11 @@ func (s *Server) UpdateSession(ctx context.Context, req api.UpdateSessionRequest
 	if req.Body == nil {
 		return api.UpdateSession400JSONResponse{BadRequestJSONResponse: invalidSession(map[string]string{})}, nil
 	}
-	if bad := validateSession(*req.Body, false); len(bad) > 0 {
+	bad := validateSession(*req.Body, false)
+	if err := s.checkGlossaryRef(ctx, req.Body.GlossaryId, "glossaryId", bad); err != nil {
+		return nil, err
+	}
+	if len(bad) > 0 {
 		return api.UpdateSession400JSONResponse{BadRequestJSONResponse: invalidSession(bad)}, nil
 	}
 	sess, err := s.Sessions.GetSession(ctx, req.SessionId)

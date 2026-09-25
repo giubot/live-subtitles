@@ -142,6 +142,27 @@ func TestUpdateSettingsValidation(t *testing.T) {
 	call{"GET", "/api/settings", "", "", "", 200, `"maxLines":2`}.do(t, h)
 }
 
+func TestSettingsDefaultGlossary(t *testing.T) {
+	h, st := settingsServer(t)
+	for _, c := range []struct {
+		name, id string
+		status   int
+		want     string
+	}{
+		{"unknown", `"nope"`, 400, `"fields":{"defaultGlossaryId":"glossary.not_found"}`},
+		{"seeded", `"tech-terms"`, 200, `"defaultGlossaryId":"tech-terms"`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			s := New()
+			s.Settings, s.Glossaries = st, st
+			h := s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
+			call{"PUT", "/api/settings", settingsBody(t, `"defaultTargetLanguages"`, `"defaultGlossaryId":`+c.id+`,"defaultTargetLanguages"`), "", "", c.status, c.want}.do(t, h)
+		})
+	}
+	// Without a glossary store the id isn't checked.
+	call{"PUT", "/api/settings", settingsBody(t, `"defaultTargetLanguages"`, `"defaultGlossaryId":"nope","defaultTargetLanguages"`), "", "", 200, `"defaultGlossaryId":"nope"`}.do(t, h)
+}
+
 func TestSettingsNotImplemented(t *testing.T) {
 	h := New().Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
 	call{"GET", "/api/settings", "", "", "", 501, `"code":"not_implemented"`}.do(t, h)

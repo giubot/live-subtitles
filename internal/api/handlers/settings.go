@@ -262,7 +262,11 @@ func (s *Server) UpdateSettings(ctx context.Context, req api.UpdateSettingsReque
 	trimSettings(&st)
 	withSettingsDefaults(&st)
 	st.Srt.PassphraseSet = nil // read-only
-	if bad := validateSettings(st); len(bad) > 0 {
+	bad := validateSettings(st)
+	if err := s.checkGlossaryRef(ctx, st.DefaultGlossaryId, "defaultGlossaryId", bad); err != nil {
+		return nil, err
+	}
+	if len(bad) > 0 {
 		return api.UpdateSettings400JSONResponse{
 			BadRequestJSONResponse: badRequest(bad, codeSettingsInvalid, "invalid settings"),
 		}, nil

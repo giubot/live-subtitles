@@ -244,3 +244,18 @@ func newGlossaryID() string {
 	_, _ = rand.Read(b) // crypto/rand.Read never fails
 	return "g-" + hex.EncodeToString(b)
 }
+
+// checkGlossaryRef adds field → glossary.not_found to bad when id names a
+// glossary that doesn't exist. A nil or empty id means no glossary, and
+// without a glossary store nothing can be checked.
+func (s *Server) checkGlossaryRef(ctx context.Context, id *string, field string, bad map[string]string) error {
+	if id == nil || *id == "" || s.Glossaries == nil {
+		return nil
+	}
+	_, err := s.Glossaries.GetGlossary(ctx, *id)
+	if errors.Is(err, domain.ErrNotFound) {
+		bad[field] = glossaryNotFound.Code
+		return nil
+	}
+	return err
+}
