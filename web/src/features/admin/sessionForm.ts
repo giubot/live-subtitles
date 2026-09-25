@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Schemas } from '../../api/types'
 import type { ChipStatus } from '../../components/StatusChip'
+import type { LiveSource } from './sessionSource'
 
 export type Session = Schemas['Session']
 export type SessionCreate = Schemas['SessionCreate']
@@ -32,6 +33,8 @@ export interface SessionFormValues {
   targetLanguages: string[]
   provider: ProviderChoice
   recordingEnabled: boolean
+  /** Live audio at the next start; kept by this browser, not the server. */
+  source: LiveSource
   /** '' for none. */
   glossaryId: string
   ccEnabled: boolean
@@ -51,6 +54,7 @@ export const newSessionValues: SessionFormValues = {
   targetLanguages: ['es', 'en'],
   provider: 'default',
   recordingEnabled: true,
+  source: 'browser',
   glossaryId: '',
   ccEnabled: false,
   ccTarget: 'youtube_http',
@@ -59,7 +63,7 @@ export const newSessionValues: SessionFormValues = {
   ccYoutubeUrl: '',
 }
 
-export function valuesFrom(s: Session): SessionFormValues {
+export function valuesFrom(s: Session, source: LiveSource = 'browser'): SessionFormValues {
   return {
     name: s.name ?? '',
     slug: s.id,
@@ -68,6 +72,7 @@ export function valuesFrom(s: Session): SessionFormValues {
     targetLanguages: s.targetLanguages ?? [],
     provider: s.provider ?? 'default',
     recordingEnabled: s.recordingEnabled ?? false,
+    source,
     glossaryId: s.glossaryId ?? '',
     ccEnabled: s.streamCaptions?.enabled ?? false,
     ccTarget: s.streamCaptions?.target ?? 'youtube_http',
@@ -103,7 +108,7 @@ export function validate(v: SessionFormValues, creating: boolean): Record<string
   return bad
 }
 
-/** The PATCH/POST body: every field, so the form is what's saved. */
+/** The PATCH/POST body: every stored field, so the form is what's saved. */
 export function toBody(v: SessionFormValues) {
   return {
     name: v.name.trim(),

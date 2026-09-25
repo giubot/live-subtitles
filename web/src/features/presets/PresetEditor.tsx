@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
+import { toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { Panel } from '../../components/Panel'
 import { segmentedSx } from '../../components/segmented'
@@ -24,11 +25,13 @@ import {
   formFromLook,
   limitsOf,
   lookFromForm,
+  serverProblems,
   styleFromForm,
   validate,
   type ColorField,
   type NumberField,
   type PresetForm,
+  type SavedPreset,
 } from './presetForm'
 
 /** What the editor shows: a built-in (read-only), a saved preset, or a new one. */
@@ -55,19 +58,18 @@ export function PresetEditor({ target, onSaved, onDeleted, onDuplicate }: Preset
   const [touched, setTouched] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const refresh = () => queryClient.invalidateQueries({ queryKey: listKey })
+  /** Puts the saved preset in the cached list at once, so the page can select it before the refetch. */
+  const saved = (p: SavedPreset) => {
+    queryClient.setQueryData<SavedPreset[]>(
+      listKey,
+      (list) => list && [...list.filter((x) => x.id !== p.id), p],
+    )
+    void refresh()
+    onSaved(p.id)
+  }
 
-  const create = api.useMutation('post', '/api/overlay-presets', {
-    onSuccess: (data) => {
-      void refresh()
-      onSaved(data.id)
-    },
-  })
-  const update = api.useMutation('put', '/api/overlay-presets/{presetId}', {
-    onSuccess: (data) => {
-      void refresh()
-      onSaved(data.id)
-    },
-  })
+  const create = api.useMutation('post', '/api/overlay-presets', { onSuccess: saved })
+  const update = api.useMutation('put', '/api/overlay-presets/{presetId}', { onSuccess: saved })
   const remove = api.useMutation('delete', '/api/overlay-presets/{presetId}', {
     onSuccess: () => {
       void refresh()
@@ -76,7 +78,11 @@ export function PresetEditor({ target, onSaved, onDeleted, onDuplicate }: Preset
   })
   const error: unknown = create.error ?? update.error ?? remove.error
 
-  const problems = touched ? validate(form) : {}
+  // The server's field errors stand until the next save attempt.
+  const problems = {
+    ...serverProblems(toApiError(create.error ?? update.error)?.fields),
+    ...(touched ? validate(form) : {}),
+  }
   const set = <K extends keyof PresetForm>(k: K, v: PresetForm[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }))
   const look = lookFromForm(form)
@@ -85,6 +91,8 @@ export function PresetEditor({ target, onSaved, onDeleted, onDuplicate }: Preset
     e.preventDefault()
     if (readOnly) return
     setTouched(true)
+    create.reset()
+    update.reset()
     if (Object.keys(validate(form)).length > 0) return
     const body = { name: form.name.trim(), style: styleFromForm(form) }
     if (target.kind === 'saved') update.mutate({ params: { path: { presetId: target.id } }, body })

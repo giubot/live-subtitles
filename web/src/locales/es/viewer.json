@@ -28,5 +28,6 @@
   "reconnecting": "Se perdió la conexión. Reconectando… los subtítulos que te perdiste se completan cuando vuelve.",
   "recorded": "Esta sesión se graba",
   "jumpToLive": "Ir al vivo",
-  "retry": "Reintentar"
+  "retry": "Reintentar",
+  "gap": "Faltan {{seconds}} s de audio"
 }

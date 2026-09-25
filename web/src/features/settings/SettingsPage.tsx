@@ -22,9 +22,12 @@ import { Notice } from '../../components/Notice'
 import { Panel } from '../../components/Panel'
 import { StatusChip } from '../../components/StatusChip'
 import { AdminPage } from '../admin/AdminLayout'
+import { SecretPanel } from './SecretPanel'
 import {
   bitrates,
   fieldPath,
+  serverProblem,
+  srtPassphraseLength,
   toSettings,
   validate,
   valuesFrom,
@@ -76,6 +79,11 @@ function SettingsForm({ settings }: { settings: Settings }) {
   const [touched, setTouched] = useState(false)
   const [saved, setSaved] = useState(false)
   const network = api.useQuery('get', '/api/network')
+  const glossaries = api.useQuery('get', '/api/glossaries')
+  const secrets = api.useQuery('get', '/api/secrets')
+  // The same query as the page's: refetched when the SRT passphrase changes.
+  const live = api.useQuery('get', '/api/settings')
+  const passphraseSet = live.data?.srt?.passphraseSet ?? base.srt?.passphraseSet ?? false
 
   const save = api.useMutation('put', '/api/settings', {
     onSuccess: (data) => {
@@ -93,11 +101,16 @@ function SettingsForm({ settings }: { settings: Settings }) {
   const problems = touched ? validate(v) : {}
   const serverFields = toApiError(saveError)?.fields ?? {}
   const problemText = (p: Problem) =>
-    p.kind === 'integer' ? t('invalid.integer', { min: p.min, max: p.max }) : t(`invalid.${p.kind}`)
+    p.kind === 'integer'
+      ? t('invalid.integer', { min: p.min, max: p.max })
+      : p.kind === 'tooLong'
+        ? t('invalid.tooLong', { max: p.max })
+        : t(`invalid.${p.kind}`)
   const fieldError = (f: Field): string | undefined => {
     const p = problems[f]
     if (p) return problemText(p)
-    return serverFields[fieldPath[f]] ? t('invalid.server') : undefined
+    const code = serverFields[fieldPath[f]]
+    return code ? problemText(serverProblem(f, code)) : undefined
   }
   const set = <K extends Field>(k: K, value: SettingsValues[K]) => {
     setSaved(false)
@@ -169,222 +182,265 @@ function SettingsForm({ settings }: { settings: Settings }) {
         </>
       }
     >
-      <Box
-        component="form"
-        id={formId}
-        onSubmit={submit}
-        noValidate
-        sx={{ display: 'grid', gap: 'var(--space-md)', maxInlineSize: '64rem' }}
-      >
-        {saveError != null && <ErrorAlert error={saveError} />}
-        {Object.keys(problems).length > 0 && <Notice>{t('invalidForm')}</Notice>}
+      <Box sx={{ display: 'grid', gap: 'var(--space-md)', maxInlineSize: '64rem' }}>
+        <Box
+          component="form"
+          id={formId}
+          onSubmit={submit}
+          noValidate
+          sx={{ display: 'grid', gap: 'var(--space-md)' }}
+        >
+          {saveError != null && <ErrorAlert error={saveError} />}
+          {Object.keys(problems).length > 0 && <Notice>{t('invalidForm')}</Notice>}
 
-        <Panel title={t('languages.title')}>
-          <Intro>{t('languages.intro')}</Intro>
-          <Box sx={fieldGrid}>
-            <TextField
-              select
-              label={t('languages.source')}
-              value={v.sourceLanguage}
-              onChange={(e) => set('sourceLanguage', e.target.value as SourceLanguage)}
-              helperText={t('languages.sourceHelp')}
-              slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
-            >
-              {sourceLanguages.map((l) => (
-                <option key={l} value={l}>
-                  {t(`languages.sourceOption.${l}`, { defaultValue: languageName(l) })}
-                </option>
-              ))}
-            </TextField>
-          </Box>
-          <FormControl component="fieldset" error={!!fieldError('targetLanguages')}>
-            <FormLabel component="legend">{t('languages.targets')}</FormLabel>
-            <FormGroup row>
-              {languages.map((l) => (
-                <FormControlLabel
-                  key={l}
-                  control={
-                    <Checkbox
-                      checked={v.targetLanguages.includes(l)}
-                      onChange={(e) => toggleLanguage(l, e.target.checked)}
-                    />
-                  }
-                  label={<span lang={l}>{languageName(l)}</span>}
-                />
-              ))}
-            </FormGroup>
-            <FormHelperText>
-              {fieldError('targetLanguages') ?? t('languages.targetsHelp')}
-            </FormHelperText>
-          </FormControl>
-        </Panel>
-
-        <Panel title={t('providers.title')}>
-          <Intro>{t('providers.intro')}</Intro>
-          <Typography variant="h6" component="h3">
-            {t('providers.gemini')}
-          </Typography>
-          <Box sx={fieldGrid}>
-            <TextField {...text('liveModel', t('providers.liveModel'), ' ', { mono: true })} />
-            <TextField
-              {...text('translationModel', t('providers.translationModel'), ' ', { mono: true })}
-            />
-          </Box>
-          <Typography variant="h6" component="h3">
-            {t('providers.local')}
-          </Typography>
-          <Box sx={fieldGrid}>
-            <TextField {...text('whisperUrl', t('providers.whisperUrl'), ' ', { mono: true })} />
-            <TextField
-              {...text('whisperModel', t('providers.whisperModel'), ' ', { mono: true })}
-            />
-            <TextField {...text('ollamaUrl', t('providers.ollamaUrl'), ' ', { mono: true })} />
-            <TextField {...text('gemmaModel', t('providers.gemmaModel'), ' ', { mono: true })} />
-          </Box>
-          <Box sx={fieldGrid}>
-            <TextField
-              {...text(
-                'contextSentences',
-                t('providers.contextSentences'),
-                t('providers.contextSentencesHelp'),
-                { numeric: true },
-              )}
-            />
-          </Box>
-          <SwitchField
-            checked={v.fallback}
-            onChange={(on) => set('fallback', on)}
-            label={t('providers.fallback')}
-            help={t('providers.fallbackHelp')}
-          />
-        </Panel>
-
-        <Panel title={t('captions.title')}>
-          <Box sx={fieldGrid}>
-            <TextField
-              {...text(
-                'maxCharsPerLine',
-                t('captions.maxCharsPerLine'),
-                t('captions.maxCharsPerLineHelp'),
-                { numeric: true },
-              )}
-            />
-            <TextField
-              {...text('maxLines', t('captions.maxLines'), t('captions.maxLinesHelp'), {
-                numeric: true,
-              })}
-            />
-          </Box>
-        </Panel>
-
-        <Panel title={t('network.title')}>
-          <Box sx={fieldGrid}>
-            <TextField
-              {...text(
-                'publicBaseUrl',
-                t('network.publicBaseUrl'),
-                t('network.publicBaseUrlHelp'),
-                {
-                  mono: true,
-                },
-              )}
-            />
-            {interfaceNames.length > 0 && knownInterface ? (
+          <Panel title={t('languages.title')}>
+            <Intro>{t('languages.intro')}</Intro>
+            <Box sx={fieldGrid}>
               <TextField
                 select
-                label={t('network.preferredInterface')}
-                value={v.preferredInterface}
-                onChange={(e) => set('preferredInterface', e.target.value)}
-                helperText={t('network.preferredInterfaceHelp')}
+                label={t('languages.source')}
+                value={v.sourceLanguage}
+                onChange={(e) => set('sourceLanguage', e.target.value as SourceLanguage)}
+                helperText={t('languages.sourceHelp')}
                 slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
               >
-                <option value="">{t('network.automatic')}</option>
-                {interfaceNames.map((name) => (
-                  <option key={name} value={name}>
-                    {[name, ...interfaces.filter((i) => i.name === name).map((i) => i.ip)].join(
-                      ' · ',
-                    )}
+                {sourceLanguages.map((l) => (
+                  <option key={l} value={l}>
+                    {t(`languages.sourceOption.${l}`, { defaultValue: languageName(l) })}
                   </option>
                 ))}
               </TextField>
-            ) : (
+            </Box>
+            <FormControl component="fieldset" error={!!fieldError('targetLanguages')}>
+              <FormLabel component="legend">{t('languages.targets')}</FormLabel>
+              <FormGroup row>
+                {languages.map((l) => (
+                  <FormControlLabel
+                    key={l}
+                    control={
+                      <Checkbox
+                        checked={v.targetLanguages.includes(l)}
+                        onChange={(e) => toggleLanguage(l, e.target.checked)}
+                      />
+                    }
+                    label={<span lang={l}>{languageName(l)}</span>}
+                  />
+                ))}
+              </FormGroup>
+              <FormHelperText>
+                {fieldError('targetLanguages') ?? t('languages.targetsHelp')}
+              </FormHelperText>
+            </FormControl>
+            <Box sx={fieldGrid}>
+              <TextField
+                select
+                label={t('languages.glossary')}
+                value={v.glossaryId}
+                onChange={(e) => set('glossaryId', e.target.value)}
+                error={!!fieldError('glossaryId')}
+                helperText={fieldError('glossaryId') ?? t('languages.glossaryHelp')}
+                slotProps={{
+                  select: { native: true },
+                  inputLabel: { shrink: true },
+                  htmlInput: { 'aria-invalid': !!fieldError('glossaryId') || undefined },
+                }}
+              >
+                <option value="">{t('languages.glossaryNone')}</option>
+                {glossaries.data?.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+                {v.glossaryId && glossaries.data?.every((g) => g.id !== v.glossaryId) && (
+                  <option value={v.glossaryId}>
+                    {t('languages.glossaryMissing', { id: v.glossaryId })}
+                  </option>
+                )}
+                {v.glossaryId && !glossaries.data && (
+                  <option value={v.glossaryId}>{v.glossaryId}</option>
+                )}
+              </TextField>
+            </Box>
+          </Panel>
+
+          <Panel title={t('providers.title')}>
+            <Intro>{t('providers.intro')}</Intro>
+            <Typography variant="h6" component="h3">
+              {t('providers.gemini')}
+            </Typography>
+            <Box sx={fieldGrid}>
+              <TextField {...text('liveModel', t('providers.liveModel'), ' ', { mono: true })} />
+              <TextField
+                {...text('translationModel', t('providers.translationModel'), ' ', { mono: true })}
+              />
+            </Box>
+            <Typography variant="h6" component="h3">
+              {t('providers.local')}
+            </Typography>
+            <Box sx={fieldGrid}>
+              <TextField {...text('whisperUrl', t('providers.whisperUrl'), ' ', { mono: true })} />
+              <TextField
+                {...text('whisperModel', t('providers.whisperModel'), ' ', { mono: true })}
+              />
+              <TextField {...text('ollamaUrl', t('providers.ollamaUrl'), ' ', { mono: true })} />
+              <TextField {...text('gemmaModel', t('providers.gemmaModel'), ' ', { mono: true })} />
+            </Box>
+            <Box sx={fieldGrid}>
               <TextField
                 {...text(
-                  'preferredInterface',
-                  t('network.preferredInterface'),
-                  t('network.preferredInterfaceHelp'),
-                  { mono: true },
+                  'contextSentences',
+                  t('providers.contextSentences'),
+                  t('providers.contextSentencesHelp'),
+                  { numeric: true },
                 )}
               />
-            )}
-          </Box>
-        </Panel>
+            </Box>
+            <SwitchField
+              checked={v.fallback}
+              onChange={(on) => set('fallback', on)}
+              label={t('providers.fallback')}
+              help={t('providers.fallbackHelp')}
+            />
+          </Panel>
 
-        <Panel title={t('recording.title')}>
-          <SwitchField
-            checked={v.recordingEnabled}
-            onChange={(on) => set('recordingEnabled', on)}
-            label={t('recording.enabledByDefault')}
-            help={t('recording.enabledByDefaultHelp')}
-          />
-          <Box sx={fieldGrid}>
-            <TextField
-              select
-              label={t('recording.bitrate')}
-              value={v.bitrateKbps}
-              onChange={(e) => set('bitrateKbps', Number(e.target.value) as Bitrate)}
-              helperText={t('recording.bitrateHelp')}
-              slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
-            >
-              {bitrates.map((b) => (
-                <option key={b} value={b}>
-                  {t('recording.bitrateOption', { kbps: b })}
-                </option>
-              ))}
-            </TextField>
-            <TextField
-              {...text(
-                'retentionDays',
-                t('recording.retentionDays'),
-                t('recording.retentionDaysHelp'),
-                { numeric: true },
+          <Panel title={t('captions.title')}>
+            <Box sx={fieldGrid}>
+              <TextField
+                {...text(
+                  'maxCharsPerLine',
+                  t('captions.maxCharsPerLine'),
+                  t('captions.maxCharsPerLineHelp'),
+                  { numeric: true },
+                )}
+              />
+              <TextField
+                {...text('maxLines', t('captions.maxLines'), t('captions.maxLinesHelp'), {
+                  numeric: true,
+                })}
+              />
+            </Box>
+          </Panel>
+
+          <Panel title={t('network.title')}>
+            <Box sx={fieldGrid}>
+              <TextField
+                {...text(
+                  'publicBaseUrl',
+                  t('network.publicBaseUrl'),
+                  t('network.publicBaseUrlHelp'),
+                  {
+                    mono: true,
+                  },
+                )}
+              />
+              {interfaceNames.length > 0 && knownInterface ? (
+                <TextField
+                  select
+                  label={t('network.preferredInterface')}
+                  value={v.preferredInterface}
+                  onChange={(e) => set('preferredInterface', e.target.value)}
+                  helperText={t('network.preferredInterfaceHelp')}
+                  slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+                >
+                  <option value="">{t('network.automatic')}</option>
+                  {interfaceNames.map((name) => (
+                    <option key={name} value={name}>
+                      {[name, ...interfaces.filter((i) => i.name === name).map((i) => i.ip)].join(
+                        ' · ',
+                      )}
+                    </option>
+                  ))}
+                </TextField>
+              ) : (
+                <TextField
+                  {...text(
+                    'preferredInterface',
+                    t('network.preferredInterface'),
+                    t('network.preferredInterfaceHelp'),
+                    { mono: true },
+                  )}
+                />
               )}
-            />
-          </Box>
-        </Panel>
+            </Box>
+          </Panel>
 
-        <Panel
-          title={t('srt.title')}
-          actions={
-            <StatusChip
-              status={base.srt?.passphraseSet ? 'ok' : 'idle'}
-              label={base.srt?.passphraseSet ? t('srt.passphraseSet') : t('srt.passphraseUnset')}
+          <Panel title={t('recording.title')}>
+            <SwitchField
+              checked={v.recordingEnabled}
+              onChange={(on) => set('recordingEnabled', on)}
+              label={t('recording.enabledByDefault')}
+              help={t('recording.enabledByDefaultHelp')}
             />
-          }
-        >
-          <SwitchField
-            checked={v.srtEnabled}
-            onChange={(on) => set('srtEnabled', on)}
-            label={t('srt.enabled')}
-            help={t('srt.enabledHelp')}
-          />
-          <Box sx={fieldGrid}>
-            <TextField {...text('srtPort', t('srt.port'), t('srt.portHelp'), { numeric: true })} />
-            <TextField
-              {...text('srtLatencyMs', t('srt.latencyMs'), t('srt.latencyMsHelp'), {
-                numeric: true,
-              })}
-            />
-          </Box>
-        </Panel>
+            <Box sx={fieldGrid}>
+              <TextField
+                select
+                label={t('recording.bitrate')}
+                value={v.bitrateKbps}
+                onChange={(e) => set('bitrateKbps', Number(e.target.value) as Bitrate)}
+                helperText={t('recording.bitrateHelp')}
+                slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+              >
+                {bitrates.map((b) => (
+                  <option key={b} value={b}>
+                    {t('recording.bitrateOption', { kbps: b })}
+                  </option>
+                ))}
+              </TextField>
+              <TextField
+                {...text(
+                  'retentionDays',
+                  t('recording.retentionDays'),
+                  t('recording.retentionDaysHelp'),
+                  { numeric: true },
+                )}
+              />
+            </Box>
+          </Panel>
 
-        <Panel title={t('obs.title')}>
-          <Box sx={fieldGrid}>
-            <TextField
-              {...text('obsUrl', t('obs.websocketUrl'), t('obs.websocketUrlHelp'), { mono: true })}
+          <Panel title={t('obs.title')}>
+            <Box sx={fieldGrid}>
+              <TextField
+                {...text('obsUrl', t('obs.websocketUrl'), t('obs.websocketUrlHelp'), {
+                  mono: true,
+                })}
+              />
+            </Box>
+          </Panel>
+
+          <Panel
+            title={t('srt.title')}
+            actions={
+              <StatusChip
+                status={passphraseSet ? 'ok' : 'idle'}
+                label={passphraseSet ? t('srt.passphraseSet') : t('srt.passphraseUnset')}
+              />
+            }
+          >
+            <SwitchField
+              checked={v.srtEnabled}
+              onChange={(on) => set('srtEnabled', on)}
+              label={t('srt.enabled')}
+              help={t('srt.enabledHelp')}
             />
-          </Box>
-        </Panel>
+            <Box sx={fieldGrid}>
+              <TextField
+                {...text('srtPort', t('srt.port'), t('srt.portHelp'), { numeric: true })}
+              />
+              <TextField
+                {...text('srtLatencyMs', t('srt.latencyMs'), t('srt.latencyMsHelp'), {
+                  numeric: true,
+                })}
+              />
+            </Box>
+          </Panel>
+        </Box>
+        {/* Its own form: a write-only secret, saved on its own (not by Save settings). */}
+        {secrets.error != null && <ErrorAlert error={secrets.error} />}
+        <SecretPanel
+          name="srt_passphrase"
+          info={secrets.data?.find((x) => x.name === 'srt_passphrase')}
+          length={srtPassphraseLength}
+        />
       </Box>
     </AdminPage>
   )

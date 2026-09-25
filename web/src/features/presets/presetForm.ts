@@ -102,9 +102,43 @@ export function lookFromForm(f: PresetForm): OverlayLook {
   return lookFromStyle(partialStyle(f), presetLooks.classic)
 }
 
-/** The style to save, once `validate` passes. */
+/**
+ * The style to save, once `validate` passes. The overlay always uses the
+ * body font, so `fontFamily` isn't sent (the server only takes font names,
+ * not a `var(--font-body)` reference).
+ */
 export function styleFromForm(f: PresetForm): OverlayStyle {
-  return styleFromLook(lookFromForm(f))
+  const style: Partial<OverlayStyle> = styleFromLook(lookFromForm(f))
+  delete style.fontFamily
+  // The generated type marks defaulted fields required; the server fills a missing fontFamily.
+  return style as OverlayStyle
+}
+
+/** The form field behind each path the server names in a 400's `fields`. */
+const serverFieldOf: Record<string, keyof PresetForm> = {
+  name: 'name',
+  'style.fontSizePx': 'fontSizePx',
+  'style.fontWeight': 'fontWeight',
+  'style.color': 'color',
+  'style.outlineColor': 'outlineColor',
+  'style.outlineWidthPx': 'outlineWidthPx',
+  'style.background': 'background',
+  'style.marginPx': 'marginPx',
+  'style.maxLines': 'maxLines',
+  'style.fadeAfterMs': 'fadeAfterS',
+}
+
+/** Field → problem from the server's rejected fields (overlay.invalid_color, …). */
+export function serverProblems(
+  fields: Record<string, string> | undefined,
+): Partial<Record<keyof PresetForm, FormProblem>> {
+  const out: Partial<Record<keyof PresetForm, FormProblem>> = {}
+  for (const [path, code] of Object.entries(fields ?? {})) {
+    const f = serverFieldOf[path]
+    if (!f) continue
+    out[f] = f === 'name' ? 'name' : code === 'overlay.invalid_color' ? 'color' : 'range'
+  }
+  return out
 }
 
 /** Field → problem, checked before saving. */

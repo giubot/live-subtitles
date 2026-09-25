@@ -11,6 +11,8 @@ export const bitrates: Bitrate[] = [32, 48, 64]
 export interface SettingsValues {
   sourceLanguage: SourceLanguage
   targetLanguages: string[]
+  /** A glossary id, or '' for none. */
+  glossaryId: string
   liveModel: string
   translationModel: string
   whisperUrl: string
@@ -38,6 +40,7 @@ export type Field = keyof SettingsValues
 export const fieldPath: Record<Field, string> = {
   sourceLanguage: 'defaultSourceLanguage',
   targetLanguages: 'defaultTargetLanguages',
+  glossaryId: 'defaultGlossaryId',
   liveModel: 'providers.gemini.liveModel',
   translationModel: 'providers.gemini.translationModel',
   whisperUrl: 'providers.local.whisperUrl',
@@ -66,6 +69,7 @@ export function valuesFrom(s: Settings): SettingsValues {
   return {
     sourceLanguage: s.defaultSourceLanguage ?? 'auto',
     targetLanguages: s.defaultTargetLanguages,
+    glossaryId: s.defaultGlossaryId ?? '',
     liveModel: s.providers.gemini.liveModel,
     translationModel: s.providers.gemini.translationModel,
     whisperUrl: s.providers.local.whisperUrl,
@@ -88,12 +92,17 @@ export function valuesFrom(s: Settings): SettingsValues {
   }
 }
 
-/** The PUT body: the loaded settings with the form's values on top. */
+/**
+ * The PUT body: the loaded settings with the form's values on top. PUT
+ * replaces everything, so every field goes back, including the ones the
+ * form doesn't show; the server fills what's missing with its defaults.
+ */
 export function toSettings(v: SettingsValues, base: Settings): Settings {
   return {
     ...base,
     defaultSourceLanguage: v.sourceLanguage,
     defaultTargetLanguages: v.targetLanguages,
+    defaultGlossaryId: v.glossaryId || null,
     providers: {
       ...base.providers,
       gemini: { liveModel: v.liveModel.trim(), translationModel: v.translationModel.trim() },
@@ -113,7 +122,7 @@ export function toSettings(v: SettingsValues, base: Settings): Settings {
     network: {
       ...base.network,
       publicBaseUrl: v.publicBaseUrl.trim() || null,
-      preferredInterface: v.preferredInterface || null,
+      preferredInterface: v.preferredInterface.trim() || null,
     },
     recording: {
       enabledByDefault: v.recordingEnabled,
@@ -123,6 +132,8 @@ export function toSettings(v: SettingsValues, base: Settings): Settings {
     obs: { websocketUrl: v.obsUrl.trim() },
     // passphraseSet is read-only, so it isn't sent back.
     srt: {
+      ...base.srt,
+      passphraseSet: undefined,
       enabled: v.srtEnabled,
       port: Number(v.srtPort),
       latencyMs: Number(v.srtLatencyMs),
@@ -136,6 +147,16 @@ export type Problem =
   | { kind: 'url' }
   | { kind: 'wsUrl' }
   | { kind: 'languages' }
+  | { kind: 'tooLong'; max: number }
+  | { kind: 'language' }
+  | { kind: 'glossary' }
+  | { kind: 'server' }
+
+/** The server's limit on free-text settings (internal/api/handlers/settings.go). */
+export const maxTextLength = 200
+
+/** The SRT passphrase's accepted length (libsrt's limits). */
+export const srtPassphraseLength = { min: 10, max: 79 }
 
 const ranges: Partial<Record<Field, [number, number]>> = {
   contextSentences: [0, 10],
@@ -156,9 +177,40 @@ function isUrl(value: string, schemes: string[]) {
   }
 }
 
-/** Client-side checks, mirroring api/openapi.yaml § Settings. */
+/** What a field error code from the server's 400 means for field `f`. */
+export function serverProblem(f: Field, code: string): Problem {
+  switch (code) {
+    case 'settings.invalid_url':
+      return { kind: f === 'obsUrl' ? 'wsUrl' : 'url' }
+    case 'settings.out_of_range': {
+      const r = ranges[f]
+      return r ? { kind: 'integer', min: r[0], max: r[1] } : { kind: 'server' }
+    }
+    case 'settings.too_long':
+      return { kind: 'tooLong', max: maxTextLength }
+    case 'settings.invalid_language':
+      return { kind: 'language' }
+    case 'glossary.not_found':
+      return { kind: 'glossary' }
+    default:
+      return { kind: 'server' }
+  }
+}
+
+const textFields: Field[] = [
+  'liveModel',
+  'translationModel',
+  'whisperModel',
+  'gemmaModel',
+  'preferredInterface',
+]
+
+/** Client-side checks, mirroring api/openapi.yaml § Settings and the server's limits. */
 export function validate(v: SettingsValues): Partial<Record<Field, Problem>> {
   const out: Partial<Record<Field, Problem>> = {}
+  for (const f of textFields)
+    if ([...String(v[f]).trim()].length > maxTextLength)
+      out[f] = { kind: 'tooLong', max: maxTextLength }
   for (const f of required) if (!String(v[f]).trim()) out[f] = { kind: 'required' }
   for (const [f, [min, max]] of Object.entries(ranges) as [Field, [number, number]][]) {
     const raw = String(v[f]).trim()

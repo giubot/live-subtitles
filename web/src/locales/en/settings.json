@@ -15,7 +15,11 @@
       "es": "Spanish"
     },
     "targets": "Caption languages",
-    "targetsHelp": "Viewers pick one of these on their phone."
+    "targetsHelp": "Viewers pick one of these on their phone.",
+    "glossary": "Default glossary",
+    "glossaryNone": "None",
+    "glossaryMissing": "{{id}} (deleted)",
+    "glossaryHelp": "New sessions use it unless they pick another. Glossaries are on the Glossaries page."
   },
   "providers": {
     "title": "AI providers",
@@ -80,7 +84,11 @@
     "url": "Enter a full address starting with http:// or https://.",
     "wsUrl": "Enter a full address starting with ws:// or wss://.",
     "languages": "Pick at least one caption language.",
-    "server": "The server didn’t accept this value."
+    "server": "The server didn’t accept this value.",
+    "tooLong": "Use {{max}} characters or fewer.",
+    "language": "The server doesn’t support this language.",
+    "glossary": "That glossary no longer exists. Pick another or None.",
+    "passphrase": "Use {{min}} to {{max}} characters."
   },
   "keys": {
     "banner": {
@@ -90,7 +98,9 @@
       "localInvalid": "Using local: Google rejected the API key, so Gemini is off",
       "localBody": "New sessions run on this computer with whisper and Ollama. Add a key below to switch to Gemini.",
       "mock": "Using the simulated provider",
-      "mockBody": "This is a development server: sessions show scripted captions."
+      "mockBody": "This is a development server: sessions show scripted captions.",
+      "localUnverified": "Using local: the Google API key couldn’t be checked",
+      "localUnverifiedBody": "Google didn’t answer, so new sessions run on this computer until the key is confirmed. Check the internet connection, then Check key."
     },
     "providersTitle": "Providers",
     "available": "Available",
@@ -106,22 +116,30 @@
       "google_api_key": {
         "title": "Google API key",
         "intro": "Lets sessions use Gemini. Create one in Google AI Studio.",
-        "field": "New API key"
+        "field": "New API key",
+        "save": "Save key",
+        "removeConfirm": "Remove this key?"
       },
       "obs_websocket_password": {
         "title": "OBS WebSocket password",
         "intro": "Only needed to send captions to OBS’s own caption track.",
-        "field": "New password"
+        "field": "New password",
+        "save": "Save password",
+        "removeConfirm": "Remove this password?"
       },
       "srt_passphrase": {
         "title": "SRT passphrase",
         "intro": "Encrypts audio sent over SRT from OBS, vMix or an encoder. Use 10 to 79 characters.",
-        "field": "New passphrase"
+        "field": "New passphrase",
+        "save": "Save passphrase",
+        "removeConfirm": "Remove the passphrase? SRT audio will arrive unencrypted."
       },
       "youtube_caption_url": {
         "title": "YouTube caption URL",
         "intro": "The ingestion URL from YouTube Live Control Room. Each session has its own; set it in the session.",
-        "field": "New caption URL"
+        "field": "New caption URL",
+        "save": "Save URL",
+        "removeConfirm": "Remove this URL?"
       }
     },
     "fieldHelp": "Stored encrypted on this computer. It can’t be shown again, only replaced.",
@@ -137,11 +155,9 @@
     "valid": "Valid",
     "invalid": "Rejected",
     "unchecked": "Not checked",
-    "save": "Save key",
     "validate": "Check key",
     "accepted": "Google accepted the key.",
     "remove": "Remove",
-    "removeConfirm": "Remove this key?",
     "removeYes": "Remove it",
     "removeNo": "Keep it",
     "envReadOnly": "Set by an environment variable, so it can only be changed where the server is started."
@@ -180,7 +196,7 @@
       "macos": [
         "Download the CA certificate and open the file: Keychain Access opens.",
         "Add it to the “System” keychain and enter your Mac password.",
-        "In Keychain Access, double-click “Live Subtitles CA”, open Trust and set “When using this certificate” to “Always Trust”.",
+        "In Keychain Access, double-click “Live Subtitles Local CA”, open Trust and set “When using this certificate” to “Always Trust”.",
         "Close the window, enter your password again, and reload the page."
       ],
       "windows": [
@@ -191,8 +207,8 @@
       ],
       "ios": [
         "Open this page in Safari and tap Download CA certificate, then Allow.",
-        "Open Settings › General › VPN & Device Management, tap the “Live Subtitles CA” profile and install it.",
-        "Go to Settings › General › About › Certificate Trust Settings and turn on full trust for “Live Subtitles CA”.",
+        "Open Settings › General › VPN & Device Management, tap the “Live Subtitles Local CA” profile and install it.",
+        "Go to Settings › General › About › Certificate Trust Settings and turn on full trust for “Live Subtitles Local CA”.",
         "Go back to Safari and reload the page."
       ],
       "android": [

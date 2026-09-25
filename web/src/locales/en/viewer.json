@@ -28,5 +28,6 @@
   "reconnecting": "Connection lost. Reconnecting… captions you missed are filled in when it’s back.",
   "recorded": "This session is recorded",
   "jumpToLive": "Jump to live",
-  "retry": "Try again"
+  "retry": "Try again",
+  "gap": "{{seconds}} s of audio missing"
 }

@@ -15,7 +15,11 @@
       "es": "Español"
     },
     "targets": "Idiomas de subtítulos",
-    "targetsHelp": "El público elige uno de estos en su celular."
+    "targetsHelp": "El público elige uno de estos en su celular.",
+    "glossary": "Glosario predeterminado",
+    "glossaryNone": "Ninguno",
+    "glossaryMissing": "{{id}} (borrado)",
+    "glossaryHelp": "Las sesiones nuevas lo usan salvo que elijan otro. Los glosarios están en la página Glosarios."
   },
   "providers": {
     "title": "Proveedores de IA",
@@ -80,7 +84,11 @@
     "url": "Ingresá una dirección completa que empiece con http:// o https://.",
     "wsUrl": "Ingresá una dirección completa que empiece con ws:// o wss://.",
     "languages": "Elegí al menos un idioma de subtítulos.",
-    "server": "El servidor no aceptó este valor."
+    "server": "El servidor no aceptó este valor.",
+    "tooLong": "Usá {{max}} caracteres o menos.",
+    "language": "El servidor no admite este idioma.",
+    "glossary": "Ese glosario ya no existe. Elegí otro o Ninguno.",
+    "passphrase": "Usá de {{min}} a {{max}} caracteres."
   },
   "keys": {
     "banner": {
@@ -90,7 +98,9 @@
       "localInvalid": "Usando local: Google rechazó la clave de API, así que Gemini está apagado",
       "localBody": "Las sesiones nuevas corren en esta computadora con whisper y Ollama. Agregá una clave abajo para pasar a Gemini.",
       "mock": "Usando el proveedor simulado",
-      "mockBody": "Este es un servidor de desarrollo: las sesiones muestran subtítulos guionados."
+      "mockBody": "Este es un servidor de desarrollo: las sesiones muestran subtítulos guionados.",
+      "localUnverified": "Usando local: no se pudo verificar la clave de API de Google",
+      "localUnverifiedBody": "Google no respondió, así que las sesiones nuevas corren en esta computadora hasta confirmar la clave. Revisá la conexión a internet y después Verificar clave."
     },
     "providersTitle": "Proveedores",
     "available": "Disponible",
@@ -106,22 +116,30 @@
       "google_api_key": {
         "title": "Clave de API de Google",
         "intro": "Permite que las sesiones usen Gemini. Creala en Google AI Studio.",
-        "field": "Nueva clave de API"
+        "field": "Nueva clave de API",
+        "save": "Guardar clave",
+        "removeConfirm": "¿Quitar esta clave?"
       },
       "obs_websocket_password": {
         "title": "Contraseña de OBS WebSocket",
         "intro": "Solo hace falta para mandar subtítulos a la pista de subtítulos propia de OBS.",
-        "field": "Nueva contraseña"
+        "field": "Nueva contraseña",
+        "save": "Guardar contraseña",
+        "removeConfirm": "¿Quitar esta contraseña?"
       },
       "srt_passphrase": {
         "title": "Frase de contraseña SRT",
         "intro": "Cifra el audio que llega por SRT desde OBS, vMix o un codificador. Usá de 10 a 79 caracteres.",
-        "field": "Nueva frase de contraseña"
+        "field": "Nueva frase de contraseña",
+        "save": "Guardar frase de acceso",
+        "removeConfirm": "¿Quitar la frase de acceso? El audio SRT va a llegar sin cifrar."
       },
       "youtube_caption_url": {
         "title": "URL de subtítulos de YouTube",
         "intro": "La URL de ingesta de YouTube Live Control Room. Cada sesión tiene la suya; se configura en la sesión.",
-        "field": "Nueva URL de subtítulos"
+        "field": "Nueva URL de subtítulos",
+        "save": "Guardar URL",
+        "removeConfirm": "¿Quitar esta URL?"
       }
     },
     "fieldHelp": "Se guarda cifrada en esta computadora. No se puede volver a ver, solo reemplazar.",
@@ -137,11 +155,9 @@
     "valid": "Válida",
     "invalid": "Rechazada",
     "unchecked": "Sin verificar",
-    "save": "Guardar clave",
     "validate": "Verificar clave",
     "accepted": "Google aceptó la clave.",
     "remove": "Quitar",
-    "removeConfirm": "¿Quitar esta clave?",
     "removeYes": "Quitarla",
     "removeNo": "Dejarla",
     "envReadOnly": "La define una variable de entorno, así que solo se puede cambiar donde se inicia el servidor."
@@ -180,7 +196,7 @@
       "macos": [
         "Descargá el certificado de la CA y abrí el archivo: se abre Acceso a Llaveros.",
         "Agregalo al llavero “Sistema” e ingresá la contraseña de tu Mac.",
-        "En Acceso a Llaveros, hacé doble clic en “Live Subtitles CA”, abrí Confiar y poné “Al utilizar este certificado” en “Confiar siempre”.",
+        "En Acceso a Llaveros, hacé doble clic en “Live Subtitles Local CA”, abrí Confiar y poné “Al utilizar este certificado” en “Confiar siempre”.",
         "Cerrá la ventana, volvé a ingresar tu contraseña y recargá la página."
       ],
       "windows": [
@@ -191,8 +207,8 @@
       ],
       "ios": [
         "Abrí esta página en Safari, tocá Descargar certificado de la CA y después Permitir.",
-        "Abrí Ajustes › General › VPN y gestión de dispositivos, tocá el perfil “Live Subtitles CA” e instalalo.",
-        "Andá a Ajustes › General › Información › Ajustes de confianza de certificados y activá la confianza total para “Live Subtitles CA”.",
+        "Abrí Ajustes › General › VPN y gestión de dispositivos, tocá el perfil “Live Subtitles Local CA” e instalalo.",
+        "Andá a Ajustes › General › Información › Ajustes de confianza de certificados y activá la confianza total para “Live Subtitles Local CA”.",
         "Volvé a Safari y recargá la página."
       ],
       "android": [
