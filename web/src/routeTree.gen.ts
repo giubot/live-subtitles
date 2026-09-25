@@ -17,6 +17,7 @@ import { Route as OverlayIdRouteImport } from './routes/overlay/$id'
 import { Route as StageIdRouteImport } from './routes/stage/$id'
 import { Route as ThemedAdminIndexRouteImport } from './routes/_themed/admin/index'
 import { Route as ThemedAdminGlossariesRouteImport } from './routes/_themed/admin/glossaries'
+import { Route as ThemedAdminModelsRouteImport } from './routes/_themed/admin/models'
 import { Route as ThemedAdminOverlaysRouteImport } from './routes/_themed/admin/overlays'
 import { Route as ThemedAdminProvidersRouteImport } from './routes/_themed/admin/providers'
 import { Route as ThemedAdminRecordingsRouteImport } from './routes/_themed/admin/recordings'
@@ -65,6 +66,11 @@ const ThemedAdminIndexRoute = ThemedAdminIndexRouteImport.update({
 const ThemedAdminGlossariesRoute = ThemedAdminGlossariesRouteImport.update({
   id: '/glossaries',
   path: '/glossaries',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
+const ThemedAdminModelsRoute = ThemedAdminModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
   getParentRoute: () => ThemedAdminRouteRoute,
 } as any)
 const ThemedAdminOverlaysRoute = ThemedAdminOverlaysRouteImport.update({
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/overlay/$id': typeof OverlayIdRoute
   '/stage/$id': typeof StageIdRoute
   '/admin/glossaries': typeof ThemedAdminGlossariesRoute
+  '/admin/models': typeof ThemedAdminModelsRoute
   '/admin/overlays': typeof ThemedAdminOverlaysRoute
   '/admin/providers': typeof ThemedAdminProvidersRoute
   '/admin/recordings': typeof ThemedAdminRecordingsRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/stage/$id': typeof StageIdRoute
   '/': typeof ThemedIndexRoute
   '/admin/glossaries': typeof ThemedAdminGlossariesRoute
+  '/admin/models': typeof ThemedAdminModelsRoute
   '/admin/overlays': typeof ThemedAdminOverlaysRoute
   '/admin/providers': typeof ThemedAdminProvidersRoute
   '/admin/recordings': typeof ThemedAdminRecordingsRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/stage/$id': typeof StageIdRoute
   '/_themed/': typeof ThemedIndexRoute
   '/_themed/admin/glossaries': typeof ThemedAdminGlossariesRoute
+  '/_themed/admin/models': typeof ThemedAdminModelsRoute
   '/_themed/admin/overlays': typeof ThemedAdminOverlaysRoute
   '/_themed/admin/providers': typeof ThemedAdminProvidersRoute
   '/_themed/admin/recordings': typeof ThemedAdminRecordingsRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/overlay/$id'
     | '/stage/$id'
     | '/admin/glossaries'
+    | '/admin/models'
     | '/admin/overlays'
     | '/admin/providers'
     | '/admin/recordings'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/stage/$id'
     | '/'
     | '/admin/glossaries'
+    | '/admin/models'
     | '/admin/overlays'
     | '/admin/providers'
     | '/admin/recordings'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/stage/$id'
     | '/_themed/'
     | '/_themed/admin/glossaries'
+    | '/_themed/admin/models'
     | '/_themed/admin/overlays'
     | '/_themed/admin/providers'
     | '/_themed/admin/recordings'
@@ -300,6 +312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThemedAdminGlossariesRouteImport
       parentRoute: typeof ThemedAdminRouteRoute
     }
+    '/_themed/admin/models': {
+      id: '/_themed/admin/models'
+      path: '/models'
+      fullPath: '/admin/models'
+      preLoaderRoute: typeof ThemedAdminModelsRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
     '/_themed/admin/overlays': {
       id: '/_themed/admin/overlays'
       path: '/overlays'
@@ -375,6 +394,7 @@ declare module '@tanstack/react-router' {
 
 interface ThemedAdminRouteRouteChildren {
   ThemedAdminGlossariesRoute: typeof ThemedAdminGlossariesRoute
+  ThemedAdminModelsRoute: typeof ThemedAdminModelsRoute
   ThemedAdminOverlaysRoute: typeof ThemedAdminOverlaysRoute
   ThemedAdminProvidersRoute: typeof ThemedAdminProvidersRoute
   ThemedAdminRecordingsRoute: typeof ThemedAdminRecordingsRoute
@@ -385,6 +405,7 @@ interface ThemedAdminRouteRouteChildren {
 
 const ThemedAdminRouteRouteChildren: ThemedAdminRouteRouteChildren = {
   ThemedAdminGlossariesRoute: ThemedAdminGlossariesRoute,
+  ThemedAdminModelsRoute: ThemedAdminModelsRoute,
   ThemedAdminOverlaysRoute: ThemedAdminOverlaysRoute,
   ThemedAdminProvidersRoute: ThemedAdminProvidersRoute,
   ThemedAdminRecordingsRoute: ThemedAdminRecordingsRoute,
