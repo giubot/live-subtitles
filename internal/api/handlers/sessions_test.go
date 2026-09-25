@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -99,10 +100,15 @@ func TestFileSource(t *testing.T) {
 	h := s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
 
 	fixture := filepath.Join(testdata, "audio", "fixtures", "en.wav")
+	// An existing file outside the allowed roots (not /etc/hostname: macOS has none).
+	outside := filepath.Join(t.TempDir(), "outside.wav")
+	if err := os.WriteFile(outside, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	body := func(uri string) string { return `{"uri":` + strconv.Quote(uri) + `,"loop":true}` }
 	for _, c := range []call{
 		{"DELETE", "/api/sessions/main/sources/file", "", "", "", 404, `"code":"source.not_running"`},
-		{"POST", "/api/sessions/main/sources/file", body("/etc/hostname"), "", "", 400, `"code":"source.file_not_allowed"`},
+		{"POST", "/api/sessions/main/sources/file", body(outside), "", "", 400, `"code":"source.file_not_allowed"`},
 		{"POST", "/api/sessions/main/sources/file", body(filepath.Join(testdata, "nope.wav")), "", "", 400, `"code":"source.file_not_found"`},
 		{"POST", "/api/sessions/main/sources/file", `{"uri":"x.wav","startAtSec":-1}`, "", "", 400, `"code":"request.invalid"`},
 		{"POST", "/api/sessions/nope/sources/file", body(fixture), "", "", 404, `"code":"session.not_found"`},
