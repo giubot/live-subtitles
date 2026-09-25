@@ -95,7 +95,7 @@ func TestSecretsHandlers(t *testing.T) {
 			[]string{`"code":"secret.not_found"`}},
 		{"delete env", "DELETE", "/api/secrets/google_api_key", "", &fakeSecrets{values: map[string]string{}, env: map[string]string{"google_api_key": "e"}}, 409,
 			[]string{`"code":"secret.read_only_env"`}},
-		{"validate is P2-07", "POST", "/api/secrets/google_api_key/validate", "", &fakeSecrets{values: map[string]string{}}, 501,
+		{"validate without a rule", "POST", "/api/secrets/google_api_key/validate", "", &fakeSecrets{values: map[string]string{}}, 501,
 			[]string{`"code":"not_implemented"`}},
 	}
 	for _, tt := range tests {

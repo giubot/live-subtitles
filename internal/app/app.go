@@ -37,6 +37,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/provider/local/gemma"
 	"github.com/iencodev/live-subtitles/internal/provider/local/whisper"
 	"github.com/iencodev/live-subtitles/internal/provider/mock"
+	"github.com/iencodev/live-subtitles/internal/provider/selector"
 	"github.com/iencodev/live-subtitles/internal/recording"
 	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/internal/session"
@@ -126,6 +127,16 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	captionBus := bus.New()
 	// The Gemini key and model are read at each session start (AI-11).
 	geminiKey := googleAPIKey(sec)
+	// Default-provider rule (AI-11): Gemini with a valid Google API key,
+	// local otherwise; mock only when a session names it.
+	rule := selector.New(selector.Options{
+		APIKey:    optionalKey(geminiKey),
+		Validator: gemini.KeyValidator{},
+		Local:     selector.LocalProbe{Settings: st.Settings}.Probe,
+		Publish:   func(ev api.AdminEvent) { a.manager.Events().Publish(ev) },
+		Logger:    log,
+	})
+	srv.Providers = rule
 	a.hub = ingest.NewHub(srv.Auth.VerifyIngestToken, ingest.Options{Logger: log})
 	// Recordings live in <data>/recordings/<session>/ (REC-1, REC-5).
 	a.rec = recording.New(recording.Options{Dir: filepath.Join(cfg.DataDir, "recordings"), Store: st,
@@ -136,11 +147,11 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	a.rec.StartRetention()
 	srv.Recordings = a.rec
 	a.manager = session.New(session.Options{
-		Sessions: st,
-		Captions: st,
-		Settings: st,
-		Bus:      captionBus,
-		// Until the default-provider rule (P2-07), `default` resolves to mock.
+		Sessions:        st,
+		Captions:        st,
+		Settings:        st,
+		Bus:             captionBus,
+		DefaultProvider: rule.DefaultProvider,
 		Providers: map[domain.ProviderKind]session.Provider{
 			api.ProviderKindMock: {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
 			api.ProviderKindGemini: {
@@ -161,6 +172,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		Logger:        log,
 	})
 	srv.Manager = a.manager
+	rule.Warm(ctx)
 	// Test sources may read files from the data directory and ./testdata.
 	srv.Files = &ffmpeg.Files{Binary: cfg.FFmpeg, Roots: []string{cfg.DataDir, "testdata"}}
 	srv.CaptionsWS = bus.NewCaptionsHandler(captionBus, log, bus.WithSessionLookup(func(ctx context.Context, id string) error {
@@ -181,6 +193,17 @@ func googleAPIKey(sec domain.SecretStore) func(ctx context.Context) (string, err
 		v, _, err := sec.GetSecret(ctx, string(api.GoogleApiKey))
 		if errors.Is(err, secrets.ErrNotFound) {
 			return "", gemini.ErrNoAPIKey
+		}
+		return v, err
+	}
+}
+
+// optionalKey turns a missing key into "" for the default-provider rule.
+func optionalKey(key func(context.Context) (string, error)) func(context.Context) (string, error) {
+	return func(ctx context.Context) (string, error) {
+		v, err := key(ctx)
+		if errors.Is(err, gemini.ErrNoAPIKey) {
+			return "", nil
 		}
 		return v, err
 	}

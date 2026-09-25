@@ -30,8 +30,8 @@ type Options struct {
 	Bus      domain.CaptionBus
 	// Providers by kind. A session whose provider is missing fails to start.
 	Providers map[domain.ProviderKind]Provider
-	// DefaultProvider resolves `provider: default` (AI-11); nil means mock
-	// until the default-provider rule lands (P2-07).
+	// DefaultProvider resolves `provider: default` (AI-11, the
+	// provider/selector rule); nil means mock (tests).
 	DefaultProvider func(ctx context.Context) domain.ProviderKind
 	// IngestSource returns the session's browser ingest source (/ws/ingest),
 	// used when Start gets no source.

@@ -146,6 +146,41 @@
         "title": "The whisper model only understands English",
         "why": "Local speech recognition uses {{model}}, an English-only (.en) model that can't transcribe Spanish.",
         "fix": "Start whisper-server with a multilingual model such as large-v3-turbo, and set its name in the local provider settings."
+      },
+      "no_api_key": {
+        "title": "Gemini needs a Google API key",
+        "why": "No Google API key is saved, so new sessions use the local provider.",
+        "fix": "Add a key in Settings to use Gemini, or keep running everything on this computer."
+      },
+      "key_unverified": {
+        "title": "The Google API key couldn’t be checked",
+        "why": "The server couldn’t reach Google, so it doesn’t know whether the key works. New sessions use the local provider until it can check.",
+        "fix": "Check the internet connection, then check the key again in Settings."
+      },
+      "whisper_unreachable": {
+        "title": "whisper-server isn’t answering",
+        "why": "Local speech recognition needs whisper-server running at the address in the local provider settings.",
+        "fix": "Start whisper-server (see docs/dev.md) or fix its address in Settings."
+      },
+      "ollama_unreachable": {
+        "title": "Ollama isn’t answering",
+        "why": "Local translation needs Ollama running at the address in the local provider settings.",
+        "fix": "Start Ollama (see docs/dev.md) or fix its address in Settings."
+      },
+      "fallback_key_invalid": {
+        "title": "New sessions use the local provider",
+        "why": "Google rejected the saved API key, so sessions set to the default provider no longer use Gemini.",
+        "fix": "Save a valid key in Settings, or pick a provider for each session."
+      },
+      "fallback_key_removed": {
+        "title": "New sessions use the local provider",
+        "why": "The Google API key was removed, so sessions set to the default provider no longer use Gemini.",
+        "fix": "Save a key in Settings to use Gemini again."
+      },
+      "fallback_key_unverified": {
+        "title": "New sessions use the local provider",
+        "why": "The Google API key couldn’t be checked because Google is unreachable, so sessions set to the default provider don’t use Gemini for now.",
+        "fix": "Check the internet connection. The server checks the key again on its own."
       }
     },
     "auth": {
@@ -295,6 +330,11 @@
         "title": "The server doesn’t know this key",
         "why": "The app and the server are probably different versions.",
         "fix": "Reload the page. If it keeps happening, update the server."
+      },
+      "validation_unsupported": {
+        "title": "This key can’t be checked",
+        "why": "The server has no way to test this secret against its service.",
+        "fix": "Save it and try it where it’s used."
       }
     },
     "recording": {

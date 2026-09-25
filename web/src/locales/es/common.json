@@ -146,6 +146,41 @@
         "title": "El modelo de whisper solo entiende inglés",
         "why": "El reconocimiento de voz local usa {{model}}, un modelo solo en inglés (.en), que no puede transcribir español.",
         "fix": "Iniciá whisper-server con un modelo multilingüe, como large-v3-turbo, y poné su nombre en los ajustes del proveedor local."
+      },
+      "no_api_key": {
+        "title": "Gemini necesita una clave de API de Google",
+        "why": "No hay una clave de API de Google guardada, así que las sesiones nuevas usan el proveedor local.",
+        "fix": "Agregá una clave en Configuración para usar Gemini, o seguí con todo en esta computadora."
+      },
+      "key_unverified": {
+        "title": "No se pudo comprobar la clave de API de Google",
+        "why": "El servidor no pudo conectarse con Google, así que no sabe si la clave funciona. Las sesiones nuevas usan el proveedor local hasta que pueda comprobarla.",
+        "fix": "Revisá la conexión a internet y volvé a comprobar la clave en Configuración."
+      },
+      "whisper_unreachable": {
+        "title": "whisper-server no responde",
+        "why": "El reconocimiento de voz local necesita whisper-server funcionando en la dirección de los ajustes del proveedor local.",
+        "fix": "Iniciá whisper-server (ver docs/dev.md) o corregí su dirección en Configuración."
+      },
+      "ollama_unreachable": {
+        "title": "Ollama no responde",
+        "why": "La traducción local necesita Ollama funcionando en la dirección de los ajustes del proveedor local.",
+        "fix": "Iniciá Ollama (ver docs/dev.md) o corregí su dirección en Configuración."
+      },
+      "fallback_key_invalid": {
+        "title": "Las sesiones nuevas usan el proveedor local",
+        "why": "Google rechazó la clave de API guardada, así que las sesiones con el proveedor predeterminado ya no usan Gemini.",
+        "fix": "Guardá una clave válida en Configuración, o elegí un proveedor para cada sesión."
+      },
+      "fallback_key_removed": {
+        "title": "Las sesiones nuevas usan el proveedor local",
+        "why": "Se quitó la clave de API de Google, así que las sesiones con el proveedor predeterminado ya no usan Gemini.",
+        "fix": "Guardá una clave en Configuración para volver a usar Gemini."
+      },
+      "fallback_key_unverified": {
+        "title": "Las sesiones nuevas usan el proveedor local",
+        "why": "No se pudo comprobar la clave de API de Google porque Google no responde, así que por ahora las sesiones con el proveedor predeterminado no usan Gemini.",
+        "fix": "Revisá la conexión a internet. El servidor vuelve a comprobar la clave solo."
       }
     },
     "auth": {
@@ -295,6 +330,11 @@
         "title": "El servidor no conoce esta clave",
         "why": "Probablemente la app y el servidor son versiones distintas.",
         "fix": "Recargá la página. Si sigue pasando, actualizá el servidor."
+      },
+      "validation_unsupported": {
+        "title": "Esta clave no se puede comprobar",
+        "why": "El servidor no tiene forma de probar este secreto contra su servicio.",
+        "fix": "Guardala y probala donde se usa."
       }
     },
     "recording": {

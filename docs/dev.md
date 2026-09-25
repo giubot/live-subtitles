@@ -83,9 +83,25 @@ A running session is one pipeline: audio source → speech recognition → one t
 
 - Translation (`internal/translate`) runs one queue per target language. Final captions are translated in order and never dropped; interim captions are debounced to the translator's pace (only the newest waits); a target equal to the detected source language shows the original text without a translation call. Each request carries the last `translation.contextSentences` final sentences (default 3) as context. All text translators share one prompt template (`internal/translate/prompt.go`), which also renders the session glossary's terms and do-not-translate list. With Gemini, finals stream in as interims while they're translated; the model is `providers.gemini.translationModel` (default `gemini-3.5-flash-lite`, with thinking at its minimal level) and the key is the `google_api_key` secret, both read at call time.
 - A session with provider `gemini` runs on the [Gemini provider](#gemini-provider); provider `local` transcribes with whisper-server and translates with Gemma through Ollama ([Local AI provider](#local-ai-provider)).
-- Provider `mock`, and `default` until the default-provider rule (P2-07), runs on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
+- Provider `default` follows the [default-provider rule](#default-provider-rule): Gemini with a valid Google API key, local otherwise.
+- Provider `mock` runs on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions. It is never the default; name it on the session (development, demos, load tests).
 - Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
 - `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
+
+### Default-provider rule
+
+`provider: default` resolves when a session starts (and in each session's `effectiveProvider`), per AI-11 (`internal/provider/selector`):
+
+| Google API key (`google_api_key`) | Default | `defaultReason` |
+|---|---|---|
+| Saved, and Google accepts it | `gemini` | `google_api_key_valid` |
+| Not saved | `local` | `no_google_api_key` |
+| Saved, Google rejects it (400/401/403) | `local` | `google_api_key_invalid` |
+| Saved, Google unreachable and never checked | `local` | omitted; the gemini entry's `reasonCode` is `provider.key_unverified` |
+
+The key is checked by listing one model (`GET /v1beta/models?pageSize=1`), which costs no tokens. A 429 counts as valid (the key works, it's over quota). A result is kept for 10 minutes per key value (only a hash of it is kept), and after that the old result is used while a background check refreshes it. If Google can't be reached, a key keeps its last result and is retried after 30 s. Saving a key checks it right away (unless the body has `"validate": false`); an invalid key is still stored and the response says `"valid": false`. `POST /api/secrets/google_api_key/validate` checks it on demand, with a repeat within 5 s returning the previous result. `SecretInfo.valid` is the last result for the current value. The OBS password has no check (422 `secret.validation_unsupported`).
+
+When the default falls back to local because the key is rejected, removed or can't be checked, `/ws/admin` gets one `log` event at level `warn` with the code `provider.fallback_key_invalid`, `provider.fallback_key_removed` or `provider.fallback_key_unverified`. Having no key from the start is normal and doesn't warn. `GET /api/providers` gives the same decision for a lasting banner, plus whether each provider is available: gemini when the key is valid, local when whisper-server (`/health`) and Ollama (`/api/version`) answer at the URLs in the settings (`provider.whisper_unreachable`, `provider.ollama_unreachable`), and mock always. Local is still the default when its sidecars are down; the session then fails at start with `provider.unavailable`.
 
 ### Latency and cost
 
@@ -116,7 +132,7 @@ VTT and SRT cues hold at most 2 lines of 42 characters (settings `captions.maxLi
 
 ## Gemini provider
 
-A session with `provider: gemini` transcribes with the [Gemini Live API](https://ai.google.dev/gemini-api/docs/live). It needs a Google API key (Google AI Studio) in the `google_api_key` secret: paste it in Settings, or export `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) before starting the server. The key and the model are read when a session starts, so changing them only affects the next start. Without a key the start fails with `provider.unavailable`.
+A session with `provider: gemini` transcribes with the [Gemini Live API](https://ai.google.dev/gemini-api/docs/live). It needs a Google API key (Google AI Studio) in the `google_api_key` secret: paste it in Settings, or export `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) before starting the server. The key and the model are read when a session starts, so changing them only affects the next start. Without a key the start fails with `provider.unavailable`. A valid key also makes Gemini the default provider ([default-provider rule](#default-provider-rule)).
 
 - **Model**: settings `providers.gemini.liveModel`, default `gemini-3.5-transcribe-live`, Gemini's [streaming transcription model](https://ai.google.dev/gemini-api/docs/live-api/live-transcribe). The setup asks for text responses and input transcription in `SMART` mode, which drops filler words and false starts. The provider is built for this model; conversational Live models such as the 2.5 native-audio ones, now limited to past users, aren't supported.
 - **Captions**: audio goes out as 16 kHz mono PCM in 100 ms chunks, and the server's voice activity detection splits the speech into utterances. Each utterance is one caption: the server's interim transcription replaces its text while the speaker talks, and the server's final transcription, sent when the speaker pauses, is its final. A final with several sentences becomes one caption per sentence. As a safety net, an interim becomes final 1 s after the end of a turn with no final, after 5 s without updates, or when the audio ends. A server final that arrives after such a flush is dropped rather than shown twice. Live transcription has no timestamps, so caption times are estimates on the session clock: a caption ends where the audio was when its text last changed.
@@ -126,7 +142,7 @@ A session with `provider: gemini` transcribes with the [Gemini Live API](https:/
 - **Drops**: a connection that drops unexpectedly is reopened with backoff (0.5 s doubling to 10 s, 8 tries). Meanwhile up to 15 s of audio is kept and sent on reconnect; anything older is logged as an audio gap (`gemini live reconnected; audio was lost`, with the session-clock range). Each drop also shows as a `provider.error` on the session. A drop during a rotation switches straight to the already-open next connection, with no error.
 - **Usage**: the seconds of audio sent go to `usage` as audio, and the text tokens the API reports as output tokens. Audio isn't counted as input tokens.
 
-`go test -tags gemini -run 'Integration|Live' -v ./internal/provider/gemini/` with `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency, then translates a caption each way (`GEMINI_LIVE_MODEL` and `GEMINI_TRANSLATION_MODEL` override the models). Without the tag or the key it's skipped, so CI never calls Google.
+`go test -tags gemini -run 'Integration|Live' -v ./internal/provider/gemini/` with `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency, translates a caption each way and checks the key validator with the real key and a made-up one (`GEMINI_LIVE_MODEL` and `GEMINI_TRANSLATION_MODEL` override the models). Without the tag or the key it's skipped, so CI never calls Google.
 
 Measured on 2026-09-24 from Buenos Aires with the ~10 s fixtures:
 

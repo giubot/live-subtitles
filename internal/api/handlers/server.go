@@ -25,6 +25,9 @@ type Server struct {
 
 	// Secrets stores API keys and passwords; nil: secrets operations answer 501.
 	Secrets domain.SecretStore
+	// Providers resolves the default provider and checks keys (P2-07);
+	// nil: listProviders and validateSecret answer 501.
+	Providers ProviderRule
 
 	// Sessions, Captions and Settings are the stores; nil: the operations
 	// that need them answer 501.
