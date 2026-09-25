@@ -38,13 +38,25 @@
     "runtimeOk": "{{name}} encontrado",
     "runtimeMissing": "Falta {{name}}",
     "recommend": "Modelos recomendados para esta computadora: voz {{whisper}}, traducción {{gemma}}.",
-    "slow": "Puede que los modelos locales no lleguen a tiempo real acá. Agregá una API key de Google en un paso siguiente y se usa Gemini.",
-    "benchmarkHelp": "La prueba corre los modelos locales sobre un audio corto incluido. Tarda más o menos un minuto.",
+    "slow": "Por su hardware, puede que esta computadora no corra los modelos locales en tiempo real. Corré la prueba para medirlo, o agregá una API key de Google en un paso siguiente para usar Gemini.",
+    "benchmarkHelp": "La prueba corre los modelos locales sobre un audio incluido de unos 40 segundos. Necesita whisper-server y Ollama corriendo, y puede tardar unos minutos.",
     "benchmark": "Correr prueba",
     "rtf": "Factor de tiempo real",
-    "rtfDetail": "Voz {{asr}} ms · traducción {{translation}} ms",
+    "rtfDetail": "Voz {{asr}} s · traducción {{translation}} s",
     "realtime": "Llega a tiempo real",
-    "notRealtime": "Más lento que tiempo real"
+    "notRealtime": "Más lento que tiempo real",
+    "recheck": "Revisar de nuevo",
+    "version": "Versión {{version}}",
+    "notAnswering": "No responde en {{url}}",
+    "localMissing": "No están corriendo: {{names}}. El proveedor local y la prueba necesitan los dos. Inicialos (ver docs/dev.md) y revisá de nuevo, o seguí y agregá una API key de Google para usar Gemini.",
+    "slowMeasured": "La prueba indica que los modelos locales no llegan a tiempo real acá. Usá modelos más chicos, o agregá una API key de Google en un paso siguiente para usar Gemini.",
+    "benchmarkRunning": "Corriendo la prueba…",
+    "benchmarkSkip": "La prueba es opcional: seguí sin ella y corrala más tarde desde esta página.",
+    "rtfLimit": "Llega con {{max}}× o menos",
+    "timing": "Tiempo de proceso",
+    "clip": "Para un audio de {{seconds}} s",
+    "ranWith": "Medido con {{models}} · {{at}}",
+    "ranAt": "Medido el {{at}}"
   },
   "models": {
     "heading": "Modelos locales",
@@ -56,7 +68,6 @@
     "download": "Descargar",
     "retry": "Descargar de nuevo",
     "recommended": "Recomendado",
-    "size": "{{value}} GB",
     "kind": {
       "whisper": "Voz (whisper)",
       "gemma": "Traducción (Gemma)"
@@ -69,7 +80,16 @@
       "error": "Falló"
     },
     "progress": "Descargando {{name}}",
-    "background": "Las descargas siguen en el servidor aunque avances o cierres esta página."
+    "background": "Las descargas siguen en el servidor aunque avances o cierres esta página. Una descarga detenida sigue desde donde quedó.",
+    "recheck": "Revisar de nuevo",
+    "resume": "Seguir descarga",
+    "paused": "Detenido en {{percent}}",
+    "needsOllama": "Necesita Ollama",
+    "progressOf": "{{done}} de {{total}} · {{percent}}",
+    "verifying": "Verificando el checksum del archivo…",
+    "whisperDown": "whisper-server no responde en {{url}}. Los modelos de voz se descargan igual, pero hay que iniciar whisper-server con uno (--model <carpeta de modelos>/ggml-<nombre>.bin) para que funcionen las sesiones locales.",
+    "ollamaDown": "Ollama no responde en {{url}}, y los modelos de traducción Gemma se descargan a través de él.",
+    "startSidecars": "Inicialos (ver docs/dev.md) y revisá de nuevo, o salteá este paso si vas a usar Gemini."
   },
   "google": {
     "heading": "API key de Google (opcional)",
@@ -83,13 +103,22 @@
     "reason": {
       "google_api_key_valid": "Hay una API key de Google válida guardada.",
       "no_google_api_key": "No hay una API key de Google guardada.",
-      "google_api_key_invalid": "Google rechazó la API key guardada."
+      "google_api_key_invalid": "Google rechazó la API key guardada.",
+      "unverified": "Hay una API key de Google guardada pero todavía no se pudo verificar, así que por ahora las sesiones usan el proveedor local."
     },
     "key": "API key de Google",
-    "keyHelp": "Creala en Google AI Studio. Se guarda en el llavero del sistema y no se vuelve a mostrar.",
+    "keyHelp": "Creala en Google AI Studio. El servidor la guarda en el llavero del sistema o en su archivo cifrado de secretos, y no la vuelve a mostrar.",
     "saved": "Hay una key guardada. Ingresá otra para reemplazarla.",
     "savedHint": "Key guardada {{hint}}. Ingresá otra para reemplazarla.",
-    "save": "Guardar y verificar key"
+    "save": "Guardar y verificar key",
+    "localNotReady": "El proveedor local no está listo: whisper-server u Ollama no están corriendo. Las sesiones no pueden iniciar hasta que los inicies o agregues una API key de Google válida.",
+    "valid": "Key válida",
+    "invalid": "Key rechazada",
+    "unchecked": "Sin verificar",
+    "uncheckedHelp": "El servidor no pudo contactar a Google para verificar la key. Las sesiones usan el proveedor local hasta que pueda; verificala de nuevo cuando esta computadora tenga internet.",
+    "fromEnv": "La key viene de la variable de entorno GOOGLE_API_KEY. Cambiala ahí y reiniciá el servidor.",
+    "check": "Verificar de nuevo",
+    "replaceKey": "Nueva API key de Google"
   },
   "session": {
     "heading": "Primera sesión",
@@ -100,7 +129,9 @@
     "slug": "Dirección",
     "slugHelp": "Parte de los links de la sesión. Minúsculas, números y guiones.",
     "slugInvalid": "Usá minúsculas, números y guiones, empezando con una letra o un número.",
-    "create": "Crear sesión"
+    "create": "Crear sesión",
+    "introProvider": "Una sesión es una sala o escenario. Tiene subtítulos en {{languages}} con {{provider}}, el proveedor predeterminado; podés cambiar todo esto después en el admin.",
+    "slugTaken": "Otra sesión ya usa esta dirección. Elegí otra."
   },
   "finish": {
     "heading": "Listo",
@@ -109,6 +140,7 @@
     "capture": "Link de captura",
     "captureHint": "El link lleva el token de ingesta de la sesión y solo se muestra ahora. Si lo perdés, generá uno nuevo desde la sesión en el admin.",
     "viewer": "Link para el público",
-    "qr": "Escaneá para abrir la página de captura en un celular"
+    "qr": "Escaneá para abrir la página de captura en un celular",
+    "provider": "Los subtítulos los genera {{provider}}. Cambiá el proveedor en la configuración de la sesión."
   }
 }

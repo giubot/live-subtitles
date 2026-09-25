@@ -38,13 +38,25 @@
     "runtimeOk": "{{name}} found",
     "runtimeMissing": "{{name}} missing",
     "recommend": "Recommended models for this computer: speech {{whisper}}, translation {{gemma}}.",
-    "slow": "The local models may not keep up in real time here. Add a Google API key in a later step, and Gemini is used instead.",
-    "benchmarkHelp": "The benchmark runs the local models on a short bundled clip. It takes about a minute.",
+    "slow": "From its hardware, this computer may not run the local models in real time. Run the benchmark to measure it, or add a Google API key in a later step to use Gemini.",
+    "benchmarkHelp": "The benchmark runs the local models on a bundled clip of about 40 seconds. It needs whisper-server and Ollama running, and can take a few minutes.",
     "benchmark": "Run benchmark",
     "rtf": "Real-time factor",
-    "rtfDetail": "Speech {{asr}} ms · translation {{translation}} ms",
+    "rtfDetail": "Speech {{asr}} s · translation {{translation}} s",
     "realtime": "Keeps up in real time",
-    "notRealtime": "Slower than real time"
+    "notRealtime": "Slower than real time",
+    "recheck": "Check again",
+    "version": "Version {{version}}",
+    "notAnswering": "Not answering at {{url}}",
+    "localMissing": "Not running: {{names}}. The local provider and the benchmark need both. Start them (see docs/dev.md), then check again, or skip ahead and add a Google API key to use Gemini.",
+    "slowMeasured": "The benchmark says the local models don’t keep up in real time here. Use smaller models, or add a Google API key in a later step to use Gemini.",
+    "benchmarkRunning": "Running the benchmark…",
+    "benchmarkSkip": "The benchmark is optional: continue without it, and run it later from this page.",
+    "rtfLimit": "Keeps up at {{max}}× or less",
+    "timing": "Processing time",
+    "clip": "For a {{seconds}} s clip",
+    "ranWith": "Measured with {{models}} · {{at}}",
+    "ranAt": "Measured {{at}}"
   },
   "models": {
     "heading": "Local models",
@@ -56,7 +68,6 @@
     "download": "Download",
     "retry": "Download again",
     "recommended": "Recommended",
-    "size": "{{value}} GB",
     "kind": {
       "whisper": "Speech (whisper)",
       "gemma": "Translation (Gemma)"
@@ -69,7 +80,16 @@
       "error": "Failed"
     },
     "progress": "Downloading {{name}}",
-    "background": "Downloads continue on the server if you move on or close this page."
+    "background": "Downloads continue on the server if you move on or close this page. A stopped download resumes where it left off.",
+    "recheck": "Check again",
+    "resume": "Resume download",
+    "paused": "Stopped at {{percent}}",
+    "needsOllama": "Needs Ollama",
+    "progressOf": "{{done}} of {{total}} · {{percent}}",
+    "verifying": "Checking the file’s checksum…",
+    "whisperDown": "whisper-server isn’t answering at {{url}}. The speech models still download here, but whisper-server has to be started with one (--model <models dir>/ggml-<name>.bin) before local sessions work.",
+    "ollamaDown": "Ollama isn’t answering at {{url}}, and the Gemma translation models download through it.",
+    "startSidecars": "Start them (see docs/dev.md) and check again, or skip this step if you’ll use Gemini."
   },
   "google": {
     "heading": "Google API key (optional)",
@@ -83,13 +103,22 @@
     "reason": {
       "google_api_key_valid": "A valid Google API key is saved.",
       "no_google_api_key": "No Google API key is saved.",
-      "google_api_key_invalid": "Google rejected the saved API key."
+      "google_api_key_invalid": "Google rejected the saved API key.",
+      "unverified": "A Google API key is saved but couldn’t be checked yet, so sessions use the local provider for now."
     },
     "key": "Google API key",
-    "keyHelp": "Create one in Google AI Studio. It’s stored in the OS keychain and never shown again.",
-    "saved": "A key is saved. Enter a new one to replace it.",
+    "keyHelp": "Create one in Google AI Studio. The server stores it in the OS keychain or its encrypted secrets file, and never shows it again.",
     "savedHint": "Saved key {{hint}}. Enter a new one to replace it.",
-    "save": "Save and check key"
+    "save": "Save and check key",
+    "localNotReady": "The local provider isn’t ready: whisper-server or Ollama isn’t running. Sessions can’t start until you start them or add a valid Google API key.",
+    "valid": "Key works",
+    "invalid": "Key rejected",
+    "unchecked": "Not checked",
+    "uncheckedHelp": "The server couldn’t reach Google to check the key. Sessions use the local provider until it can; check again once this computer is online.",
+    "fromEnv": "The key comes from the GOOGLE_API_KEY environment variable. Change it there and restart the server.",
+    "check": "Check again",
+    "replaceKey": "New Google API key",
+    "saved": "A key is saved. Enter a new one to replace it."
   },
   "session": {
     "heading": "First session",
@@ -100,7 +129,9 @@
     "slug": "Address",
     "slugHelp": "Part of the session’s links. Lowercase letters, numbers and hyphens.",
     "slugInvalid": "Use lowercase letters, numbers and hyphens, starting with a letter or number.",
-    "create": "Create session"
+    "create": "Create session",
+    "introProvider": "A session is one room or stage. It gets captions in {{languages}} with {{provider}}, the default provider; change any of this later in the admin.",
+    "slugTaken": "A session already uses this address. Pick another one."
   },
   "finish": {
     "heading": "Ready",
@@ -109,6 +140,7 @@
     "capture": "Capture link",
     "captureHint": "The link carries the session’s ingest token and is only shown now. If you lose it, make a new one from the session in the admin.",
     "viewer": "Audience link",
-    "qr": "Scan to open the capture page on a phone"
+    "qr": "Scan to open the capture page on a phone",
+    "provider": "Captions come from {{provider}}. Change the provider in the session’s settings."
   }
 }

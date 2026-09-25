@@ -19,7 +19,6 @@ import {
   captureUrl,
   newSessionValues,
   slugify,
-  toBody,
   validate,
   type Session,
 } from './sessionForm'
@@ -35,10 +34,16 @@ export interface SetupSessionProps {
   onSkip: () => void
 }
 
-/** Step 6: the first session, with the default languages and provider. */
+/**
+ * Step 5: the first session. Only its name and address are sent, so the
+ * server fills in the settings defaults (languages, glossary, recording)
+ * and the default provider, as for any new session.
+ */
 export function SetupSession({ onBack, onCreated, onSkip }: SetupSessionProps) {
   const { t } = useTranslation('setup')
   const queryClient = useQueryClient()
+  const settings = api.useQuery('get', '/api/settings')
+  const providers = api.useQuery('get', '/api/providers')
   const [v, setV] = useState(newSessionValues)
   const [slugEdited, setSlugEdited] = useState(false)
   const [touched, setTouched] = useState(false)
@@ -50,21 +55,33 @@ export function SetupSession({ onBack, onCreated, onSkip }: SetupSessionProps) {
     },
   })
   const bad = touched ? validate(v, true) : {}
+  // The server's verdict on the fields, e.g. a slug that's taken.
+  const serverFields = create.error && 'fields' in create.error ? (create.error.fields ?? {}) : {}
+  const slugTaken = create.error?.code === 'session.slug_taken'
+  const slugBad = !!bad.slug || !!serverFields.slug || slugTaken
+  const nameBad = !!bad.name || !!serverFields.name
+  const languages = settings.data?.defaultTargetLanguages ?? newSessionValues.targetLanguages
+  const provider = providers.data?.defaultProvider
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setTouched(true)
     if (Object.keys(validate(v, true)).length > 0) return
-    create.mutate({ body: { ...toBody(v), slug: v.slug } })
+    create.mutate({ body: { name: v.name.trim(), slug: v.slug } })
   }
 
   return (
     <SetupFrame
       step="session"
       heading={t('session.heading')}
-      intro={t('session.intro', {
-        languages: v.targetLanguages.map(nativeLanguageName).join(', '),
-      })}
+      intro={
+        provider
+          ? t('session.introProvider', {
+              languages: languages.map(nativeLanguageName).join(', '),
+              provider: t(`google.provider.${provider}`),
+            })
+          : t('session.intro', { languages: languages.map(nativeLanguageName).join(', ') })
+      }
       canLeave
     >
       <Box
@@ -82,11 +99,11 @@ export function SetupSession({ onBack, onCreated, onSkip }: SetupSessionProps) {
             const name = e.target.value
             setV((prev) => ({ ...prev, name, slug: slugEdited ? prev.slug : slugify(name) }))
           }}
-          error={!!bad.name}
-          helperText={bad.name ? t('session.nameRequired') : t('session.nameHelp')}
+          error={nameBad}
+          helperText={nameBad ? t('session.nameRequired') : t('session.nameHelp')}
           slotProps={{
             inputLabel: { shrink: true },
-            htmlInput: { 'aria-invalid': !!bad.name || undefined },
+            htmlInput: { 'aria-invalid': nameBad || undefined },
           }}
         />
         <TextField
@@ -94,13 +111,20 @@ export function SetupSession({ onBack, onCreated, onSkip }: SetupSessionProps) {
           value={v.slug}
           onChange={(e) => {
             setSlugEdited(true)
+            if (slugTaken) create.reset()
             setV((prev) => ({ ...prev, slug: e.target.value }))
           }}
-          error={!!bad.slug}
-          helperText={bad.slug ? t('session.slugInvalid') : t('session.slugHelp')}
+          error={slugBad}
+          helperText={
+            slugTaken
+              ? t('session.slugTaken')
+              : slugBad
+                ? t('session.slugInvalid')
+                : t('session.slugHelp')
+          }
           slotProps={{
             inputLabel: { shrink: true },
-            htmlInput: { 'aria-invalid': !!bad.slug || undefined, spellCheck: false },
+            htmlInput: { 'aria-invalid': slugBad || undefined, spellCheck: false },
           }}
         />
         <Box
@@ -156,6 +180,11 @@ export function SetupDone({ created, onBack }: { created?: CreatedSession; onBac
               {t('finish.captureHint')}
             </Typography>
             <CopyField label={t('finish.viewer')} value={created.session.urls.viewer} />
+            <Typography variant="body2" sx={{ color: 'var(--color-neutral)' }}>
+              {t('finish.provider', {
+                provider: t(`google.provider.${created.session.effectiveProvider}`),
+              })}
+            </Typography>
           </Box>
           <Box
             sx={{
