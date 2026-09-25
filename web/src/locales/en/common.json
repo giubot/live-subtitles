@@ -181,6 +181,21 @@
         "title": "New sessions use the local provider",
         "why": "The Google API key couldn’t be checked because Google is unreachable, so sessions set to the default provider don’t use Gemini for now.",
         "fix": "Check the internet connection. The server checks the key again on its own."
+      },
+      "restarting": {
+        "title": "Restarting the AI provider",
+        "why": "{{provider}} stopped transcribing unexpectedly. The session stays live and tries again in {{retryInMs}} ms (attempt {{attempt}} of {{maxAttempts}}).",
+        "fix": "Nothing to do yet. If it keeps failing, check that {{provider}} is reachable."
+      },
+      "restarted": {
+        "title": "The AI provider is back",
+        "why": "{{provider}} restarted on attempt {{attempt}}. The audio in between has no captions, and the gap is marked.",
+        "fix": "Nothing to do."
+      },
+      "failed": {
+        "title": "The AI provider stopped working",
+        "why": "{{provider}} kept failing and didn't recover after {{attempts}} restarts, so the session stopped.",
+        "fix": "Check that {{provider}} is reachable (its sidecar, the network or the API key), then start the session again or switch provider."
       }
     },
     "auth": {
@@ -286,6 +301,16 @@
         "title": "The SRT passphrase isn't valid",
         "why": "SRT passphrases must be {{min}} to {{max}} characters long.",
         "fix": "Set a new SRT passphrase in Settings, or remove it to receive without encryption."
+      },
+      "restarting": {
+        "title": "Reconnecting the audio source",
+        "why": "The {{source}} input failed. The session stays live and tries again in {{retryInMs}} ms (attempt {{attempt}} of {{maxAttempts}}).",
+        "fix": "Nothing to do yet. If it keeps failing, check the audio input."
+      },
+      "restarted": {
+        "title": "The audio source is back",
+        "why": "The {{source}} input restarted on attempt {{attempt}}. The audio in between is missing, and the gap is marked.",
+        "fix": "Nothing to do."
       }
     },
     "capture": {
@@ -458,6 +483,13 @@
         "title": "The glossary is too long",
         "why": "A glossary holds up to 1000 terms, entries of up to 200 characters and a name of up to 120, so it fits in the models' prompts.",
         "fix": "Shorten the long entries, or split the glossary by talk or track."
+      }
+    },
+    "audio": {
+      "gap": {
+        "title": "Some audio was lost",
+        "why": "{{gapMs}} ms of audio at {{atSec}} s never reached the provider, because it restarted or the capture station reconnected. Those words have no captions.",
+        "fix": "Nothing to do if it's rare. If it happens often, check the capture station's network and the provider."
       }
     }
   }

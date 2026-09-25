@@ -67,6 +67,9 @@ type Options struct {
 	// Observer, if set, gets caption latencies and run errors as they
 	// happen, for /metrics (P3-13).
 	Observer Observer
+	// Restart configures the automatic restart of a crashed provider
+	// stream or a failed source (SES-5).
+	Restart RestartPolicy
 }
 
 // Observer receives pipeline measurements (metrics.App implements it).
@@ -141,6 +144,7 @@ func New(opts Options) *Manager {
 	if opts.TranslateTimeout <= 0 {
 		opts.TranslateTimeout = 15 * time.Second
 	}
+	opts.Restart = opts.Restart.withDefaults()
 	pricing := metrics.DefaultPricing()
 	if opts.Pricing != nil {
 		pricing = *opts.Pricing

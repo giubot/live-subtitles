@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,6 +71,13 @@ func (s *Source) Err() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.err
+}
+
+// Restartable tells the session whether to start the source again after an
+// ffmpeg failure (SES-5): yes for a stream, no for a local file, which
+// would play again from its beginning.
+func (s *Source) Restartable() bool {
+	return !slices.Contains(s.Protocols, "file") && !strings.HasPrefix(s.Input, "file:")
 }
 
 func (s *Source) args() []string {

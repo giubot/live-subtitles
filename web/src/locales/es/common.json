@@ -181,6 +181,21 @@
         "title": "Las sesiones nuevas usan el proveedor local",
         "why": "No se pudo comprobar la clave de API de Google porque Google no responde, así que por ahora las sesiones con el proveedor predeterminado no usan Gemini.",
         "fix": "Revisá la conexión a internet. El servidor vuelve a comprobar la clave solo."
+      },
+      "restarting": {
+        "title": "Reiniciando el proveedor de IA",
+        "why": "{{provider}} dejó de transcribir de golpe. La sesión sigue en vivo y vuelve a intentar en {{retryInMs}} ms (intento {{attempt}} de {{maxAttempts}}).",
+        "fix": "Por ahora no hace falta hacer nada. Si sigue fallando, revisá que {{provider}} esté accesible."
+      },
+      "restarted": {
+        "title": "El proveedor de IA volvió",
+        "why": "{{provider}} se reinició en el intento {{attempt}}. El audio de ese intervalo no tiene subtítulos, y el corte queda marcado.",
+        "fix": "No hace falta hacer nada."
+      },
+      "failed": {
+        "title": "El proveedor de IA dejó de funcionar",
+        "why": "{{provider}} siguió fallando y no se recuperó después de {{attempts}} reinicios, así que la sesión se detuvo.",
+        "fix": "Revisá que {{provider}} esté accesible (su servicio local, la red o la clave de API) y volvé a iniciar la sesión, o cambiá de proveedor."
       }
     },
     "auth": {
@@ -286,6 +301,16 @@
         "title": "La contraseña SRT no es válida",
         "why": "Las contraseñas SRT deben tener entre {{min}} y {{max}} caracteres.",
         "fix": "Poné una nueva contraseña SRT en Configuración, o borrala para recibir sin cifrado."
+      },
+      "restarting": {
+        "title": "Reconectando la fuente de audio",
+        "why": "La entrada {{source}} falló. La sesión sigue en vivo y vuelve a intentar en {{retryInMs}} ms (intento {{attempt}} de {{maxAttempts}}).",
+        "fix": "Por ahora no hace falta hacer nada. Si sigue fallando, revisá la entrada de audio."
+      },
+      "restarted": {
+        "title": "La fuente de audio volvió",
+        "why": "La entrada {{source}} se reinició en el intento {{attempt}}. Falta el audio de ese intervalo, y el corte queda marcado.",
+        "fix": "No hace falta hacer nada."
       }
     },
     "capture": {
@@ -458,6 +483,13 @@
         "title": "El glosario es demasiado largo",
         "why": "Un glosario admite hasta 1000 términos, entradas de hasta 200 caracteres y un nombre de hasta 120, para que entre en las instrucciones de los modelos.",
         "fix": "Acortá las entradas largas o dividí el glosario por charla o por track."
+      }
+    },
+    "audio": {
+      "gap": {
+        "title": "Se perdió parte del audio",
+        "why": "{{gapMs}} ms de audio en el segundo {{atSec}} no llegaron al proveedor, porque se reinició o la estación de captura se reconectó. Esas palabras no tienen subtítulos.",
+        "fix": "Si pasa poco, no hace falta hacer nada. Si pasa seguido, revisá la red de la estación de captura y el proveedor."
       }
     }
   }

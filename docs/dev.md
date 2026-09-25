@@ -134,6 +134,18 @@ Final captions of every track can be downloaded while a session runs or afterwar
 
 VTT and SRT cues hold at most 2 lines of 42 characters (settings `captions.maxLines` / `maxCharsPerLine`), break between sentences where they can, and stay on screen 5/6 s to 7 s. Captions an admin hid are left out.
 
+## Automatic recovery
+
+A running session recovers on its own when part of the pipeline fails (SES-5). The state stays `live` throughout. `status.recovering` says what is restarting (`provider` or `source`), the attempt, the bound and the next retry, and `status.restarts` counts the restarts of the current run.
+
+- **Provider stream**: if the speech-recognition stream ends while audio is still coming (a crash, or Gemini giving up on its own reconnects), the session opens a new one. The wait between attempts starts at 0.5 s and doubles up to 10 s, with 20 % jitter. Audio that arrives while no stream is open is dropped. Segment IDs of the new stream get the restart number (`r0-1-…`), so they never overwrite earlier captions.
+- **Audio source**: a source whose stream ends with an error (an SRT or http(s) input dropping) is started again with the same backoff. Its new audio continues the session clock after the wall time that was lost. Local files aren't restarted, because they would play again from the beginning: the session goes to `error` with `source.failed`, as before.
+- **Capture station**: when the browser's `/ws/ingest` connection drops and comes back, nothing restarts. The ingest source stays open, and the session stays live and waits for audio.
+- **Gaps**: every stretch of audio that never reached the provider (a restart, or a capture reconnect) is logged as an `audio.gap` admin event with its length. The next captions carry `gapBeforeMs` on every track, so viewers and the dashboard can mark the gap. It's live only: the caption store doesn't keep it.
+- **Giving up**: 5 failed attempts in a row (a restart that fails to start, or a stream or source that crashes again within 30 s of its restart) end the run in `error` with `provider.failed` or `source.failed`. A stream or source that ran longer than 30 s before failing starts counting from 1 again.
+
+The admin log shows `provider.restarting` / `source.restarting` (warn) for each attempt and `provider.restarted` / `source.restarted` (info) when it worked. Local sidecars also retry within a stream: see [How the local provider uses whisper-server](#how-the-local-provider-uses-whisper-server) and [Gemma translation](#gemma-translation).
+
 ## Gemini provider
 
 A session with `provider: gemini` transcribes with the [Gemini Live API](https://ai.google.dev/gemini-api/docs/live). It needs a Google API key (Google AI Studio) in the `google_api_key` secret: paste it in Settings, or export `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) before starting the server. The key and the model are read when a session starts, so changing them only affects the next start. Without a key the start fails with `provider.unavailable`. A valid key also makes Gemini the default provider ([default-provider rule](#default-provider-rule)).
