@@ -10,6 +10,9 @@
 # to the server as-is: LIVESUBS_PUBLIC_BASE_URL=http://<this machine's LAN
 # IP>:8080 (inside a container the server only sees its own IP, so the QR
 # codes need it), LIVESUBS_ADMIN_TOKEN, GEMINI_API_KEY, LIVESUBS_METRICS…
+# Set LIVESUBS_MASTER_KEY too: the container has no OS keychain, so secrets
+# saved in the UI go to /data/secrets.enc, which needs it (secret.no_backend
+# otherwise). Keep it with the data volume.
 name: livesubs
 
 services:
