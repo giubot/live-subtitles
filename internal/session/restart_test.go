@@ -474,16 +474,17 @@ func TestIngestReconnectKeepsSessionLive(t *testing.T) {
 		for i := range domain.FrameSamples {
 			binary.LittleEndian.PutUint16(frame[2*i:], uint16(int16(1000)))
 		}
-		for i := range d / domain.FrameDuration {
+		for range d / domain.FrameDuration {
 			clk.advance(domain.FrameDuration)
 			before := hub.Source("main").Stats().Frames
 			if err := ws.Write(ctx, websocket.MessageBinary, frame); err != nil {
 				t.Fatal(err)
 			}
-			if i == 0 { // the hub reads its clock when the first audio arrives
-				for hub.Source("main").Stats().Frames == before {
-					time.Sleep(time.Millisecond)
-				}
+			// The hub reads the clock as each frame arrives: advancing it
+			// before the hub took the last frame would stamp that frame
+			// late and show up as an extra gap on a slow runner.
+			for hub.Source("main").Stats().Frames == before {
+				time.Sleep(time.Millisecond)
 			}
 		}
 		time.Sleep(100 * time.Millisecond) // let the session take the audio
