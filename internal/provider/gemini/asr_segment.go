@@ -14,10 +14,10 @@ import (
 
 // Segmenting limits.
 const (
-	// minSentenceChars: shorter sentences are joined with the next one
-	// instead of becoming a final on their own.
+	// minSentenceChars: shorter sentences of a final are joined with the
+	// next one instead of becoming a segment on their own.
 	minSentenceChars = 20
-	// maxSegmentChars: a segment without a sentence end is cut at a word
+	// maxSegmentChars: a final without a sentence end is cut at a word
 	// boundary once it grows past this.
 	maxSegmentChars = 200
 	// Start estimate of a new segment: the transcription of the first
@@ -26,113 +26,125 @@ const (
 	perWord       = 350 * time.Millisecond
 )
 
-// segmenter turns the input transcription stream of a Live connection into
-// segments: interim events while text grows, and a final event per sentence
-// or at the end of a turn (AI-6). Times are on the session clock: the
-// transcription has no timestamps, so a segment ends at the audio clock when
-// its last text arrived, and starts where the previous one ended or at an
-// estimate from its first words.
+// utterance is what one connection is transcribing: the server's interim
+// hypothesis until its final arrives.
+type utterance struct {
+	id    string
+	text  string
+	start time.Duration // session clock
+	last  time.Duration // audio clock when the interim text last changed
+	code  domain.LanguageCode
+	// flushAt is the wall-time deadline of the safety flush.
+	flushAt time.Time
+}
+
+func (u *utterance) open() bool { return u.id != "" }
+
+// segmenter turns the transcription of the Live connections into segments
+// (AI-6). Each server utterance is one segment: its interim transcription
+// replaces the segment's text, and its input transcription is the final.
+// A final holding several sentences is cut into one segment per sentence,
+// the first keeping the utterance's ID.
+//
+// Times are on the session clock. The transcription has no timestamps in
+// Live mode, so a segment ends at the audio clock when its text last
+// changed, and starts where the previous one ended or at an estimate from
+// its first words.
 type segmenter struct {
 	pinned domain.LanguageCode // "" detects EN/ES
 
 	seq      int
-	text     string        // pending text of the open segment
-	start    time.Duration // start of the open segment
-	last     time.Duration // audio clock when the last text arrived
-	prevEnd  time.Duration // end of the previous segment
-	code     domain.LanguageCode
-	tag      domain.LanguageCode // the model's language tag for the current turn
-	lastLang domain.LanguageCode // language of the last final
+	prevEnd  time.Duration // end of the previous final
+	lastLang domain.LanguageCode
 }
 
-// add appends a transcription chunk heard by audio clock now. code is the
-// BCP-47 language the API reported for it, if any.
-func (s *segmenter) add(chunk, code string, now time.Duration) []domain.ASREvent {
-	if chunk == "" {
+// interim replaces the hypothesis of u with text heard by audio clock now.
+// code is the BCP-47 language the API reported, if any. It reports false
+// when the text is empty or unchanged.
+func (s *segmenter) interim(u *utterance, text, code string, now time.Duration) (domain.ASREvent, bool) {
+	text = clean(text)
+	if text == "" || text == u.text {
+		return domain.ASREvent{}, false
+	}
+	s.begin(u, text, now)
+	if l := normalizeLang(code); l != "" {
+		u.code = l
+	}
+	u.text, u.last = text, max(now, u.start)
+	return s.event(u.id, text, u.start, u.last, false, s.language(text, u.code)), true
+}
+
+// final ends u with the server's final text, or with its interim when text
+// is empty (a safety flush), and resets u.
+func (s *segmenter) final(u *utterance, text, code string, now time.Duration) []domain.ASREvent {
+	defer func() { *u = utterance{} }()
+	if text = clean(text); text == "" {
+		text = u.text
+	}
+	if text == "" {
 		return nil
 	}
-	if s.text == "" {
-		s.seq++
-		words := time.Duration(len(strings.Fields(chunk)))
-		s.start = max(s.prevEnd, now-firstWordsLag-perWord*words, 0)
-		s.code = ""
+	end := now
+	if u.open() {
+		end = u.last
 	}
+	s.begin(u, text, now)
 	if l := normalizeLang(code); l != "" {
-		s.code = l
+		u.code = l
 	}
-	s.text = joinChunk(s.text, chunk)
-	s.last = max(now, s.start)
+	end = max(end, u.start)
 
 	var evs []domain.ASREvent
+	id, start, rest := u.id, u.start, text
+	total, done := utf8.RuneCountInString(text), 0
 	for {
-		head, rest, ok := splitSentence(s.text)
+		head, tail, ok := splitSentence(rest)
 		if !ok {
 			break
 		}
-		evs = append(evs, s.cut(head, rest))
+		// The cut is placed between start and end in proportion to the text.
+		done += utf8.RuneCountInString(head) + 1
+		at := u.start + time.Duration(float64(end-u.start)*float64(done)/float64(total))
+		evs = append(evs, s.finalEvent(id, head, start, at, u.code))
+		s.seq++
+		id, start, rest = segmentID(s.seq), at, tail
 	}
-	if s.text != "" {
-		evs = append(evs, s.event(s.text, s.start, s.last, false))
-	}
-	return evs
+	return append(evs, s.finalEvent(id, rest, start, end, u.code))
 }
 
-// cut finalizes head and keeps rest as the open segment. Its end is placed
-// between the segment's start and now in proportion to the text.
-func (s *segmenter) cut(head, rest string) domain.ASREvent {
-	total := utf8.RuneCountInString(head) + utf8.RuneCountInString(rest)
-	end := s.start + time.Duration(float64(s.last-s.start)*float64(utf8.RuneCountInString(head))/float64(total))
-	ev := s.final(head, end)
+// begin opens u with a new segment ID, estimating its start.
+func (s *segmenter) begin(u *utterance, text string, now time.Duration) {
+	if u.open() {
+		return
+	}
 	s.seq++
-	s.text, s.start = rest, end
+	words := time.Duration(len(strings.Fields(text)))
+	u.id = segmentID(s.seq)
+	u.start = max(s.prevEnd, now-firstWordsLag-perWord*words, 0)
+	u.last = u.start
+}
+
+func (s *segmenter) finalEvent(id, text string, start, end time.Duration, code domain.LanguageCode) domain.ASREvent {
+	ev := s.event(id, text, start, end, true, s.language(text, code))
+	s.prevEnd = max(s.prevEnd, ev.End)
+	if ev.Lang != "" {
+		s.lastLang = ev.Lang
+	}
 	return ev
 }
 
-// finish finalizes the open segment, at the end of a turn, after a silence
-// or when the connection ends.
-func (s *segmenter) finish() (domain.ASREvent, bool) {
-	defer func() { s.tag = "" }()
-	if s.text == "" {
-		return domain.ASREvent{}, false
-	}
-	ev := s.final(s.text, s.last)
-	s.text = ""
-	return ev, true
+func (s *segmenter) event(id, text string, start, end time.Duration, final bool, lang domain.LanguageCode) domain.ASREvent {
+	return domain.ASREvent{SegmentID: id, Text: text, Final: final, Start: start, End: max(end, start), Lang: lang}
 }
 
-// setTag records the model's language reply for the current turn.
-func (s *segmenter) setTag(reply string) {
-	if l := parseTag(reply); l != "" {
-		s.tag = l
-	}
-}
-
-func (s *segmenter) open() bool { return s.text != "" }
-
-func (s *segmenter) final(text string, end time.Duration) domain.ASREvent {
-	ev := s.event(text, s.start, end, true)
-	s.prevEnd = end
-	s.lastLang = ev.Lang
-	return ev
-}
-
-func (s *segmenter) event(text string, start, end time.Duration, final bool) domain.ASREvent {
-	return domain.ASREvent{
-		SegmentID: fmt.Sprintf("g%06d", s.seq),
-		Text:      text,
-		Final:     final,
-		Start:     start,
-		End:       max(end, start),
-		Lang:      s.language(text),
-	}
-}
+func segmentID(seq int) string { return fmt.Sprintf("g%06d", seq) }
 
 // language picks the segment language: the pinned one, else what the API
-// reported for the transcription, else the model's tag, else a guess from
-// the words, else the language of the previous final ("" if none yet; the
-// session then keeps its last detected language).
-func (s *segmenter) language(text string) domain.LanguageCode {
-	for _, l := range []domain.LanguageCode{s.pinned, s.code, s.tag, guessLanguage(text)} {
+// reported for the utterance, else a guess from the words, else the
+// language of the previous final ("" if none yet; the session then keeps
+// its last detected language).
+func (s *segmenter) language(text string, code domain.LanguageCode) domain.LanguageCode {
+	for _, l := range []domain.LanguageCode{s.pinned, code, guessLanguage(text)} {
 		if l != "" {
 			return l
 		}
@@ -140,11 +152,9 @@ func (s *segmenter) language(text string) domain.LanguageCode {
 	return s.lastLang
 }
 
-// joinChunk appends a transcription chunk. Chunks carry their own leading
-// spaces; whitespace is collapsed.
-func joinChunk(text, chunk string) string {
-	return strings.Join(strings.Fields(text+chunk), " ")
-}
+// clean collapses whitespace: SMART mode may format the text in
+// paragraphs, and a caption is one line.
+func clean(text string) string { return strings.Join(strings.Fields(text), " ") }
 
 // splitSentence splits off the first sentences of text that are at least
 // minSentenceChars long and followed by more text, or the first
@@ -159,7 +169,7 @@ func splitSentence(text string) (head, rest string, ok bool) {
 			j++
 		}
 		if j >= len(text) || text[j] != ' ' {
-			continue // end of text so far, or "3.5", "e.g."
+			continue // end of text, or "3.5", "e.g."
 		}
 		if utf8.RuneCountInString(text[:j]) < minSentenceChars {
 			continue
@@ -198,18 +208,6 @@ func normalizeLang(code string) domain.LanguageCode {
 	switch code {
 	case "en", "es":
 		return code
-	}
-	return ""
-}
-
-// parseTag reads the model's language reply ("en", "es", "Spanish."...).
-func parseTag(reply string) domain.LanguageCode {
-	w := strings.ToLower(strings.TrimFunc(reply, func(r rune) bool { return !unicode.IsLetter(r) }))
-	switch w {
-	case "en", "english", "inglés", "ingles":
-		return "en"
-	case "es", "spanish", "español", "espanol":
-		return "es"
 	}
 	return ""
 }

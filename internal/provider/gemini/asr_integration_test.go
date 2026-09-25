@@ -6,7 +6,8 @@
 //
 //	GEMINI_API_KEY=… go test -tags gemini -run Integration -v ./internal/provider/gemini/
 //
-// GEMINI_LIVE_MODEL overrides the model.
+// GEMINI_LIVE_MODEL overrides the model (default DefaultLiveModel,
+// gemini-3.5-transcribe-live). The clips are shorter than a rotation.
 
 package gemini
 

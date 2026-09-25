@@ -5,8 +5,10 @@ package gemini
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -28,6 +30,7 @@ type fakeConn struct {
 	mu        sync.Mutex
 	audio     int // bytes received
 	streamEnd bool
+	receiving bool // the stream reads it
 	sendErr   error
 }
 
@@ -53,6 +56,9 @@ func (c *fakeConn) SendAudioStreamEnd() error {
 }
 
 func (c *fakeConn) Receive() (*genai.LiveServerMessage, error) {
+	c.mu.Lock()
+	c.receiving = true
+	c.mu.Unlock()
 	select {
 	case m := <-c.msgs:
 		return m, nil
@@ -89,6 +95,12 @@ func (c *fakeConn) ended() bool {
 	return c.streamEnd
 }
 
+func (c *fakeConn) read() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.receiving
+}
+
 // fakeDialer hands out scripted connections (nil entry: the dial fails).
 type fakeDialer struct {
 	mu    sync.Mutex
@@ -117,10 +129,32 @@ func (d *fakeDialer) configs() []dialConfig {
 	return append([]dialConfig(nil), d.cfgs...)
 }
 
+// fakeClock is the wall clock plus an offset the test advances.
+type fakeClock struct {
+	mu  sync.Mutex
+	off time.Duration
+}
+
+func (c *fakeClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return time.Now().Add(c.off)
+}
+
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.off += d
+}
+
+// testASR never flushes, rotates or times out by itself unless a test sets
+// a short value or advances the clock: rotation is due after 1 h and forced
+// 30 min later; the safety flushes are 100 h out.
 func testASR(d *fakeDialer) *ASR {
 	return &ASR{
 		APIKey:    func(context.Context) (string, error) { return "test-key", nil },
-		SendEvery: 20 * time.Millisecond, IdleFinal: time.Hour, MaxRetries: 2,
+		SendEvery: 20 * time.Millisecond, IdleFinal: 100 * time.Hour, TurnGrace: 100 * time.Hour,
+		RotateAfter: time.Hour, RotateGrace: 30 * time.Minute, MaxRetries: 2,
 		Backoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, DrainTimeout: 300 * time.Millisecond,
 		dial: d.dial, tick: 5 * time.Millisecond,
 	}
@@ -130,8 +164,12 @@ func frame(t time.Duration) domain.AudioFrame {
 	return domain.AudioFrame{PCM: make([]int16, domain.FrameSamples), T: t}
 }
 
-func transcript(text string) *genai.LiveServerMessage {
-	return &genai.LiveServerMessage{ServerContent: &genai.LiveServerContent{InputTranscription: &genai.Transcription{Text: text}}}
+func interim(text string) *genai.LiveServerMessage {
+	return &genai.LiveServerMessage{ServerContent: &genai.LiveServerContent{InterimInputTranscription: &genai.Transcription{Text: text}}}
+}
+
+func final(text string) *genai.LiveServerMessage {
+	return &genai.LiveServerMessage{ServerContent: &genai.LiveServerContent{InputTranscription: &genai.Transcription{Text: text, Finished: true}}}
 }
 
 func turnComplete() *genai.LiveServerMessage {
@@ -194,6 +232,15 @@ func drain(t *testing.T, out <-chan domain.ASREvent, usage *domain.Usage) []doma
 	}
 }
 
+// end closes the input and lets the last connection finish.
+func end(t *testing.T, in chan<- domain.AudioFrame, out <-chan domain.ASREvent, last *fakeConn) []domain.ASREvent {
+	t.Helper()
+	close(in)
+	waitFor(t, "stream end", last.ended)
+	last.msgs <- turnComplete()
+	return drain(t, out, nil)
+}
+
 func TestStartErrors(t *testing.T) {
 	boom := errors.New("keychain locked")
 	cases := []struct {
@@ -238,6 +285,14 @@ func TestStartConfig(t *testing.T) {
 			return s, nil
 		}
 	}
+	var many []api.GlossaryTerm
+	var manyWant []string
+	for i := range maxVocabulary + 20 {
+		many = append(many, api.GlossaryTerm{Term: fmt.Sprintf("term%d", i)})
+		if i < maxVocabulary {
+			manyWant = append(manyWant, fmt.Sprintf("term%d", i))
+		}
+	}
 	cases := []struct {
 		name      string
 		settings  func(context.Context) (api.Settings, error)
@@ -253,6 +308,7 @@ func TestStartConfig(t *testing.T) {
 		{"model from settings", settings("gemini-live-x"), api.Es, nil, "gemini-live-x", "es", nil},
 		{"glossary", nil, api.En, &domain.Glossary{Terms: []api.GlossaryTerm{{Term: "Kubernetes"}, {Term: " "}}, DoNotTranslate: []string{"Nerdearla", "Kubernetes"}},
 			DefaultLiveModel, "en", []string{"Kubernetes", "Nerdearla"}},
+		{"vocabulary capped", nil, api.Auto, &domain.Glossary{Terms: many, DoNotTranslate: []string{"late"}}, DefaultLiveModel, "", manyWant},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -266,11 +322,42 @@ func TestStartConfig(t *testing.T) {
 			close(in)
 			drain(t, out, nil)
 			dc := d.configs()[0]
-			if dc.Model != tc.wantModel || dc.Language != tc.wantLang || dc.APIKey != "test-key" || dc.Handle != "" {
+			if dc.Model != tc.wantModel || dc.Language != tc.wantLang || dc.APIKey != "test-key" {
 				t.Errorf("dial config = %+v", dc)
 			}
-			if strings.Join(dc.Glossary, "|") != strings.Join(tc.wantTerms, "|") {
-				t.Errorf("glossary = %q, want %q", dc.Glossary, tc.wantTerms)
+			if !slices.Equal(dc.Vocabulary, tc.wantTerms) {
+				t.Errorf("vocabulary = %q, want %q", dc.Vocabulary, tc.wantTerms)
+			}
+		})
+	}
+}
+
+func TestLiveConfig(t *testing.T) {
+	cases := []struct {
+		name      string
+		dc        dialConfig
+		wantCodes []string
+	}{
+		{"auto detects", dialConfig{Model: DefaultLiveModel}, nil},
+		{"pinned English", dialConfig{Model: DefaultLiveModel, Language: "en"}, []string{"en-US"}},
+		{"pinned Spanish", dialConfig{Model: DefaultLiveModel, Language: "es", Vocabulary: []string{"Kubernetes", "gRPC"}}, []string{"es-419"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := liveConfig(tc.dc)
+			if !slices.Equal(cfg.ResponseModalities, []genai.Modality{genai.ModalityText}) {
+				t.Errorf("modalities = %v", cfg.ResponseModalities)
+			}
+			tr := cfg.InputAudioTranscription
+			if tr == nil {
+				t.Fatal("no input transcription")
+			}
+			if !slices.Equal(tr.LanguageCodes, tc.wantCodes) || !slices.Equal(tr.CustomVocabulary, tc.dc.Vocabulary) ||
+				tr.Mode != genai.AudioTranscriptionConfigModeSmart {
+				t.Errorf("transcription = %+v", tr)
+			}
+			if cfg.SystemInstruction != nil || cfg.SessionResumption != nil || cfg.ContextWindowCompression != nil || cfg.OutputAudioTranscription != nil {
+				t.Errorf("setup has fields the transcription model doesn't take: %+v", cfg)
 			}
 		})
 	}
@@ -291,42 +378,44 @@ func TestTranscriptionToEvents(t *testing.T) {
 	waitFor(t, "audio", func() bool { return conn.audioBytes() == 50*domain.FrameSamples*2 })
 
 	var usage domain.Usage
-	conn.msgs <- transcript(" Hello and welcome")
+	conn.msgs <- interim(" Hello and")
 	ev := next(t, out, &usage)
-	if ev.Final || ev.Text != "Hello and welcome" || ev.Lang != "en" || ev.SegmentID != "g000001" {
+	if ev.Final || ev.Text != "Hello and" || ev.Lang != "en" || ev.SegmentID != "g000001" {
 		t.Errorf("interim = %+v", ev)
 	}
 	if ev.End != 11*time.Second || ev.Start < base || ev.Start >= ev.End {
 		t.Errorf("interim times = %v..%v", ev.Start, ev.End)
 	}
-	conn.msgs <- transcript(" to the conference. Today we")
-	fin := next(t, out, &usage)
-	if !fin.Final || fin.Text != "Hello and welcome to the conference." || fin.SegmentID != "g000001" || fin.Start != ev.Start {
-		t.Errorf("sentence final = %+v", fin)
+	conn.msgs <- interim("Hello and welcome\n")
+	conn.msgs <- interim("Hello and  welcome") // unchanged: no event
+	if ev2 := next(t, out, &usage); ev2.Final || ev2.Text != "Hello and welcome" || ev2.SegmentID != "g000001" || ev2.Start != ev.Start {
+		t.Errorf("replaced interim = %+v", ev2)
 	}
-	rest := next(t, out, &usage)
-	if rest.Final || rest.Text != "Today we" || rest.SegmentID != "g000002" || rest.Start != fin.End {
-		t.Errorf("next interim = %+v (previous end %v)", rest, fin.End)
+	conn.msgs <- &genai.LiveServerMessage{UsageMetadata: &genai.UsageMetadata{PromptTokenCount: 120, ResponseTokenCount: 7}}
+	conn.msgs <- final("Hello and welcome to the conference.\n\nToday we talk about Go.")
+	first := next(t, out, &usage)
+	if !first.Final || first.Text != "Hello and welcome to the conference." || first.SegmentID != "g000001" || first.Start != ev.Start {
+		t.Errorf("first final = %+v", first)
 	}
-	conn.msgs <- &genai.LiveServerMessage{UsageMetadata: &genai.UsageMetadata{PromptTokenCount: 120, ResponseTokenCount: 2}}
-	conn.msgs <- &genai.LiveServerMessage{ServerContent: &genai.LiveServerContent{ModelTurn: genai.NewContentFromText("es", genai.RoleModel)}}
-	conn.msgs <- transcript(" talk")
-	next(t, out, &usage)
-	conn.msgs <- turnComplete()
-	last := next(t, out, &usage)
-	if !last.Final || last.Text != "Today we talk" || last.SegmentID != "g000002" {
-		t.Errorf("turn final = %+v", last)
+	second := next(t, out, &usage)
+	if !second.Final || second.Text != "Today we talk about Go." || second.SegmentID != "g000002" ||
+		second.Start != first.End || second.End != 11*time.Second || first.End <= first.Start {
+		t.Errorf("second final = %+v (first %v..%v)", second, first.Start, first.End)
 	}
-	if last.Lang != "es" { // the model's tag outranks the guess from the words
-		t.Errorf("lang = %q, want the model's tag", last.Lang)
+	conn.msgs <- interim("Next")
+	if ev := next(t, out, &usage); ev.SegmentID != "g000003" || ev.Start < second.End || ev.Final {
+		t.Errorf("next interim = %+v", ev)
 	}
 
 	close(in)
 	waitFor(t, "stream end", conn.ended)
 	conn.msgs <- turnComplete()
-	drain(t, out, &usage)
-	if math.Abs(usage.AudioSeconds-1) > 1e-9 || usage.InputTokens != 120 || usage.OutputTokens != 2 {
-		t.Errorf("usage = %+v", usage)
+	tail := drain(t, out, &usage)
+	if len(tail) != 1 || !tail[0].Final || tail[0].Text != "Next" || tail[0].SegmentID != "g000003" {
+		t.Errorf("tail = %+v, want the open interim final", tail)
+	}
+	if math.Abs(usage.AudioSeconds-1) > 1e-9 || usage.InputTokens != 0 || usage.OutputTokens != 7 {
+		t.Errorf("usage = %+v, want 1 s of audio and the 7 output tokens", usage)
 	}
 	if !conn.isClosed() {
 		t.Error("connection left open")
@@ -334,21 +423,29 @@ func TestTranscriptionToEvents(t *testing.T) {
 }
 
 func TestLanguage(t *testing.T) {
+	withCode := func(m *genai.LiveServerMessage, code string) *genai.LiveServerMessage {
+		if t := m.ServerContent.InputTranscription; t != nil {
+			t.LanguageCode = code
+		}
+		if t := m.ServerContent.InterimInputTranscription; t != nil {
+			t.LanguageCode = code
+		}
+		return m
+	}
 	cases := []struct {
 		name   string
 		source api.SourceLanguage
-		msgs   []*genai.LiveServerMessage
+		msgs   []*genai.LiveServerMessage // the last final is checked
 		want   domain.LanguageCode
 	}{
-		{"pinned wins over the words", api.Es, []*genai.LiveServerMessage{transcript("the talk is about the cloud")}, "es"},
-		{"API language code", api.Auto, []*genai.LiveServerMessage{{ServerContent: &genai.LiveServerContent{
-			InputTranscription: &genai.Transcription{Text: "the talk", LanguageCode: "es-419"}}}}, "es"},
-		{"model tag when the words are unclear", api.Auto, []*genai.LiveServerMessage{
-			{ServerContent: &genai.LiveServerContent{OutputTranscription: &genai.Transcription{Text: "Spanish."}}},
-			transcript("Kubernetes")}, "es"},
-		{"words: Spanish", api.Auto, []*genai.LiveServerMessage{transcript("¿Qué es la nube y cómo funciona?")}, "es"},
-		{"words: English", api.Auto, []*genai.LiveServerMessage{transcript("What is the cloud and how does it work?")}, "en"},
-		{"unknown", api.Auto, []*genai.LiveServerMessage{transcript("Kubernetes")}, ""},
+		{"pinned wins over the words", api.Es, []*genai.LiveServerMessage{final("the talk is about the cloud")}, "es"},
+		{"API code on the final", api.Auto, []*genai.LiveServerMessage{withCode(final("the talk"), "es-419")}, "es"},
+		{"API code on the interim", api.Auto, []*genai.LiveServerMessage{withCode(interim("the"), "es-US"), final("the talk")}, "es"},
+		{"words: Spanish", api.Auto, []*genai.LiveServerMessage{final("¿Qué es la nube y cómo funciona?")}, "es"},
+		{"words: English", api.Auto, []*genai.LiveServerMessage{final("What is the cloud and how does it work?")}, "en"},
+		{"previous segment when unclear", api.Auto, []*genai.LiveServerMessage{final("¿Qué tal, cómo están?"), final("Kubernetes")}, "es"},
+		{"unknown", api.Auto, []*genai.LiveServerMessage{final("Kubernetes")}, ""},
+		{"other language ignored", api.Auto, []*genai.LiveServerMessage{withCode(final("the cloud and the edge"), "fr-FR")}, "en"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -358,76 +455,167 @@ func TestLanguage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			finals := 0
 			for _, m := range tc.msgs {
+				if m.ServerContent.InputTranscription != nil {
+					finals++
+				}
 				conn.msgs <- m
 			}
-			conn.msgs <- turnComplete()
-			var final domain.ASREvent
-			for !final.Final {
-				final = next(t, out, nil)
+			var ev domain.ASREvent
+			for finals > 0 {
+				if ev = next(t, out, nil); ev.Final {
+					finals--
+				}
 			}
-			if final.Lang != tc.want {
-				t.Errorf("lang = %q, want %q", final.Lang, tc.want)
+			if ev.Lang != tc.want {
+				t.Errorf("lang = %q, want %q", ev.Lang, tc.want)
 			}
-			close(in)
-			drain(t, out, nil)
+			end(t, in, out, conn)
 		})
 	}
 }
 
-func TestIdleFinal(t *testing.T) {
-	conn := newFakeConn()
-	a := testASR(&fakeDialer{conns: []*fakeConn{conn}})
-	a.IdleFinal = 30 * time.Millisecond
-	in, out, err := a.Start(t.Context(), domain.ASRConfig{SessionID: "s1", SourceLanguage: api.Auto})
-	if err != nil {
-		t.Fatal(err)
+func TestSafetyFlush(t *testing.T) {
+	cases := []struct {
+		name string
+		tune func(a *ASR)
+		// after the interim and before the flush
+		msgs []*genai.LiveServerMessage
+	}{
+		{"no update for IdleFinal", func(a *ASR) { a.IdleFinal = 30 * time.Millisecond }, nil},
+		{"turn complete without a final", func(a *ASR) { a.TurnGrace = 30 * time.Millisecond }, []*genai.LiveServerMessage{turnComplete()}},
 	}
-	conn.msgs <- transcript("a sentence with no end")
-	if ev := next(t, out, nil); ev.Final {
-		t.Fatalf("first event is final: %+v", ev)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			conn := newFakeConn()
+			a := testASR(&fakeDialer{conns: []*fakeConn{conn}})
+			tc.tune(a)
+			in, out, err := a.Start(t.Context(), domain.ASRConfig{SessionID: "s1", SourceLanguage: api.Auto})
+			if err != nil {
+				t.Fatal(err)
+			}
+			conn.msgs <- interim("a sentence with no end")
+			if ev := next(t, out, nil); ev.Final {
+				t.Fatalf("first event is final: %+v", ev)
+			}
+			for _, m := range tc.msgs {
+				conn.msgs <- m
+			}
+			if ev := next(t, out, nil); !ev.Final || ev.Text != "a sentence with no end" || ev.SegmentID != "g000001" {
+				t.Errorf("flushed = %+v", ev)
+			}
+			// The server's late final of the flushed utterance isn't a new caption.
+			conn.msgs <- final("A sentence with no end.")
+			conn.msgs <- interim("next words")
+			if ev := next(t, out, nil); ev.Final || ev.Text != "next words" || ev.SegmentID != "g000002" {
+				t.Errorf("after the late final = %+v", ev)
+			}
+			end(t, in, out, conn)
+		})
 	}
-	if ev := next(t, out, nil); !ev.Final || ev.Text != "a sentence with no end" {
-		t.Errorf("after silence = %+v", ev)
-	}
-	close(in)
-	drain(t, out, nil)
 }
 
-func TestGoAwayRotatesWithResumption(t *testing.T) {
+func TestRotation(t *testing.T) {
+	cases := []struct {
+		name string
+		// trigger starts the rotation while "we were talking" is open.
+		trigger func(clk *fakeClock, c1 *fakeConn)
+		// force: the switch happens mid-utterance, without waiting for a pause.
+		force bool
+	}{
+		{"at a pause", func(clk *fakeClock, _ *fakeConn) { clk.advance(time.Hour) }, false},
+		{"forced mid-utterance", func(clk *fakeClock, _ *fakeConn) { clk.advance(time.Hour) }, true},
+		{"go-away", func(_ *fakeClock, c1 *fakeConn) {
+			c1.msgs <- &genai.LiveServerMessage{GoAway: &genai.LiveServerGoAway{TimeLeft: 500 * time.Millisecond}}
+		}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c1, c2 := newFakeConn(), newFakeConn()
+			d := &fakeDialer{conns: []*fakeConn{c1, c2}}
+			clk := &fakeClock{}
+			a := testASR(d)
+			a.now = clk.now
+			a.DrainTimeout = time.Second // room for the old connection's last final
+			in, out, err := a.Start(t.Context(), domain.ASRConfig{SessionID: "s1", SourceLanguage: api.En})
+			if err != nil {
+				t.Fatal(err)
+			}
+			in <- frame(0)
+			waitFor(t, "audio on the first connection", func() bool { return c1.audioBytes() > 0 })
+			c1.msgs <- interim("we were talking")
+			next(t, out, nil)
+
+			tc.trigger(clk, c1)
+			waitFor(t, "the next connection", c2.read)
+			if tc.name == "forced mid-utterance" {
+				clk.advance(30 * time.Minute) // RotateGrace is over
+			}
+			if !tc.force {
+				time.Sleep(20 * time.Millisecond)
+				if c1.ended() {
+					t.Fatal("switched mid-utterance")
+				}
+				c1.msgs <- final("we were talking about Go.")
+				if ev := next(t, out, nil); !ev.Final || ev.SegmentID != "g000001" {
+					t.Errorf("final before the switch = %+v", ev)
+				}
+			}
+			waitFor(t, "the switch", c1.ended)
+			before := c1.audioBytes()
+			in <- frame(domain.FrameDuration)
+			waitFor(t, "audio on the next connection", func() bool { return c2.audioBytes() > 0 })
+			if c1.audioBytes() != before {
+				t.Error("audio went to both connections")
+			}
+			if tc.force {
+				// The old connection still delivers its last utterance.
+				c1.msgs <- final("we were talking about Go.")
+				if ev := next(t, out, nil); !ev.Final || ev.Text != "we were talking about Go." || ev.SegmentID != "g000001" {
+					t.Errorf("drained final = %+v", ev)
+				}
+			}
+			waitFor(t, "old connection closed", c1.isClosed) // after DrainTimeout
+			c2.msgs <- interim("and now")
+			if ev := next(t, out, nil); ev.Text != "and now" || ev.SegmentID != "g000002" || ev.Final {
+				t.Errorf("after rotation = %+v", ev)
+			}
+			tail := end(t, in, out, c2)
+			if len(tail) != 1 || tail[0].Text != "and now" || !tail[0].Final {
+				t.Errorf("tail = %+v", tail)
+			}
+			if n := len(d.configs()); n != 2 {
+				t.Errorf("%d dials, want 2", n)
+			}
+		})
+	}
+}
+
+func TestRotationConnectionLostTakesOver(t *testing.T) {
 	c1, c2 := newFakeConn(), newFakeConn()
-	d := &fakeDialer{conns: []*fakeConn{c1, c2}}
-	a := testASR(d)
-	in, out, err := a.Start(t.Context(), domain.ASRConfig{SessionID: "s1", SourceLanguage: api.Auto})
+	clk := &fakeClock{}
+	a := testASR(&fakeDialer{conns: []*fakeConn{c1, c2}})
+	a.now = clk.now
+	in, out, err := a.Start(t.Context(), domain.ASRConfig{SessionID: "s1", SourceLanguage: api.En})
 	if err != nil {
 		t.Fatal(err)
 	}
-	c1.msgs <- &genai.LiveServerMessage{SessionResumptionUpdate: &genai.LiveServerSessionResumptionUpdate{NewHandle: "h1", Resumable: true}}
-	c1.msgs <- &genai.LiveServerMessage{SessionResumptionUpdate: &genai.LiveServerSessionResumptionUpdate{Resumable: false}}
-	c1.msgs <- transcript("we were talking")
+	c1.msgs <- interim("half a sentence")
 	next(t, out, nil)
-	c1.msgs <- &genai.LiveServerMessage{GoAway: &genai.LiveServerGoAway{TimeLeft: 10 * time.Second}}
-	if ev := next(t, out, nil); !ev.Final || ev.Text != "we were talking" {
-		t.Errorf("rotation final = %+v", ev)
-	}
-	waitFor(t, "old connection closed", c1.isClosed)
-	cfgs := d.configs()
-	if len(cfgs) != 2 || cfgs[1].Handle != "h1" {
-		t.Fatalf("dials = %+v, want the second to resume h1", cfgs)
+	clk.advance(time.Hour)
+	waitFor(t, "the next connection", c2.read)
+	c1.errs <- errors.New("websocket: close 1011")
+	if ev := next(t, out, nil); !ev.Final || ev.Text != "half a sentence" {
+		t.Errorf("after drop = %+v, want the pending text final", ev)
 	}
 	in <- frame(0)
-	waitFor(t, "audio on the new connection", func() bool { return c2.audioBytes() > 0 })
-	c2.msgs <- transcript("about Go")
-	if ev := next(t, out, nil); ev.Text != "about Go" || ev.SegmentID != "g000002" {
-		t.Errorf("after rotation = %+v", ev)
+	waitFor(t, "audio on the next connection", func() bool { return c2.audioBytes() > 0 })
+	c2.msgs <- interim("the rest")
+	if ev := next(t, out, nil); ev.Err != nil || ev.Text != "the rest" {
+		t.Errorf("event = %+v, want no error: the next connection was ready", ev)
 	}
-	close(in)
-	waitFor(t, "stream end", c2.ended)
-	c2.msgs <- turnComplete()
-	evs := drain(t, out, nil)
-	if len(evs) != 1 || !evs[0].Final {
-		t.Errorf("tail = %+v", evs)
-	}
+	end(t, in, out, c2)
 }
 
 func TestReconnect(t *testing.T) {
@@ -451,8 +639,7 @@ func TestReconnect(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			c1.msgs <- &genai.LiveServerMessage{SessionResumptionUpdate: &genai.LiveServerSessionResumptionUpdate{NewHandle: "h1", Resumable: true}}
-			c1.msgs <- transcript("half a sentence")
+			c1.msgs <- interim("half a sentence")
 			next(t, out, nil)
 			c1.errs <- errors.New("websocket: close 1011")
 			if ev := next(t, out, nil); !ev.Final || ev.Text != "half a sentence" {
@@ -471,13 +658,11 @@ func TestReconnect(t *testing.T) {
 			last := tc.conns[len(tc.conns)-1]
 			in <- frame(0)
 			waitFor(t, "audio on the new connection", func() bool { return last.audioBytes() > 0 })
-			if cfgs := d.configs(); cfgs[1].Handle != "h1" {
-				t.Errorf("reconnect handle = %q", cfgs[1].Handle)
+			last.msgs <- interim("more")
+			if ev := next(t, out, nil); ev.Text != "more" || ev.SegmentID != "g000002" {
+				t.Errorf("after reconnect = %+v", ev)
 			}
-			close(in)
-			waitFor(t, "stream end", last.ended)
-			last.msgs <- turnComplete()
-			drain(t, out, nil)
+			end(t, in, out, last)
 		})
 	}
 }
@@ -497,7 +682,7 @@ func TestBufferWhileDown(t *testing.T) {
 		t.Errorf("gap %v..%v dropped %v", s.gapFrom, s.gapTo, s.dropped)
 	}
 	conn := newFakeConn()
-	s.attach(conn)
+	s.attach(s.newConn(conn))
 	s.send()
 	if conn.audioBytes() != 5*domain.FrameSamples*2 || s.buffered != nil {
 		t.Errorf("flushed %d bytes, left %d frames", conn.audioBytes(), len(s.buffered))
@@ -518,38 +703,5 @@ func TestCancelClosesStream(t *testing.T) {
 	drain(t, out, nil)
 	if !conn.isClosed() {
 		t.Error("connection left open")
-	}
-}
-
-func TestLiveConfig(t *testing.T) {
-	cases := []struct {
-		name     string
-		dc       dialConfig
-		modality genai.Modality
-		prompt   []string
-	}{
-		{"native audio, auto", dialConfig{Model: DefaultLiveModel}, genai.ModalityAudio, []string{"English or Spanish", `"en"`, `"es"`}},
-		{"text model, pinned", dialConfig{Model: "gemini-live-2.5-flash-preview", Language: "es", Handle: "h"}, genai.ModalityText, []string{"speaks Spanish"}},
-		{"glossary", dialConfig{Model: "m", Glossary: []string{"Kubernetes", "gRPC"}}, genai.ModalityText, []string{"Kubernetes, gRPC"}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := liveConfig(tc.dc)
-			if len(cfg.ResponseModalities) != 1 || cfg.ResponseModalities[0] != tc.modality {
-				t.Errorf("modalities = %v", cfg.ResponseModalities)
-			}
-			if cfg.InputAudioTranscription == nil || cfg.ContextWindowCompression == nil || cfg.ContextWindowCompression.SlidingWindow == nil {
-				t.Error("transcription or context window compression missing")
-			}
-			if cfg.SessionResumption == nil || cfg.SessionResumption.Handle != tc.dc.Handle {
-				t.Errorf("resumption = %+v", cfg.SessionResumption)
-			}
-			prompt := cfg.SystemInstruction.Parts[0].Text
-			for _, p := range tc.prompt {
-				if !strings.Contains(prompt, p) {
-					t.Errorf("prompt %q lacks %q", prompt, p)
-				}
-			}
-		})
 	}
 }

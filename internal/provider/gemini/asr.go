@@ -16,19 +16,25 @@ import (
 )
 
 // DefaultLiveModel is the Live model used when the settings leave
-// providers.gemini.liveModel empty.
-const DefaultLiveModel = "gemini-2.5-flash-native-audio-preview-09-2025"
+// providers.gemini.liveModel empty: Gemini's streaming speech-to-text model.
+const DefaultLiveModel = "gemini-3.5-transcribe-live"
+
+// maxVocabulary caps the custom vocabulary sent to the model. The API takes
+// up to 1,000 terms, but Google reports the best results with up to 100.
+const maxVocabulary = 100
 
 // ErrNoAPIKey means no Google API key is configured. The session manager
 // reports it as provider.unavailable.
 var ErrNoAPIKey = errors.New("gemini: no Google API key is set (add the google_api_key secret in Settings or set GEMINI_API_KEY)")
 
-// ASR is a domain.ASRProvider on the Gemini Live API (AI-2). It streams the
-// session audio and turns the input audio transcription into interim and
-// final events (AI-6), tagged with the detected source language, English or
-// Spanish (AI-10). Long talks survive the Live session limits through
-// session resumption and context window compression, and dropped
-// connections are reopened with capped backoff (5.5).
+// ASR is a domain.ASRProvider on the Gemini Live API (AI-2) with a
+// transcription model (gemini-3.5-transcribe-live). It streams the session
+// audio and maps the server's interim transcription to interim events and
+// its input transcription to the final of the same segment (AI-6), tagged
+// with the source language, English or Spanish (AI-10). A Live
+// transcription session streams for at most 10 minutes, so the provider
+// opens the next connection before the limit and switches over at a pause;
+// dropped connections are reopened with capped backoff (5.5).
 //
 // The key and the model are read at every Start, so the admin can change
 // them between sessions.
@@ -44,11 +50,21 @@ type ASR struct {
 
 	// Tuning; zero values use the defaults below.
 
-	// SendEvery batches frames into one message per this much audio (40 ms).
+	// SendEvery batches frames into one message per this much audio
+	// (100 ms, the chunk size Google recommends).
 	SendEvery time.Duration
-	// IdleFinal finalizes a segment when no transcription arrived for this
-	// much wall time (1.5 s).
+	// IdleFinal is a safety net: an interim the server hasn't updated or
+	// finalized for this much wall time becomes final (5 s).
 	IdleFinal time.Duration
+	// TurnGrace is how long after the end of a turn the server's final may
+	// take before the open interim becomes final (1 s).
+	TurnGrace time.Duration
+	// RotateAfter is how long a connection is used before the next one is
+	// opened, ahead of the 10-minute session limit (9 min).
+	RotateAfter time.Duration
+	// RotateGrace is how long the switch waits for a pause after
+	// RotateAfter before it cuts mid-utterance (45 s).
+	RotateGrace time.Duration
 	// MaxBuffer is how much audio is kept while reconnecting (15 s); older
 	// audio is dropped and logged as a gap.
 	MaxBuffer time.Duration
@@ -57,8 +73,8 @@ type ASR struct {
 	MaxRetries int
 	// Backoff is the first reconnect delay (500 ms), doubled up to MaxBackoff (10 s).
 	Backoff, MaxBackoff time.Duration
-	// DrainTimeout bounds how long the end of the audio waits for the last
-	// transcription (4 s).
+	// DrainTimeout bounds how long the end of the audio, or a replaced
+	// connection, waits for the last transcription (4 s).
 	DrainTimeout time.Duration
 
 	// dial opens a Live connection; nil uses the genai SDK. Tests replace it.
@@ -84,14 +100,14 @@ func (a *ASR) Start(ctx context.Context, cfg domain.ASRConfig) (chan<- domain.Au
 	model := a.model(ctx)
 	opts := a.withDefaults()
 	lang := pinnedLanguage(cfg.SourceLanguage)
-	dc := dialConfig{APIKey: key, Model: model, Language: lang, Glossary: glossaryTerms(cfg.Glossary)}
+	dc := dialConfig{APIKey: key, Model: model, Language: lang, Vocabulary: glossaryTerms(cfg.Glossary)}
 
 	conn, err := dialCtx(ctx, opts.dial, dc)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gemini: connect to the Live API (model %s): %w", model, err)
 	}
 	s := newStream(ctx, opts, cfg, dc)
-	s.log.Info("gemini live connected", "model", model, "source_language", cfg.SourceLanguage)
+	s.log.Info("gemini live connected", "model", model, "source_language", cfg.SourceLanguage, "vocabulary", len(dc.Vocabulary))
 	go s.run(conn)
 	return s.in, s.out, nil
 }
@@ -139,8 +155,9 @@ func (a *ASR) logger() *slog.Logger {
 // withDefaults returns a copy with every tuning field set.
 func (a *ASR) withDefaults() ASR {
 	o := ASR{
-		Logger: a.logger(), SendEvery: a.SendEvery, IdleFinal: a.IdleFinal, MaxBuffer: a.MaxBuffer,
-		MaxRetries: a.MaxRetries, Backoff: a.Backoff, MaxBackoff: a.MaxBackoff, DrainTimeout: a.DrainTimeout,
+		Logger: a.logger(), SendEvery: a.SendEvery, IdleFinal: a.IdleFinal, TurnGrace: a.TurnGrace,
+		RotateAfter: a.RotateAfter, RotateGrace: a.RotateGrace, MaxBuffer: a.MaxBuffer, MaxRetries: a.MaxRetries,
+		Backoff: a.Backoff, MaxBackoff: a.MaxBackoff, DrainTimeout: a.DrainTimeout,
 		dial: a.dial, now: a.now, tick: a.tick,
 	}
 	def := func(d *time.Duration, v time.Duration) {
@@ -148,8 +165,11 @@ func (a *ASR) withDefaults() ASR {
 			*d = v
 		}
 	}
-	def(&o.SendEvery, 40*time.Millisecond)
-	def(&o.IdleFinal, 1500*time.Millisecond)
+	def(&o.SendEvery, 100*time.Millisecond)
+	def(&o.IdleFinal, 5*time.Second)
+	def(&o.TurnGrace, time.Second)
+	def(&o.RotateAfter, 9*time.Minute)
+	def(&o.RotateGrace, 45*time.Second)
 	def(&o.MaxBuffer, 15*time.Second)
 	def(&o.Backoff, 500*time.Millisecond)
 	def(&o.MaxBackoff, 10*time.Second)
@@ -176,7 +196,8 @@ func pinnedLanguage(s domain.SourceLanguage) domain.LanguageCode {
 	return ""
 }
 
-// glossaryTerms lists the source terms of a glossary for the prompt (AI-7).
+// glossaryTerms lists the terms and do-not-translate entries of a glossary,
+// at most maxVocabulary, as the model's custom vocabulary (AI-7).
 func glossaryTerms(g *domain.Glossary) []string {
 	if g == nil {
 		return nil
@@ -184,7 +205,7 @@ func glossaryTerms(g *domain.Glossary) []string {
 	var terms []string
 	seen := map[string]bool{}
 	add := func(t string) {
-		if t = strings.TrimSpace(t); t != "" && !seen[t] {
+		if t = strings.TrimSpace(t); t != "" && !seen[t] && len(terms) < maxVocabulary {
 			seen[t] = true
 			terms = append(terms, t)
 		}
