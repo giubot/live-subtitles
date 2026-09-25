@@ -3,7 +3,17 @@
   "appTitle": "Admin de Live Subtitles",
   "newSession": "Nueva sesión",
   "logout": "Cerrar sesión",
-  "nav": { "label": "Admin", "sessions": "Sesiones", "server": "Este servidor" },
+  "nav": {
+    "label": "Admin",
+    "sessions": "Sesiones",
+    "server": "Este servidor",
+    "glossaries": "Glosarios",
+    "overlays": "Overlays",
+    "providers": "Proveedores y claves",
+    "settings": "Ajustes",
+    "tls": "HTTPS",
+    "menu": "Abrir el menú"
+  },
   "login": {
     "title": "Ingresar",
     "intro": "Ingresá el PIN de admin que se eligió al configurar este servidor.",
@@ -22,7 +32,12 @@
     "stopping": "Deteniendo",
     "error": "Error"
   },
-  "source": { "browser": "navegador", "file": "archivo", "srt": "SRT", "device": "dispositivo" },
+  "source": {
+    "browser": "navegador",
+    "file": "archivo",
+    "srt": "SRT",
+    "device": "dispositivo"
+  },
   "provider": {
     "default": "Predeterminado",
     "gemini": "Gemini",
@@ -40,7 +55,21 @@
     "noCapture": "No hay página de captura conectada",
     "provider": "Proveedor",
     "speaking": "Idioma hablado",
-    "viewers": "Espectadores"
+    "viewers": "Espectadores",
+    "latency": "Latencia p95",
+    "sourceTrack": "Original",
+    "seconds": "{{value}} s",
+    "srt": "Entrada SRT",
+    "srtUp": "Conectada",
+    "srtDown": "Desconectada",
+    "srtRtt": "RTT {{value}} ms",
+    "srtLoss": "pérdida {{value}} %",
+    "srtBitrate": "{{value}} kbps",
+    "streamCaptions": "Subtítulos en la transmisión",
+    "ccSeq": "seq {{seq}}",
+    "ccSent": "enviado {{time}}",
+    "clipping": "La entrada está saturando. Bajá un poco la salida de la consola.",
+    "silent": "No llega sonido al servidor. Revisá la salida de la consola y la entrada de la computadora de captura."
   },
   "links": {
     "viewer": "Visor del público",
@@ -66,7 +95,11 @@
     "roomHelp": "Opcional, se le muestra al público.",
     "sourceLanguage": "Idioma hablado",
     "sourceLanguageHelp": "Automático distingue inglés de español oración por oración.",
-    "source": { "auto": "Automático (inglés o español)", "en": "Inglés", "es": "Español" },
+    "source": {
+      "auto": "Automático (inglés o español)",
+      "en": "Inglés",
+      "es": "Español"
+    },
     "provider": "Proveedor de IA",
     "providerHelp": {
       "default": "Gemini si hay una clave de API de Google; si no, local.",
@@ -89,6 +122,77 @@
     "delete": "Eliminar sesión",
     "deleteConfirm": "¿Eliminarla junto con sus subtítulos? Las grabaciones se conservan.",
     "deleteYes": "Eliminar",
-    "deleteNo": "Conservarla"
+    "deleteNo": "Conservarla",
+    "glossary": "Glosario",
+    "glossaryNone": "Sin glosario",
+    "glossaryHelp": "Términos para escribir bien y nombres que no se traducen.",
+    "glossaryUnavailable": "No se pudieron cargar los glosarios, así que solo aparece la opción actual."
+  },
+  "live": {
+    "reconnecting": "El estado en vivo se está reconectando. Los datos pueden tener unos segundos de atraso."
+  },
+  "cc": {
+    "title": "Subtítulos en la transmisión en vivo",
+    "enabled": "Enviar subtítulos a la transmisión",
+    "hint": "Consejo: incrustá un idioma en la imagen con el overlay y mandá el otro como subtítulos opcionales.",
+    "target": "Enviar a",
+    "targets": {
+      "youtube_http": "YouTube (URL de ingesta HTTP)",
+      "obs_websocket": "OBS (WebSocket, CEA-608)"
+    },
+    "targetHelp": {
+      "youtube_http": "YouTube Studio › Emitir en vivo › Subtítulos › Enviar subtítulos por POST a una URL.",
+      "obs_websocket": "OBS los incrusta en la señal que transmite. Usa la conexión a OBS de Ajustes."
+    },
+    "track": "Pista de subtítulos",
+    "trackHelp": "YouTube muestra una sola pista.",
+    "sourceTrack": "Original (como se habla)",
+    "youtubeUrl": "URL de ingesta de subtítulos de YouTube",
+    "youtubeUrlHelp": "Pegala desde YouTube Studio. Se guarda como secreto y no se vuelve a mostrar.",
+    "youtubeUrlSet": "Hay una URL guardada. Pegá una nueva para reemplazarla.",
+    "youtubeUrlRemove": "Quitar la URL guardada",
+    "saveFirst": "Primero creá la sesión; después editala para agregar la URL de YouTube y mandar un subtítulo de prueba.",
+    "test": "Enviar subtítulo de prueba",
+    "testText": "Subtítulo de prueba de Live Subtitles",
+    "testHelp": "Usa la configuración guardada: guardá los cambios antes.",
+    "state": {
+      "disabled": "Apagado",
+      "idle": "En espera",
+      "ok": "Enviando",
+      "retrying": "Reintentando",
+      "error": "Error"
+    }
+  },
+  "palette": {
+    "trigger": "Buscar o ejecutar un comando",
+    "label": "Paleta de comandos",
+    "placeholder": "Escribí un comando o el nombre de una sesión…",
+    "results": "Comandos",
+    "empty": "Ningún comando coincide.",
+    "start": "Iniciar {{name}}",
+    "resume": "Reanudar {{name}}",
+    "pause": "Pausar {{name}}",
+    "stop": "Detener {{name}}",
+    "open": "Abrir {{what}} — {{name}}",
+    "copy": "Copiar URL de {{what}} — {{name}}",
+    "go": "Ir a {{page}}",
+    "language": "Idioma de la interfaz: {{language}}",
+    "links": {
+      "viewer": "visor",
+      "stage": "pantalla de escenario",
+      "overlay": "overlay",
+      "capture": "página de captura"
+    },
+    "theme": {
+      "light": "Tema: claro",
+      "dark": "Tema: oscuro",
+      "system": "Tema: seguir al sistema"
+    },
+    "groups": {
+      "session": "Sesión",
+      "link": "Enlace",
+      "page": "Página",
+      "preference": "Preferencia"
+    }
   }
 }

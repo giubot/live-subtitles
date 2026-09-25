@@ -1,0 +1,56 @@
+{
+  "title": "Glossaries",
+  "newGlossary": "New glossary",
+  "edit": "Edit",
+  "empty": {
+    "title": "No glossaries yet",
+    "body": "A glossary tells the speech and translation models how to write names, products and jargon. Make one, then pick it in a session."
+  },
+  "summary_one": "{{count}} term · {{keep}} kept as is · updated {{updated}}",
+  "summary_other": "{{count}} terms · {{keep}} kept as is · updated {{updated}}",
+  "more_one": "{{count}} more",
+  "more_other": "{{count}} more",
+  "form": {
+    "createTitle": "New glossary",
+    "editTitle": "Edit “{{name}}”",
+    "name": "Name",
+    "nameHelp": "e.g. “Nerdearla 2026 – talks”",
+    "nameInvalid": "Give the glossary a name.",
+    "create": "Create glossary",
+    "save": "Save glossary",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this glossary? Sessions using it keep running without it.",
+    "deleteYes": "Delete glossary",
+    "deleteNo": "Keep it"
+  },
+  "terms": {
+    "heading_one": "{{count}} term",
+    "heading_other": "{{count}} terms",
+    "term": "Term",
+    "note": "Note for the model",
+    "keep": "Keep as is",
+    "actions": "Actions",
+    "rowN": "row {{n}}",
+    "termOf": "Term, row {{n}}",
+    "translationOf": "{{lang}} translation of {{term}}",
+    "noteOf": "Note for {{term}}",
+    "keepOf": "Keep {{term}} as is",
+    "remove": "Remove {{term}}",
+    "add": "Add term",
+    "addLanguage": "Language code",
+    "addLanguageAction": "Add language",
+    "keepHelp": "Write each term as it’s spoken or written in the talk. Translations are the preferred wording per caption language; blank ones are left to the model. “Keep as is” leaves the term untranslated in every language."
+  },
+  "keep": {
+    "label": "Other words to keep as is",
+    "help": "One per line, e.g. product and brand names that aren’t in the table."
+  },
+  "import": {
+    "open": "Paste CSV",
+    "label": "CSV or spreadsheet rows",
+    "help": "One term per line, columns separated by commas, semicolons or tabs: {{columns}}. Or start with a header row naming the columns (term, language codes, note, keep).",
+    "action": "Import rows",
+    "result": "{{added}} added, {{updated}} updated. Review them, then save."
+  }
+}

@@ -1,6 +1,6 @@
 {
   "title": "Set up Live Subtitles",
-  "intro": "Choose the PIN that protects the admin pages. Anyone with it can start sessions and change settings.",
+  "intro": "Pick the interface language and theme at the top; you can change both later. Then choose the PIN that protects the admin pages. Anyone with it can start sessions and change settings.",
   "pin": "Admin PIN",
   "pinHelp": "At least {{min}} characters. Numbers are fine.",
   "pinTooShort": "Use at least {{min}} characters.",
@@ -8,5 +8,107 @@
   "mismatch": "The two PINs don’t match.",
   "submit": "Save PIN and continue",
   "done": "This server is already set up. Log in with its admin PIN.",
-  "toAdmin": "Go to the admin"
+  "toAdmin": "Go to the admin",
+  "stepOf": "Step {{n}} of {{total}}",
+  "finishLater": "Finish later",
+  "back": "Back",
+  "next": "Continue",
+  "skip": "Skip this step",
+  "pinStep": {
+    "heading": "Language, theme and admin PIN"
+  },
+  "hardware": {
+    "heading": "Hardware check",
+    "intro": "What this computer has, and which local models it can run. The local provider transcribes and translates without internet.",
+    "checking": "Checking this computer…",
+    "system": "System",
+    "cpu": "Processor",
+    "cores_one": "{{count}} core",
+    "cores_other": "{{count}} cores",
+    "memory": "Memory",
+    "gb": "{{value}} GB",
+    "gpu": "Graphics",
+    "noGpu": "None found",
+    "runtimes": "Local runtimes",
+    "runtime": {
+      "whisper": "whisper-server",
+      "ollama": "Ollama",
+      "ffmpeg": "FFmpeg"
+    },
+    "runtimeOk": "{{name}} found",
+    "runtimeMissing": "{{name}} missing",
+    "recommend": "Recommended models for this computer: speech {{whisper}}, translation {{gemma}}.",
+    "slow": "The local models may not keep up in real time here. Add a Google API key in a later step, and Gemini is used instead.",
+    "benchmarkHelp": "The benchmark runs the local models on a short bundled clip. It takes about a minute.",
+    "benchmark": "Run benchmark",
+    "rtf": "Real-time factor",
+    "rtfDetail": "Speech {{asr}} ms · translation {{translation}} ms",
+    "realtime": "Keeps up in real time",
+    "notRealtime": "Slower than real time"
+  },
+  "models": {
+    "heading": "Local models",
+    "intro": "Download the speech and translation models the local provider needs. Skip this if you’ll only use Gemini.",
+    "loading": "Loading the model list…",
+    "none": "The server offers no local models to download.",
+    "downloadRecommended_one": "Download the recommended model",
+    "downloadRecommended_other": "Download the {{count}} recommended models",
+    "download": "Download",
+    "retry": "Download again",
+    "recommended": "Recommended",
+    "size": "{{value}} GB",
+    "kind": {
+      "whisper": "Speech (whisper)",
+      "gemma": "Translation (Gemma)"
+    },
+    "status": {
+      "missing": "Not downloaded",
+      "downloading": "Downloading",
+      "verifying": "Checking",
+      "ready": "Ready",
+      "error": "Failed"
+    },
+    "progress": "Downloading {{name}}",
+    "background": "Downloads continue on the server if you move on or close this page."
+  },
+  "google": {
+    "heading": "Google API key (optional)",
+    "intro": "With a Google API key, sessions use Gemini, which is fast and accurate but sends the audio to Google. Without one, everything runs on this computer.",
+    "defaultLabel": "Default provider",
+    "provider": {
+      "gemini": "Gemini",
+      "local": "Local",
+      "mock": "Mock (development)"
+    },
+    "reason": {
+      "google_api_key_valid": "A valid Google API key is saved.",
+      "no_google_api_key": "No Google API key is saved.",
+      "google_api_key_invalid": "Google rejected the saved API key."
+    },
+    "key": "Google API key",
+    "keyHelp": "Create one in Google AI Studio. It’s stored in the OS keychain and never shown again.",
+    "saved": "A key is saved. Enter a new one to replace it.",
+    "savedHint": "Saved key {{hint}}. Enter a new one to replace it.",
+    "save": "Save and check key"
+  },
+  "session": {
+    "heading": "First session",
+    "intro": "A session is one room or stage. It gets captions in {{languages}} with the default provider; change any of this later in the admin.",
+    "name": "Session name",
+    "nameHelp": "What the audience sees, e.g. “Main stage”.",
+    "nameRequired": "Give the session a name of up to 120 characters.",
+    "slug": "Address",
+    "slugHelp": "Part of the session’s links. Lowercase letters, numbers and hyphens.",
+    "slugInvalid": "Use lowercase letters, numbers and hyphens, starting with a letter or number.",
+    "create": "Create session"
+  },
+  "finish": {
+    "heading": "Ready",
+    "intro": "“{{name}}” is created. Open the capture link on the computer that receives the room’s audio, pick the input, then start the session from the admin.",
+    "noSession": "Setup is done. Create and start sessions from the admin.",
+    "capture": "Capture link",
+    "captureHint": "The link carries the session’s ingest token and is only shown now. If you lose it, make a new one from the session in the admin.",
+    "viewer": "Audience link",
+    "qr": "Scan to open the capture page on a phone"
+  }
 }

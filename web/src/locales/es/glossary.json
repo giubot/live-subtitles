@@ -1,0 +1,56 @@
+{
+  "title": "Glosarios",
+  "newGlossary": "Nuevo glosario",
+  "edit": "Editar",
+  "empty": {
+    "title": "Todavía no hay glosarios",
+    "body": "Un glosario le dice a los modelos de voz y de traducción cómo escribir nombres, productos y jerga. Creá uno y elegilo en una sesión."
+  },
+  "summary_one": "{{count}} término · {{keep}} sin traducir · actualizado {{updated}}",
+  "summary_other": "{{count}} términos · {{keep}} sin traducir · actualizado {{updated}}",
+  "more_one": "{{count}} más",
+  "more_other": "{{count}} más",
+  "form": {
+    "createTitle": "Nuevo glosario",
+    "editTitle": "Editar “{{name}}”",
+    "name": "Nombre",
+    "nameHelp": "p. ej. “Nerdearla 2026 – charlas”",
+    "nameInvalid": "Poné un nombre al glosario.",
+    "create": "Crear glosario",
+    "save": "Guardar glosario",
+    "cancel": "Cancelar",
+    "delete": "Borrar",
+    "deleteConfirm": "¿Borrar este glosario? Las sesiones que lo usan siguen andando sin él.",
+    "deleteYes": "Borrar glosario",
+    "deleteNo": "Conservarlo"
+  },
+  "terms": {
+    "heading_one": "{{count}} término",
+    "heading_other": "{{count}} términos",
+    "term": "Término",
+    "note": "Nota para el modelo",
+    "keep": "Sin traducir",
+    "actions": "Acciones",
+    "rowN": "fila {{n}}",
+    "termOf": "Término, fila {{n}}",
+    "translationOf": "Traducción ({{lang}}) de {{term}}",
+    "noteOf": "Nota para {{term}}",
+    "keepOf": "Dejar {{term}} sin traducir",
+    "remove": "Quitar {{term}}",
+    "add": "Agregar término",
+    "addLanguage": "Código de idioma",
+    "addLanguageAction": "Agregar idioma",
+    "keepHelp": "Escribí cada término como se dice o se escribe en la charla. Las traducciones son la forma preferida para cada idioma de subtítulos; las vacías quedan a criterio del modelo. “Sin traducir” deja el término igual en todos los idiomas."
+  },
+  "keep": {
+    "label": "Otras palabras sin traducir",
+    "help": "Una por línea, p. ej. nombres de productos y marcas que no están en la tabla."
+  },
+  "import": {
+    "open": "Pegar CSV",
+    "label": "Filas CSV o de planilla",
+    "help": "Un término por línea, con columnas separadas por comas, punto y coma o tabulaciones: {{columns}}. O empezá con una fila de encabezado que nombre las columnas (term, códigos de idioma, note, keep).",
+    "action": "Importar filas",
+    "result": "{{added}} agregados, {{updated}} actualizados. Revisalos y guardá."
+  }
+}

@@ -38,6 +38,13 @@ To start over with a new PIN, stop the server and delete `<data dir>/livesubs.db
 
 Manage sessions at `/admin` → **New session**: give it a name (the address, or slug, is derived from it), languages and provider, then use **Start**, **Pause** and **Stop** on its card. **Links** shows the viewer, stage, overlay and capture links with a QR code for the audience. The capture link carries the session's ingest token, which the server only stores hashed: it's shown right after creating the session, or after **Make a new capture link** (which retires the old one). When the admin runs on `localhost`, the capture link stays on `localhost` too, so the browser allows the microphone.
 
+After the PIN, `/setup` walks through the hardware check, local models, the Google key and the first session; every step after the PIN can be skipped (**Finish later** goes to `/admin`). In the admin, **Ctrl+K** (⌘K on a Mac) opens the command palette. The other admin pages:
+
+- `/admin/glossaries`: terms per glossary. **Paste CSV** takes comma, semicolon or tab separated rows; with a header, the columns are `term`, language codes (`es`, `en`, …), `note` and `keep`; without one, the order is term, the table's languages, then note.
+- `/admin/overlays`: built-in and saved overlay presets with a live preview. A saved preset's overlay link is `/overlay/<session>?lang=es&preset=<preset id>`.
+- `/admin/providers`: which provider new sessions use, and the write-only Google API key.
+- `/admin/settings` and `/admin/tls` (certificate details and how to trust the local CA on each OS).
+
 Scripts can do the same over the API. Anything left out comes from the settings (target languages `[es, en]`, source language `auto`, recording on):
 
 ```sh

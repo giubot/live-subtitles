@@ -21,6 +21,7 @@ import { api } from '../../api/client'
 import { toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { nativeLanguageName } from '../../components/languageNames'
+import { StreamCaptionsFields } from './StreamCaptionsFields'
 import {
   commonLanguages,
   newSessionValues,
@@ -86,8 +87,10 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
       onClose()
     },
   })
-  const error: unknown = create.error ?? update.error ?? remove.error
-  const pending = create.isPending || update.isPending || remove.isPending
+  const putUrl = api.useMutation('put', '/api/sessions/{sessionId}/stream-captions/youtube-url')
+  const glossaries = api.useQuery('get', '/api/glossaries')
+  const error: unknown = create.error ?? update.error ?? remove.error ?? putUrl.error
+  const pending = create.isPending || update.isPending || remove.isPending || putUrl.isPending
 
   const local = touched ? validate(v, creating) : {}
   const server = toApiError(error)?.fields ?? {}
@@ -101,7 +104,15 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
     setTouched(true)
     if (Object.keys(validate(v, creating)).length > 0) return
     if (creating) create.mutate({ body: { ...toBody(v), slug: v.slug } })
-    else update.mutate({ params: { path: { sessionId: session.id } }, body: toBody(v) })
+    else {
+      const params = { path: { sessionId: session.id } }
+      const save = () => update.mutate({ params, body: toBody(v) })
+      const url = v.ccYoutubeUrl.trim()
+      // The ingestion URL is a secret with its own write-only endpoint.
+      if (v.ccEnabled && v.ccTarget === 'youtube_http' && url)
+        putUrl.mutate({ params, body: { value: url, validate: true } }, { onSuccess: save })
+      else save()
+    }
   }
 
   const languages = [...new Set([...commonLanguages, ...v.targetLanguages])]
@@ -229,6 +240,24 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
               {help('targetLanguages', t('form.targetLanguagesHelp'))}
             </FormHelperText>
           </FormControl>
+          <TextField
+            select
+            label={t('form.glossary')}
+            value={v.glossaryId}
+            onChange={(e) => set('glossaryId', e.target.value)}
+            helperText={glossaries.error ? t('form.glossaryUnavailable') : t('form.glossaryHelp')}
+            slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+          >
+            <option value="">{t('form.glossaryNone')}</option>
+            {glossaries.data?.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+            {v.glossaryId && !glossaries.data?.some((g) => g.id === v.glossaryId) && (
+              <option value={v.glossaryId}>{v.glossaryId}</option>
+            )}
+          </TextField>
           <FormControlLabel
             control={
               <Switch
@@ -238,6 +267,7 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
             }
             label={t('form.recording')}
           />
+          <StreamCaptionsFields session={session} values={v} set={set} />
         </DialogContent>
         <DialogActions
           sx={{ flexWrap: 'wrap', gap: 'var(--space-xs)', padding: 'var(--space-md)' }}

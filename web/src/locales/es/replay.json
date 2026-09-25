@@ -1,3 +1,27 @@
 {
-  "title": "Repetición · {{id}}"
+  "title": "Repetición · {{id}}",
+  "allSessions": "Ver todas las sesiones",
+  "recording": {
+    "label": "Grabación",
+    "option": "{{date}} · {{duration}}",
+    "inProgress": "{{date}} · grabando todavía",
+    "failed": "{{date}} · incompleta"
+  },
+  "noRecordings": {
+    "title": "Todavía no hay grabaciones",
+    "body": "Las grabaciones de una sesión aparecen acá cuando se graba. La grabación se activa por sesión en el admin."
+  },
+  "stillRecording": "Esta sesión se sigue grabando. El audio y la transcripción cubren lo grabado hasta ahora; recargá la página para ver más.",
+  "player": "Audio grabado",
+  "sourceTrack": "Original (como se habló)",
+  "transcript": "Transcripción",
+  "loading": "Cargando la transcripción…",
+  "transcriptEmpty": "Esta grabación no tiene subtítulos en este idioma. Elegí otro arriba.",
+  "downloads": {
+    "label": "Descargas",
+    "audio": "Audio (M4A)",
+    "srt": "Subtítulos (SRT)",
+    "vtt": "Subtítulos (VTT)",
+    "txt": "Texto (TXT)"
+  }
 }

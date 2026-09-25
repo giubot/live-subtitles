@@ -1,10 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Schemas } from '../../api/types'
+import type { ChipStatus } from '../../components/StatusChip'
 
 export type Session = Schemas['Session']
 export type SessionCreate = Schemas['SessionCreate']
 export type SourceLanguage = Schemas['SourceLanguage']
 export type ProviderChoice = Schemas['ProviderChoice']
+export type StreamCaptionTarget = Schemas['StreamCaptionTarget']
+
+/** How a stream-caption delivery state reads on a chip. */
+export const ccChip: Record<Schemas['StreamCaptionStatus']['state'], ChipStatus> = {
+  disabled: 'idle',
+  idle: 'idle',
+  ok: 'ok',
+  retrying: 'warn',
+  error: 'error',
+}
+
+export const streamCaptionTargets: StreamCaptionTarget[] = ['youtube_http', 'obs_websocket']
 
 /** Same rule as the server (and api/openapi.yaml `Slug`). */
 export const slugPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
@@ -23,6 +36,15 @@ export interface SessionFormValues {
   targetLanguages: string[]
   provider: ProviderChoice
   recordingEnabled: boolean
+  /** '' for none. */
+  glossaryId: string
+  ccEnabled: boolean
+  ccTarget: StreamCaptionTarget
+  /** A target language or `source`. */
+  ccTrack: string
+  ccMaxChars: number
+  /** Write-only: '' keeps whatever URL is stored. */
+  ccYoutubeUrl: string
 }
 
 export const newSessionValues: SessionFormValues = {
@@ -33,6 +55,12 @@ export const newSessionValues: SessionFormValues = {
   targetLanguages: ['es', 'en'],
   provider: 'default',
   recordingEnabled: true,
+  glossaryId: '',
+  ccEnabled: false,
+  ccTarget: 'youtube_http',
+  ccTrack: 'en',
+  ccMaxChars: 32,
+  ccYoutubeUrl: '',
 }
 
 export function valuesFrom(s: Session): SessionFormValues {
@@ -44,6 +72,12 @@ export function valuesFrom(s: Session): SessionFormValues {
     targetLanguages: s.targetLanguages ?? [],
     provider: s.provider ?? 'default',
     recordingEnabled: s.recordingEnabled ?? false,
+    glossaryId: s.glossaryId ?? '',
+    ccEnabled: s.streamCaptions?.enabled ?? false,
+    ccTarget: s.streamCaptions?.target ?? 'youtube_http',
+    ccTrack: s.streamCaptions?.track ?? 'en',
+    ccMaxChars: s.streamCaptions?.maxCharsPerLine ?? 32,
+    ccYoutubeUrl: '',
   }
 }
 
@@ -82,6 +116,13 @@ export function toBody(v: SessionFormValues) {
     targetLanguages: v.targetLanguages,
     provider: v.provider,
     recordingEnabled: v.recordingEnabled,
+    glossaryId: v.glossaryId || null,
+    streamCaptions: {
+      enabled: v.ccEnabled,
+      target: v.ccTarget,
+      track: v.ccTrack,
+      maxCharsPerLine: v.ccMaxChars,
+    },
   }
 }
 

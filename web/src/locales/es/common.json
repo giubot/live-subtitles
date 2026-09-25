@@ -247,6 +247,38 @@
         "why": "El navegador no pudo preparar el procesamiento de audio.",
         "fix": "Recargá la página y volvé a empezar. Si sigue fallando, probá con Chrome, Edge, Firefox o Safari actualizados."
       }
+    },
+    "not_implemented": {
+      "title": "Esto todavía no está disponible",
+      "why": "Esta versión del servidor todavía no tiene esta función.",
+      "fix": "Actualizá Live Subtitles, o usala cuando salga la próxima versión."
+    },
+    "secret": {
+      "read_only_env": {
+        "title": "Esta clave la define una variable de entorno",
+        "why": "El servidor la lee de su entorno, así que no se puede cambiar ni quitar desde acá.",
+        "fix": "Cambiá o quitá la variable donde se inicia el servidor y reinicialo."
+      },
+      "no_backend": {
+        "title": "No hay dónde guardar la clave de forma segura",
+        "why": "Esta computadora no tiene llavero del sistema y no hay una clave maestra para el archivo cifrado.",
+        "fix": "Definí LIVESUBS_MASTER_KEY (ver docs/dev.md) y reiniciá el servidor."
+      },
+      "not_found": {
+        "title": "Esa clave no está guardada",
+        "why": "Puede que ya la hayan quitado.",
+        "fix": "Recargá la página para ver las claves actuales."
+      },
+      "value_required": {
+        "title": "La clave está vacía",
+        "why": "No hay nada para guardar.",
+        "fix": "Pegá la clave y probá de nuevo."
+      },
+      "unknown_name": {
+        "title": "El servidor no conoce esta clave",
+        "why": "Probablemente la app y el servidor son versiones distintas.",
+        "fix": "Recargá la página. Si sigue pasando, actualizá el servidor."
+      }
     }
   }
 }

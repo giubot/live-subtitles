@@ -1,3 +1,27 @@
 {
-  "title": "Replay · {{id}}"
+  "title": "Replay · {{id}}",
+  "allSessions": "See all sessions",
+  "recording": {
+    "label": "Recording",
+    "option": "{{date}} · {{duration}}",
+    "inProgress": "{{date}} · still recording",
+    "failed": "{{date}} · incomplete"
+  },
+  "noRecordings": {
+    "title": "No recordings yet",
+    "body": "A session’s recordings appear here once it has been recorded. Recording is turned on per session in the admin."
+  },
+  "stillRecording": "This session is still being recorded. The audio and transcript cover what’s been recorded so far; reload the page for more.",
+  "player": "Recorded audio",
+  "sourceTrack": "Original (as spoken)",
+  "transcript": "Transcript",
+  "loading": "Loading the transcript…",
+  "transcriptEmpty": "This recording has no captions in this language. Pick another one above.",
+  "downloads": {
+    "label": "Downloads",
+    "audio": "Audio (M4A)",
+    "srt": "Subtitles (SRT)",
+    "vtt": "Subtitles (VTT)",
+    "txt": "Text (TXT)"
+  }
 }

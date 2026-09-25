@@ -40,6 +40,18 @@ export function applyAdminEvent(s: AdminEventsState, ev: AdminEvent): AdminEvent
       delete statuses[ev.sessionId]
       return { ...s, statuses }
     }
+    case 'streamCaptionStatus': {
+      // Stream-caption updates may come on their own, between full statuses.
+      const current = ev.sessionId ? s.statuses[ev.sessionId] : undefined
+      if (!current || !ev.status?.streamCaptions) return s
+      return {
+        ...s,
+        statuses: {
+          ...s.statuses,
+          [current.sessionId]: { ...current, streamCaptions: ev.status.streamCaptions },
+        },
+      }
+    }
     case 'log':
       return { ...s, logs: [...s.logs, ev].slice(-maxAdminLogs) }
   }

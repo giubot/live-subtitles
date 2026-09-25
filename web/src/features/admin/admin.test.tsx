@@ -178,6 +178,8 @@ describe('admin', () => {
     await user.clear(screen.getByLabelText('Repeat the PIN'))
     await user.type(screen.getByLabelText('Repeat the PIN'), '1234')
     await user.click(screen.getByRole('button', { name: 'Save PIN and continue' }))
+    // The wizard goes on to the hardware check; the rest can wait.
+    await user.click(await screen.findByRole('link', { name: 'Finish later' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Sessions' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/admin')

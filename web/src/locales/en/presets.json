@@ -1,0 +1,72 @@
+{
+  "title": "Overlay presets",
+  "newPreset": "New preset",
+  "newName": "My overlay",
+  "builtin": {
+    "classic": "Classic box",
+    "outline": "Outline only",
+    "lower-third": "Lower third"
+  },
+  "list": {
+    "heading": "Presets",
+    "builtin": "Built-in",
+    "saved": "Saved",
+    "empty": "No saved presets yet. Duplicate a built-in to make your own.",
+    "unsaved": "New preset (not saved)"
+  },
+  "editor": {
+    "untitled": "Untitled preset",
+    "name": "Name",
+    "invalidName": "Give the preset a name, up to 80 characters.",
+    "readOnly": "Built-in presets can’t be changed. Duplicate this one to adjust it and save it under your own name.",
+    "duplicate": "Duplicate to edit",
+    "copyName": "{{name}} (copy)",
+    "save": "Save preset",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this preset? Overlays using it fall back to Classic box.",
+    "deleteYes": "Delete preset",
+    "deleteNo": "Keep it",
+    "fontSize": "Text size",
+    "pxHelp": "Pixels at 1920 × 1080",
+    "fontWeight": "Weight",
+    "maxLines": "Lines on screen",
+    "color": "Text colour",
+    "outlineColor": "Outline colour",
+    "colorHelp": "A CSS colour, e.g. white or var(--overlay-fg)",
+    "outlineWidth": "Outline width",
+    "outlineWidthHelp": "Pixels; 0 for no outline",
+    "background": "Box colour",
+    "backgroundHelp": "A CSS colour, or “transparent” for no box",
+    "margin": "Margin from the edge",
+    "fadeAfter": "Hide after silence",
+    "fadeAfterHelp": "Seconds; 0 keeps the text up",
+    "position": "Position",
+    "top": "Top",
+    "bottom": "Bottom",
+    "align": "Alignment",
+    "left": "Left",
+    "center": "Centre",
+    "right": "Right",
+    "interim": "Show the sentence in progress",
+    "invalidRange": "Use a number from {{min}} to {{max}}.",
+    "invalidColor": "The browser doesn’t recognise this colour."
+  },
+  "preview": {
+    "heading": "Preview",
+    "label": "Preview of the overlay over a program frame",
+    "frame": "Program · 1920 × 1080",
+    "slate": "Program feed",
+    "line1": "So we moved the sessions to Redis",
+    "line2": "and the autoscaler started working.",
+    "interim": "Now let’s look at the"
+  },
+  "urls": {
+    "heading": "Overlay URLs",
+    "session": "Session",
+    "sessionHelp": "One link per caption language. Paste it into an OBS Browser source or a vMix Web Browser input.",
+    "noSessions": "Create a session first; its overlay links appear here.",
+    "label": "Overlay URL · {{lang}} · 1920 × 1080",
+    "copy": "Copy overlay URL",
+    "saveFirst": "Save the preset to get its overlay links."
+  }
+}

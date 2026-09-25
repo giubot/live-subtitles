@@ -1,0 +1,72 @@
+{
+  "title": "Presets de overlay",
+  "newPreset": "Nuevo preset",
+  "newName": "Mi overlay",
+  "builtin": {
+    "classic": "Caja clásica",
+    "outline": "Solo contorno",
+    "lower-third": "Tercio inferior"
+  },
+  "list": {
+    "heading": "Presets",
+    "builtin": "Incluidos",
+    "saved": "Guardados",
+    "empty": "Todavía no hay presets guardados. Duplicá uno incluido para hacer el tuyo.",
+    "unsaved": "Preset nuevo (sin guardar)"
+  },
+  "editor": {
+    "untitled": "Preset sin nombre",
+    "name": "Nombre",
+    "invalidName": "Poné un nombre al preset, de hasta 80 caracteres.",
+    "readOnly": "Los presets incluidos no se pueden cambiar. Duplicá este para ajustarlo y guardarlo con tu propio nombre.",
+    "duplicate": "Duplicar para editar",
+    "copyName": "{{name}} (copia)",
+    "save": "Guardar preset",
+    "delete": "Borrar",
+    "deleteConfirm": "¿Borrar este preset? Los overlays que lo usan vuelven a Caja clásica.",
+    "deleteYes": "Borrar preset",
+    "deleteNo": "Conservarlo",
+    "fontSize": "Tamaño del texto",
+    "pxHelp": "Píxeles a 1920 × 1080",
+    "fontWeight": "Grosor",
+    "maxLines": "Líneas en pantalla",
+    "color": "Color del texto",
+    "outlineColor": "Color del contorno",
+    "colorHelp": "Un color CSS, p. ej. white o var(--overlay-fg)",
+    "outlineWidth": "Ancho del contorno",
+    "outlineWidthHelp": "Píxeles; 0 para no tener contorno",
+    "background": "Color de la caja",
+    "backgroundHelp": "Un color CSS, o “transparent” para no tener caja",
+    "margin": "Margen desde el borde",
+    "fadeAfter": "Ocultar tras silencio",
+    "fadeAfterHelp": "Segundos; 0 deja el texto siempre visible",
+    "position": "Posición",
+    "top": "Arriba",
+    "bottom": "Abajo",
+    "align": "Alineación",
+    "left": "Izquierda",
+    "center": "Centro",
+    "right": "Derecha",
+    "interim": "Mostrar la frase en curso",
+    "invalidRange": "Usá un número de {{min}} a {{max}}.",
+    "invalidColor": "El navegador no reconoce este color."
+  },
+  "preview": {
+    "heading": "Vista previa",
+    "label": "Vista previa del overlay sobre un cuadro de programa",
+    "frame": "Programa · 1920 × 1080",
+    "slate": "Señal de programa",
+    "line1": "Así que movimos las sesiones a Redis",
+    "line2": "y el autoscaler empezó a funcionar.",
+    "interim": "Ahora veamos el"
+  },
+  "urls": {
+    "heading": "URLs del overlay",
+    "session": "Sesión",
+    "sessionHelp": "Un enlace por idioma de subtítulos. Pegalo en una fuente Navegador de OBS o una entrada Web Browser de vMix.",
+    "noSessions": "Primero creá una sesión; acá aparecen sus enlaces de overlay.",
+    "label": "URL del overlay · {{lang}} · 1920 × 1080",
+    "copy": "Copiar URL del overlay",
+    "saveFirst": "Guardá el preset para obtener sus enlaces de overlay."
+  }
+}
