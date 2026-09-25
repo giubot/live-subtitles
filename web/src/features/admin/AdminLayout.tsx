@@ -1,24 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
-import HttpsOutlined from '@mui/icons-material/HttpsOutlined'
-import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import LogoutOutlined from '@mui/icons-material/LogoutOutlined'
-import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
-import SubtitlesOutlined from '@mui/icons-material/SubtitlesOutlined'
-import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
+import MenuOutlined from '@mui/icons-material/MenuOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
+import Drawer from '@mui/material/Drawer'
+import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, Outlet } from '@tanstack/react-router'
-import { useEffect, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import { ErrorAlert } from '../../components/ErrorAlert'
+import { KbdHint } from '../../components/KbdHint'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { UiLanguageSwitcher } from '../../components/UiLanguageSwitcher'
 import { useAdminEvents } from '../../realtime/admin'
+import { CommandPalette } from './CommandPalette'
 import { LoginPage } from './LoginPage'
+import { adminNav, type AdminPath } from './nav'
 
 /**
  * `/admin`: signs the operator in (or sends a fresh install to /setup),
@@ -106,103 +115,146 @@ export function Wordmark() {
 
 const wide = '@media (min-width: 60rem)'
 
+interface ShellControls {
+  openPalette: () => void
+  openNav: () => void
+}
+
+/** Lets AdminPage's top bar open the palette and the narrow-screen menu. */
+const ShellContext = createContext<ShellControls | undefined>(undefined)
+
 function Shell() {
   const { t } = useTranslation('admin')
   useAdminEvents()
+  const [palette, setPalette] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
+  const controls = useMemo<ShellControls>(
+    () => ({ openPalette: () => setPalette(true), openNav: () => setNavOpen(true) }),
+    [],
+  )
+  const closePalette = useCallback(() => setPalette(false), [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setNavOpen(false)
+        setPalette((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  return (
+    <ShellContext.Provider value={controls}>
+      <Box
+        sx={{
+          minBlockSize: '100dvh',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          [wide]: { gridTemplateColumns: 'var(--rail-width) minmax(0, 1fr)' },
+        }}
+      >
+        <Box
+          component="nav"
+          aria-label={t('nav.label')}
+          sx={{ ...railSx, display: 'none', [wide]: { display: 'grid' } }}
+        >
+          <RailContent />
+        </Box>
+        <Box sx={{ minInlineSize: 0 }}>
+          <Outlet />
+        </Box>
+      </Box>
+      <Drawer
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        slotProps={{ paper: { sx: { backgroundImage: 'none' } } }}
+      >
+        <Box
+          component="nav"
+          aria-label={t('nav.label')}
+          sx={{ ...railSx, display: 'grid', minBlockSize: '100%', inlineSize: 'var(--rail-width)' }}
+        >
+          <RailContent onNavigate={() => setNavOpen(false)} />
+        </Box>
+      </Drawer>
+      {palette && <CommandPalette onClose={closePalette} />}
+    </ShellContext.Provider>
+  )
+}
+
+const railSx = {
+  alignContent: 'start',
+  gap: 'var(--space-2xs)',
+  padding: 'var(--space-md) var(--space-sm)',
+  backgroundColor: 'var(--color-paper-2)',
+  borderInlineEnd: 'var(--rule-hair) solid var(--color-rule)',
+} as const
+
+/** Wordmark, one link per admin page, and this server's address. */
+function RailContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useTranslation('admin')
   const network = api.useQuery('get', '/api/network')
   const host = network.data
     ? `${network.data.preferredIp ?? 'localhost'}:${network.data.httpPort}`
     : undefined
-
   return (
-    <Box
-      sx={{
-        minBlockSize: '100dvh',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr)',
-        [wide]: { gridTemplateColumns: 'var(--rail-width) minmax(0, 1fr)' },
-      }}
-    >
-      <Box
-        component="nav"
-        aria-label={t('nav.label')}
-        sx={{
-          display: 'none',
-          [wide]: { display: 'grid' },
-          alignContent: 'start',
-          gap: 'var(--space-2xs)',
-          padding: 'var(--space-md) var(--space-sm)',
-          backgroundColor: 'var(--color-paper-2)',
-          borderInlineEnd: 'var(--rule-hair) solid var(--color-rule)',
-        }}
-      >
-        <Box sx={{ padding: 'var(--space-xs) var(--space-xs) var(--space-md)' }}>
-          <Wordmark />
-        </Box>
-        <RailLink to="/admin" icon={<ViewAgendaOutlined />}>
-          {t('nav.sessions')}
+    <>
+      <Box sx={{ padding: 'var(--space-xs) var(--space-xs) var(--space-md)' }}>
+        <Wordmark />
+      </Box>
+      {adminNav.map((item) => (
+        <RailLink key={item.to} to={item.to} icon={item.icon} onClick={onNavigate}>
+          {t(`nav.${item.key}`)}
         </RailLink>
-        <RailLink to="/admin/glossaries" icon={<MenuBookOutlined />}>
-          {t('nav.glossaries')}
-        </RailLink>
-        <RailLink to="/admin/overlays" icon={<SubtitlesOutlined />}>
-          {t('nav.overlays')}
-        </RailLink>
-        <RailLink to="/admin/providers" icon={<KeyOutlined />}>
-          {t('nav.providers')}
-        </RailLink>
-        <RailLink to="/admin/settings" icon={<SettingsOutlined />}>
-          {t('nav.settings')}
-        </RailLink>
-        <RailLink to="/admin/tls" icon={<HttpsOutlined />}>
-          {t('nav.tls')}
-        </RailLink>
-        {host && (
+      ))}
+      {host && (
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 'var(--space-2xs)',
+            marginBlockStart: 'var(--space-lg)',
+            padding: 'var(--space-sm)',
+            borderBlockStart: 'var(--rule-hair) solid var(--color-rule)',
+          }}
+        >
+          <Typography variant="overline" component="span">
+            {t('nav.server')}
+          </Typography>
           <Box
+            component="span"
             sx={{
-              display: 'grid',
-              gap: 'var(--space-2xs)',
-              marginBlockStart: 'var(--space-lg)',
-              padding: 'var(--space-sm)',
-              borderBlockStart: 'var(--rule-hair) solid var(--color-rule)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              color: 'var(--color-ink)',
             }}
           >
-            <Typography variant="overline" component="span">
-              {t('nav.server')}
-            </Typography>
-            <Box
-              component="span"
-              sx={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--color-ink)',
-              }}
-            >
-              {host}
-            </Box>
+            {host}
           </Box>
-        )}
-      </Box>
-      <Box sx={{ minInlineSize: 0 }}>
-        <Outlet />
-      </Box>
-    </Box>
+        </Box>
+      )}
+    </>
   )
 }
 
-type AdminPath =
-  | '/admin'
-  | '/admin/glossaries'
-  | '/admin/overlays'
-  | '/admin/providers'
-  | '/admin/settings'
-  | '/admin/tls'
-
-function RailLink({ to, icon, children }: { to: AdminPath; icon: ReactNode; children: ReactNode }) {
+function RailLink({
+  to,
+  icon,
+  onClick,
+  children,
+}: {
+  to: AdminPath
+  icon: ReactNode
+  onClick?: () => void
+  children: ReactNode
+}) {
   return (
     <Box
       component={Link}
       to={to}
+      onClick={onClick}
       activeOptions={{ exact: true }}
       sx={{
         position: 'relative',
@@ -250,9 +302,42 @@ export interface AdminPageProps {
   children: ReactNode
 }
 
+/** The top bar's ⌘K button (`.kbar` in design/preview.html). */
+function PaletteTrigger({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation('admin')
+  return (
+    <ButtonBase
+      onClick={onClick}
+      aria-haspopup="dialog"
+      aria-label={t('palette.trigger')}
+      sx={{
+        gap: 'var(--space-sm)',
+        minBlockSize: '2.25rem',
+        paddingInline: 'var(--space-sm) var(--space-xs)',
+        border: 'var(--rule-hair) solid var(--color-control)',
+        borderRadius: 'var(--radius-input)',
+        backgroundColor: 'var(--color-paper)',
+        color: 'var(--color-muted)',
+        fontSize: 'var(--text-sm)',
+        whiteSpace: 'nowrap',
+        '&:focus-visible': {
+          outline: '2px solid var(--color-focus)',
+          outlineOffset: '2px',
+        },
+      }}
+    >
+      <Box component="span" sx={{ '@media (max-width: 29.99rem)': { display: 'none' } }}>
+        {t('palette.trigger')}
+      </Box>
+      <KbdHint keys={['Mod', 'K']} />
+    </ButtonBase>
+  )
+}
+
 /** An admin page: flat top bar with the title and actions, then content. */
 export function AdminPage({ title, actions, children }: AdminPageProps) {
   const { t } = useTranslation('admin')
+  const shell = useContext(ShellContext)
   const queryClient = useQueryClient()
   const logout = api.useMutation('post', '/api/auth/logout', {
     onSettled: () => queryClient.invalidateQueries(),
@@ -276,11 +361,21 @@ export function AdminPage({ title, actions, children }: AdminPageProps) {
         }}
       >
         <Box sx={{ display: 'contents', [wide]: { display: 'none' } }}>
+          {shell && (
+            <IconButton
+              aria-label={t('nav.menu')}
+              onClick={shell.openNav}
+              sx={{ marginInlineStart: 'calc(-1 * var(--space-xs))' }}
+            >
+              <MenuOutlined aria-hidden />
+            </IconButton>
+          )}
           <Wordmark />
         </Box>
         <Typography variant="h1" sx={{ fontSize: 'var(--text-lg)', marginInlineEnd: 'auto' }}>
           {title}
         </Typography>
+        {shell && <PaletteTrigger onClick={shell.openPalette} />}
         {actions}
         <UiLanguageSwitcher />
         <ThemeToggle />

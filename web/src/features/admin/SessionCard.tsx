@@ -5,22 +5,25 @@ import LinkOutlined from '@mui/icons-material/LinkOutlined'
 import PauseOutlined from '@mui/icons-material/PauseOutlined'
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined'
 import StopOutlined from '@mui/icons-material/StopOutlined'
+import VolumeOffOutlined from '@mui/icons-material/VolumeOffOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useQueryClient } from '@tanstack/react-query'
-import { useId } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { SessionStatus } from '../../api/types'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { LevelMeter } from '../../components/LevelMeter'
+import { Notice } from '../../components/Notice'
 import { Panel } from '../../components/Panel'
 import { Stat } from '../../components/Stat'
 import { StatusChip } from '../../components/StatusChip'
+import { useAdminEventsStore } from '../../realtime/admin'
 import { stateChip } from '../viewer/format'
 import { SessionLinks } from './SessionLinks'
-import type { Session } from './sessionForm'
+import { ccChip, type Session } from './sessionForm'
 
 export interface SessionCardProps {
   session: Session
@@ -34,7 +37,12 @@ export interface SessionCardProps {
   onEdit: () => void
 }
 
-/** One session: state, controls, a few live readouts and its links. */
+/**
+ * One session on the live dashboard (ADM-1, SES-4, AUD-6): state, controls,
+ * input level and flags, provider, detected language, latency per track,
+ * viewers, SRT and stream-caption readouts, recent errors, and its links.
+ * Readouts the server hasn't sent yet are left out.
+ */
 export function SessionCard({
   session,
   status,
@@ -44,7 +52,7 @@ export function SessionCard({
   onToggleLinks,
   onEdit,
 }: SessionCardProps) {
-  const { t } = useTranslation('admin')
+  const { t, i18n } = useTranslation('admin')
   const linksId = useId()
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['get', '/api/sessions'] })
@@ -57,6 +65,38 @@ export function SessionCard({
 
   const state = status?.state ?? session.state
   const audio = status?.audio
+  const srt = status?.srt
+  const cc = status?.streamCaptions
+  const logs = useAdminEventsStore((st) => st.logs)
+  const recent = useMemo(
+    () =>
+      logs
+        .filter(
+          (ev) =>
+            ev.log?.sessionId === session.id &&
+            ev.log.level === 'error' &&
+            ev.log.code !== status?.error?.code,
+        )
+        .slice(-3),
+    [logs, session.id, status?.error?.code],
+  )
+  const num = (value: number, digits = 1) =>
+    new Intl.NumberFormat(i18n.language, { maximumFractionDigits: digits }).format(value)
+  const clock = (at: string) =>
+    new Date(at).toLocaleTimeString(i18n.language, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  const latency = Object.entries(status?.latency ?? {}).map(
+    ([track, l]) =>
+      `${track === 'source' ? t('card.sourceTrack') : track.toUpperCase()} ${t('card.seconds', {
+        value: new Intl.NumberFormat(i18n.language, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }).format(l.p95Ms / 1000),
+      })}`,
+  )
   const room = [
     session.room,
     (session.targetLanguages ?? []).map((l) => l.toUpperCase()).join(' · '),
@@ -168,10 +208,7 @@ export function SessionCard({
           sx={{
             display: 'grid',
             gap: 'var(--space-md)',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            '@media (min-width: 48rem)': {
-              gridTemplateColumns: 'minmax(0, 1.6fr) repeat(3, minmax(0, 1fr))',
-            },
+            gridTemplateColumns: 'repeat(auto-fill, minmax(7rem, 1fr))',
           }}
         >
           <Stat
@@ -180,17 +217,67 @@ export function SessionCard({
               <LevelMeter db={audio?.connected ? (audio.levelDbfs ?? -Infinity) : -Infinity} />
             }
             detail={audio?.connected ? undefined : t('card.noCapture')}
-            sx={{ gridColumn: '1 / -1', '@media (min-width: 48rem)': { gridColumn: 'auto' } }}
+            sx={{ gridColumn: '1 / -1', '@media (min-width: 30rem)': { gridColumn: 'span 2' } }}
           />
           <Stat
             label={t('card.provider')}
             value={t(`provider.${status?.provider ?? session.effectiveProvider}`)}
           />
           <Stat label={t('card.speaking')} value={status?.detectedLanguage?.toUpperCase() ?? '—'} />
+          {latency.length > 0 && (
+            <Stat
+              label={t('card.latency')}
+              value={latency[0]}
+              detail={latency.length > 1 ? latency.slice(1).join(' · ') : undefined}
+            />
+          )}
           <Stat label={t('card.viewers')} value={String(status?.viewers ?? 0)} />
+          {srt && (
+            <Stat
+              label={t('card.srt')}
+              value={
+                srt.connected === false
+                  ? t('card.srtDown')
+                  : srt.rttMs != null
+                    ? t('card.srtRtt', { value: num(srt.rttMs, 0) })
+                    : t('card.srtUp')
+              }
+              detail={
+                [
+                  srt.packetLossPct != null && t('card.srtLoss', { value: num(srt.packetLossPct) }),
+                  srt.bitrateKbps != null &&
+                    t('card.srtBitrate', { value: num(srt.bitrateKbps, 0) }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || undefined
+              }
+            />
+          )}
+          {cc && cc.state !== 'disabled' && (
+            <Stat
+              label={t('card.streamCaptions')}
+              value={<StatusChip status={ccChip[cc.state]} label={t(`cc.state.${cc.state}`)} />}
+              detail={
+                [
+                  cc.lastSeq != null && t('card.ccSeq', { seq: cc.lastSeq }),
+                  cc.lastSentAt && t('card.ccSent', { time: clock(cc.lastSentAt) }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || undefined
+              }
+            />
+          )}
         </Box>
 
+        {audio?.connected && audio.clipping && <Notice>{t('card.clipping')}</Notice>}
+        {audio?.connected && audio.silent && state === 'live' && (
+          <Notice icon={<VolumeOffOutlined aria-hidden />}>{t('card.silent')}</Notice>
+        )}
         {status?.error && state === 'error' && <ErrorAlert error={status.error} />}
+        {cc?.error && cc.state === 'error' && <ErrorAlert error={cc.error} />}
+        {recent.map((ev, i) => (
+          <ErrorAlert key={`${ev.at}-${i}`} error={ev.log} />
+        ))}
         {actionError != null && <ErrorAlert error={actionError} />}
 
         {expanded && (

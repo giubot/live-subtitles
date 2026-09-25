@@ -11,7 +11,8 @@
     "overlays": "Overlays",
     "providers": "Providers & keys",
     "settings": "Settings",
-    "tls": "HTTPS"
+    "tls": "HTTPS",
+    "menu": "Open the menu"
   },
   "login": {
     "title": "Log in",
@@ -54,7 +55,21 @@
     "noCapture": "No capture page connected",
     "provider": "Provider",
     "speaking": "Speaking",
-    "viewers": "Viewers"
+    "viewers": "Viewers",
+    "latency": "Latency p95",
+    "sourceTrack": "Original",
+    "seconds": "{{value}} s",
+    "srt": "SRT input",
+    "srtUp": "Connected",
+    "srtDown": "Disconnected",
+    "srtRtt": "RTT {{value}} ms",
+    "srtLoss": "loss {{value}} %",
+    "srtBitrate": "{{value}} kbps",
+    "streamCaptions": "Stream captions",
+    "ccSeq": "seq {{seq}}",
+    "ccSent": "sent {{time}}",
+    "clipping": "The input is clipping. Lower the mixer’s output a little.",
+    "silent": "No sound is reaching the server. Check the mixer’s output and the capture computer’s input."
   },
   "links": {
     "viewer": "Audience viewer",
@@ -107,6 +122,77 @@
     "delete": "Delete session",
     "deleteConfirm": "Delete it and its captions? Recordings are kept.",
     "deleteYes": "Delete",
-    "deleteNo": "Keep it"
+    "deleteNo": "Keep it",
+    "glossary": "Glossary",
+    "glossaryNone": "No glossary",
+    "glossaryHelp": "Terms to spell right and names to leave untranslated.",
+    "glossaryUnavailable": "Glossaries couldn’t be loaded, so only the current choice is listed."
+  },
+  "live": {
+    "reconnecting": "Live status is reconnecting. Readouts may be a few seconds old."
+  },
+  "cc": {
+    "title": "Captions in the live stream",
+    "enabled": "Send captions to the stream",
+    "hint": "Tip: burn one language into the picture with the overlay, and send the other as closed captions.",
+    "target": "Send to",
+    "targets": {
+      "youtube_http": "YouTube (HTTP ingestion URL)",
+      "obs_websocket": "OBS (WebSocket, CEA-608)"
+    },
+    "targetHelp": {
+      "youtube_http": "YouTube Studio › Go live › Closed captions › POST captions to URL.",
+      "obs_websocket": "OBS embeds them in the stream it sends. Uses the OBS connection in Settings."
+    },
+    "track": "Caption track",
+    "trackHelp": "YouTube shows one track.",
+    "sourceTrack": "Original (as spoken)",
+    "youtubeUrl": "YouTube caption ingestion URL",
+    "youtubeUrlHelp": "Paste it from YouTube Studio. It’s saved as a secret and never shown again.",
+    "youtubeUrlSet": "A URL is saved. Paste a new one to replace it.",
+    "youtubeUrlRemove": "Remove the saved URL",
+    "saveFirst": "Create the session first, then edit it to add the YouTube URL and send a test caption.",
+    "test": "Send test caption",
+    "testText": "Live Subtitles test caption",
+    "testHelp": "Uses the saved settings: save your changes first.",
+    "state": {
+      "disabled": "Off",
+      "idle": "Idle",
+      "ok": "Sending",
+      "retrying": "Retrying",
+      "error": "Error"
+    }
+  },
+  "palette": {
+    "trigger": "Search or run a command",
+    "label": "Command palette",
+    "placeholder": "Type a command or a session name…",
+    "results": "Commands",
+    "empty": "No command matches.",
+    "start": "Start {{name}}",
+    "resume": "Resume {{name}}",
+    "pause": "Pause {{name}}",
+    "stop": "Stop {{name}}",
+    "open": "Open {{what}} — {{name}}",
+    "copy": "Copy {{what}} URL — {{name}}",
+    "go": "Go to {{page}}",
+    "language": "Interface language: {{language}}",
+    "links": {
+      "viewer": "viewer",
+      "stage": "stage screen",
+      "overlay": "overlay",
+      "capture": "capture page"
+    },
+    "theme": {
+      "light": "Theme: light",
+      "dark": "Theme: dark",
+      "system": "Theme: follow the system"
+    },
+    "groups": {
+      "session": "Session",
+      "link": "Link",
+      "page": "Page",
+      "preference": "Preference"
+    }
   }
 }
