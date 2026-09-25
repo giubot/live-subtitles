@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -87,8 +88,13 @@ func (r *run) start(ctx context.Context) error {
 	}
 	in, out, err := r.asr.Start(r.ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage})
 	if err != nil {
-		r.fail(api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
-			Params: &map[string]any{"provider": r.provider}})
+		e := api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
+			Params: &map[string]any{"provider": r.provider}}
+		if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
+			e.Code = coded.Code
+			maps.Copy(*e.Params, coded.Params)
+		}
+		r.fail(e)
 		r.abort()
 		return fmt.Errorf("%w: provider %s: %v", ErrUnavailable, r.provider, err)
 	}
