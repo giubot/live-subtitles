@@ -18,13 +18,14 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import { useLanguages } from '../../api/languages'
-import { toApiError } from '../../components/apiError'
+import { describeError, toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { nativeLanguageName } from '../../components/languageNames'
 import {
   emptyRow,
   importRows,
   languagePattern,
+  sentRowKeys,
   toBody,
   valuesFrom,
   type Glossary,
@@ -46,7 +47,7 @@ const listKey = ['get', '/api/glossaries'] as const
  * paste import for lists kept in a spreadsheet.
  */
 export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
-  const { t } = useTranslation('glossary')
+  const { t, i18n } = useTranslation('glossary')
   const queryClient = useQueryClient()
   const creating = !glossary
   const [v, setV] = useState<GlossaryFormValues>(() => valuesFrom(glossary))
@@ -56,6 +57,8 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
   const [paste, setPaste] = useState('')
   const [imported, setImported] = useState<{ added: number; updated: number }>()
   const [newLang, setNewLang] = useState('')
+  /** Row keys in the order the last save sent them, to place the server's `terms.N.*` errors. */
+  const [sentKeys, setSentKeys] = useState<number[]>([])
   const catalog = useLanguages()
   const suggestionsId = useId()
   const refresh = () => queryClient.invalidateQueries({ queryKey: listKey })
@@ -75,6 +78,9 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
   const remove = api.useMutation('delete', '/api/glossaries/{glossaryId}', {
     onSuccess: () => {
       void refresh()
+      // The server detaches it from the sessions and the settings default that named it.
+      void queryClient.invalidateQueries({ queryKey: ['get', '/api/sessions'] })
+      void queryClient.invalidateQueries({ queryKey: ['get', '/api/settings'] })
       onClose()
     },
   })
@@ -82,6 +88,13 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
   const pending = create.isPending || update.isPending || remove.isPending
   const serverFields = toApiError(error)?.fields ?? {}
   const nameInvalid = (touched && v.name.trim() === '') || !!serverFields.name
+  const keepInvalid = Object.keys(serverFields).some((k) => k.startsWith('doNotTranslate'))
+  /** The server's error for a row's cell (`term`, `note`, `translations.es`), as a short text. */
+  const cellError = (row: TermRow, part: string): string | undefined => {
+    const i = sentKeys.indexOf(row.key)
+    const code = i < 0 ? undefined : serverFields[`terms.${i}.${part}`]
+    return code ? describeError(i18n, { code }).title : undefined
+  }
 
   const setRow = (key: number, patch: Partial<TermRow>) =>
     setV((prev) => ({
@@ -111,6 +124,7 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
     setTouched(true)
     if (v.name.trim() === '') return
     const body = toBody(v)
+    setSentKeys(sentRowKeys(v))
     if (creating) create.mutate({ body })
     else update.mutate({ params: { path: { glossaryId: glossary.id } }, body })
   }
@@ -311,11 +325,14 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
                           <TextField
                             value={row.term}
                             onChange={(e) => setRow(row.key, { term: e.target.value })}
+                            error={!!cellError(row, 'term')}
+                            helperText={cellError(row, 'term')}
                             slotProps={{
                               ...small,
                               htmlInput: {
                                 ...small.htmlInput,
                                 'aria-label': t('terms.termOf', { n: i + 1 }),
+                                'aria-invalid': !!cellError(row, 'term') || undefined,
                               },
                             }}
                           />
@@ -326,6 +343,8 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
                               value={row.translations[lang] ?? ''}
                               disabled={row.keep}
                               onChange={(e) => setTranslation(row, lang, e.target.value)}
+                              error={!!cellError(row, `translations.${lang}`)}
+                              helperText={cellError(row, `translations.${lang}`)}
                               slotProps={{
                                 htmlInput: {
                                   ...small.htmlInput,
@@ -343,6 +362,8 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
                           <TextField
                             value={row.note}
                             onChange={(e) => setRow(row.key, { note: e.target.value })}
+                            error={!!cellError(row, 'note')}
+                            helperText={cellError(row, 'note')}
                             slotProps={{
                               htmlInput: {
                                 ...small.htmlInput,
@@ -403,6 +424,7 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
             maxRows={8}
             value={v.extraKeep}
             onChange={(e) => setV((prev) => ({ ...prev, extraKeep: e.target.value }))}
+            error={keepInvalid}
             helperText={t('keep.help')}
             slotProps={{ inputLabel: { shrink: true }, htmlInput: { spellCheck: false } }}
             sx={{ maxInlineSize: '32rem' }}

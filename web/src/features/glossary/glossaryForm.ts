@@ -54,6 +54,11 @@ export function valuesFrom(g?: Glossary): GlossaryFormValues {
   }
 }
 
+/** The keys of the rows `toBody` sends, in order: `terms.N` in a 400's fields is the Nth. */
+export function sentRowKeys(v: GlossaryFormValues): number[] {
+  return v.rows.filter((r) => r.term.trim() !== '').map((r) => r.key)
+}
+
 /** The PUT/POST body; blank rows and blank cells are dropped. */
 export function toBody(v: GlossaryFormValues): GlossaryInput {
   const rows = v.rows.filter((r) => r.term.trim() !== '')

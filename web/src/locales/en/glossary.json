@@ -20,7 +20,7 @@
     "save": "Save glossary",
     "cancel": "Cancel",
     "delete": "Delete",
-    "deleteConfirm": "Delete this glossary? Sessions using it keep running without it.",
+    "deleteConfirm": "Delete this glossary? Sessions and the default in Settings that use it stop using it; a live session keeps its copy until it stops.",
     "deleteYes": "Delete glossary",
     "deleteNo": "Keep it"
   },

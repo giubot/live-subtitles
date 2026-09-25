@@ -20,7 +20,7 @@
     "save": "Guardar glosario",
     "cancel": "Cancelar",
     "delete": "Borrar",
-    "deleteConfirm": "¿Borrar este glosario? Las sesiones que lo usan siguen andando sin él.",
+    "deleteConfirm": "¿Borrar este glosario? Las sesiones y el predeterminado de Configuración que lo usan dejan de usarlo; una sesión en vivo conserva su copia hasta que termina.",
     "deleteYes": "Borrar glosario",
     "deleteNo": "Conservarlo"
   },
