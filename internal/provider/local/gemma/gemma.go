@@ -108,7 +108,7 @@ func (t *Translator) TranslateStream(ctx context.Context, req domain.TranslateRe
 	if err != nil {
 		return domain.TranslateResult{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var text strings.Builder
 	sc := bufio.NewScanner(resp.Body)
@@ -163,7 +163,7 @@ func (t *Translator) Warm(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
 }
@@ -191,7 +191,7 @@ func (t *Translator) post(ctx context.Context, url string, body chatRequest) (*h
 		return nil, fmt.Errorf("ollama unreachable at %s: %w", url, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var e struct {
 			Error string `json:"error"`
 		}

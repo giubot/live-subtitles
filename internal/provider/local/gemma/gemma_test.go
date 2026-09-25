@@ -72,7 +72,7 @@ func (f *fakeOllama) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	if f.status != 0 {
 		w.WriteHeader(f.status)
-		fmt.Fprintf(w, `{"error":%q}`, f.errMsg)
+		_, _ = fmt.Fprintf(w, `{"error":%q}`, f.errMsg)
 		return
 	}
 	w.Header().Set("Content-Type", "application/x-ndjson")

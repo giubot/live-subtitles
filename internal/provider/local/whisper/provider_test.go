@@ -201,7 +201,7 @@ func TestStreamInterimsAndFinal(t *testing.T) {
 	// Auto detection asks with language=auto, except interims locked
 	// after 2 s of an utterance.
 	for _, c := range f.seen() {
-		if c.language != "auto" && !(c.language == "es" && c.audio < 3*time.Second) {
+		if c.language != "auto" && (c.language != "es" || c.audio >= 3*time.Second) {
 			t.Errorf("request with language %q for %v of audio", c.language, c.audio)
 		}
 	}

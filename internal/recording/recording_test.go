@@ -114,12 +114,6 @@ func (c *fakeClock) Now() time.Time {
 	return c.t
 }
 
-func (c *fakeClock) set(t time.Time) {
-	c.mu.Lock()
-	c.t = t
-	c.mu.Unlock()
-}
-
 var t0 = time.Date(2026, 9, 25, 13, 30, 0, 0, time.UTC)
 
 func needFFmpeg(t *testing.T) {
