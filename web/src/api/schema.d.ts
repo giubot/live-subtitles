@@ -934,10 +934,10 @@ export interface components {
         /** @enum {string} */
         SubtitleFormat: "vtt" | "srt" | "txt" | "json";
         /**
-         * @description Known secret names; extended as providers are added. `srt_passphrase` encrypts SRT ingest (10–79 characters).
+         * @description Known secret names; extended as providers are added. `srt_passphrase` encrypts SRT ingest (10–79 characters). `youtube_caption_url` is per session: it is managed through /api/sessions/{sessionId}/stream-captions/youtube-url and is not listed by /api/secrets.
          * @enum {string}
          */
-        SecretName: "google_api_key" | "obs_websocket_password" | "srt_passphrase";
+        SecretName: "google_api_key" | "obs_websocket_password" | "srt_passphrase" | "youtube_caption_url";
         /**
          * Format: date-time
          * @example 2026-09-25T13:30:00Z
@@ -2257,6 +2257,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     deleteYoutubeCaptionUrl: {
@@ -2280,6 +2281,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     sendTestStreamCaption: {

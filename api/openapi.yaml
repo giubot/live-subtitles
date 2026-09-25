@@ -423,6 +423,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
     delete:
       tags: [streamCaptions]
       operationId: deleteYoutubeCaptionUrl
@@ -431,6 +432,7 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/sessions/{sessionId}/stream-captions/test:
     parameters:
@@ -1223,8 +1225,12 @@ components:
       enum: [vtt, srt, txt, json]
     SecretName:
       type: string
-      enum: [google_api_key, obs_websocket_password, srt_passphrase]
-      description: Known secret names; extended as providers are added. `srt_passphrase` encrypts SRT ingest (10–79 characters).
+      enum: [google_api_key, obs_websocket_password, srt_passphrase, youtube_caption_url]
+      description: >-
+        Known secret names; extended as providers are added.
+        `srt_passphrase` encrypts SRT ingest (10–79 characters).
+        `youtube_caption_url` is per session: it is managed through
+        /api/sessions/{sessionId}/stream-captions/youtube-url and is not listed by /api/secrets.
     Timestamp:
       type: string
       format: date-time
