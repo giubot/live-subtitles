@@ -51,8 +51,11 @@ type Options struct {
 	// StopTimeout bounds how long Stop waits for pending captions to flush
 	// (default 10 s).
 	StopTimeout time.Duration
+	// Settings, if set, is read at each start for
+	// translation.contextSentences.
+	Settings domain.SettingsStore
 	// ContextSentences is how many previous final sentences go to the
-	// translator as context (default 3).
+	// translator as context when the settings don't say (default 3).
 	ContextSentences int
 	// TranslateTimeout bounds one translation call (default 15 s).
 	TranslateTimeout time.Duration

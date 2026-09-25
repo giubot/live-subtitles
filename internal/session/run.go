@@ -6,24 +6,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/metrics"
+	"github.com/iencodev/live-subtitles/internal/translate"
 )
 
 // run is one running session: the goroutines of its pipeline and its
 // live state.
 //
 //	source ─frames─▶ feed ─▶ (recorder) ─▶ ASR ─events─▶ consume ─▶ bus + store (source track)
-//	                                                        └─▶ one worker per target language ─▶ bus + store
+//	                                                        └─▶ translate.Fanout (one goroutine per target language) ─▶ bus + store
 //
 // Stopping cancels only the source: its channel closes, feed closes the
 // ASR input, the provider flushes its last finals, and consume drains the
-// translation workers before the run finishes. Cancelling ctx aborts all.
+// translation fan-out before the run finishes. Cancelling ctx aborts all.
 type run struct {
 	m    *Manager
 	id   string
@@ -59,7 +59,6 @@ type run struct {
 	hasBase     bool
 	end         time.Duration // session clock at the end of the last frame
 	sourceEnded bool
-	history     []string // last final source sentences, oldest first
 }
 
 func newRun(m *Manager, sess domain.Session) *run {
@@ -99,19 +98,9 @@ func (r *run) start(ctx context.Context) error {
 		}
 	}
 
-	var workers []*worker
-	seen := map[string]bool{domain.SourceTrack: true}
-	for _, lang := range r.sess.TargetLanguages {
-		if lang == "" || seen[lang] {
-			continue
-		}
-		seen[lang] = true
-		w := newWorker(r, lang)
-		workers = append(workers, w)
-		go w.loop()
-	}
+	fan := r.newFanout(ctx)
 	go r.feed(frames, in, sink)
-	go r.consume(out, workers)
+	go r.consume(out, fan)
 	return nil
 }
 
@@ -173,9 +162,9 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 }
 
 // consume turns ASR events into source captions and hands them to the
-// translation workers. When the ASR stream ends it drains the workers and
+// translation fan-out. When the ASR stream ends it drains the fan-out and
 // finishes the run.
-func (r *run) consume(out <-chan domain.ASREvent, workers []*worker) {
+func (r *run) consume(out <-chan domain.ASREvent, fan *translate.Fanout) {
 	defer r.finish()
 	prefix := fmt.Sprintf("r%d-", r.offset/time.Second)
 	for ev := range out {
@@ -201,17 +190,9 @@ func (r *run) consume(out <-chan domain.ASREvent, workers []*worker) {
 		}
 		c.LatencyMs = r.latencyMs(ev.End)
 		r.publish(c)
-		context := r.context(c)
-		for _, w := range workers {
-			w.push(item{c: c, context: context})
-		}
+		fan.Push(c)
 	}
-	for _, w := range workers {
-		w.close()
-	}
-	for _, w := range workers {
-		<-w.done
-	}
+	fan.Close()
 	r.mu.Lock()
 	crashed := !r.sourceEnded && r.srcCtx.Err() == nil && r.ctx.Err() == nil
 	r.mu.Unlock()
@@ -278,21 +259,6 @@ func (r *run) sourceLang(detected domain.LanguageCode, final bool) domain.Langua
 		r.m.changed(r)
 	}
 	return lang
-}
-
-// context returns the translation context for c and, when c is final,
-// adds it to the history.
-func (r *run) context(c api.Caption) []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	ctx := slices.Clone(r.history)
-	if c.Final {
-		r.history = append(r.history, c.Text)
-		if n := len(r.history) - r.m.opts.ContextSentences; n > 0 {
-			r.history = slices.Delete(r.history, 0, n)
-		}
-	}
-	return ctx
 }
 
 // latencyMs is how long after the end of its audio (end, on the session
