@@ -11,33 +11,32 @@ import { api } from '../../api/client'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { Panel } from '../../components/Panel'
 import { AdminPage } from '../admin/AdminLayout'
-import {
-  lookFromStyle,
-  overlayPresets,
-  presetLooks,
-  type OverlayLook,
-  type OverlayPreset,
-} from '../overlay/overlayStyle'
+import { isBuiltinPreset, lookFromStyle, type OverlayLook } from '../overlay/overlayStyle'
 import { PresetEditor, type EditorTarget } from './PresetEditor'
+import type { SavedPreset } from './presetForm'
 
 type Selection =
-  | { kind: 'builtin'; id: OverlayPreset }
-  | { kind: 'saved'; id: string }
-  | { kind: 'new'; name: string; look: OverlayLook; n: number }
+  { kind: 'preset'; id: string } | { kind: 'new'; name: string; look: OverlayLook; n: number }
 
 const wide = '@media (min-width: 60rem)'
 
 /**
- * `/admin/overlays` (P3-14, OUT-5): built-in presets read-only, saved
- * presets editable, each with a live preview and its overlay links.
+ * `/admin/overlays` (P3-14, OUT-5): the server's presets, built-ins
+ * (`builtIn`, read-only: duplicate to change one) first, then the saved
+ * ones, each with a live preview and its overlay links.
  */
 export function OverlayPresetsPage() {
   const { t } = useTranslation('presets')
   const presets = api.useQuery('get', '/api/overlay-presets')
-  // Listed without error responses, but it can still fail (501 until P3-14's backend lands).
+  // Listed without error responses, but it can still fail (network, proxy).
   const listError: unknown = presets.error
-  const [selection, setSelection] = useState<Selection>({ kind: 'builtin', id: 'classic' })
+  const [selection, setSelection] = useState<Selection>({ kind: 'preset', id: 'classic' })
   const [created, setCreated] = useState(0)
+  const builtIns = presets.data?.filter((p) => p.builtIn) ?? []
+  const saved = presets.data?.filter((p) => !p.builtIn) ?? []
+  /** Built-ins have translated names; the server's are English. */
+  const nameOf = (p: SavedPreset) =>
+    p.builtIn && isBuiltinPreset(p.id) ? t(`builtin.${p.id}`) : p.name
 
   const startNew = (name: string, look: OverlayLook) => {
     setCreated((n) => n + 1)
@@ -46,24 +45,16 @@ export function OverlayPresetsPage() {
 
   let target: EditorTarget | undefined
   let key = ''
-  if (selection.kind === 'builtin') {
-    target = {
-      kind: 'builtin',
-      id: selection.id,
-      name: t(`builtin.${selection.id}`),
-      look: presetLooks[selection.id],
-    }
-    key = `builtin:${selection.id}`
-  } else if (selection.kind === 'saved') {
-    const saved = presets.data?.find((p) => p.id === selection.id)
-    if (saved) {
+  if (selection.kind === 'preset') {
+    const p = presets.data?.find((x) => x.id === selection.id)
+    if (p) {
       target = {
-        kind: 'saved',
-        id: saved.id,
-        name: saved.name,
-        look: lookFromStyle(saved.style),
+        kind: p.builtIn ? 'builtin' : 'saved',
+        id: p.id,
+        name: nameOf(p),
+        look: lookFromStyle(p.style),
       }
-      key = `saved:${saved.id}`
+      key = `${p.builtIn ? 'builtin' : 'saved'}:${p.id}`
     }
   } else {
     target = { kind: 'new', name: selection.name, look: selection.look }
@@ -78,7 +69,7 @@ export function OverlayPresetsPage() {
           variant="outlined"
           color="secondary"
           startIcon={<AddOutlined aria-hidden />}
-          onClick={() => startNew(t('newName'), presetLooks.classic)}
+          onClick={() => startNew(t('newName'), lookFromStyle(builtIns[0]?.style ?? {}))}
         >
           {t('newPreset')}
         </Button>
@@ -99,29 +90,29 @@ export function OverlayPresetsPage() {
             sx={{ display: 'grid', gap: 'var(--space-md)' }}
           >
             <PresetGroup label={t('list.builtin')}>
-              {overlayPresets.map((id) => (
+              {listError != null && <ErrorAlert error={listError} />}
+              {builtIns.map((p) => (
                 <PresetItem
-                  key={id}
-                  selected={selection.kind === 'builtin' && selection.id === id}
-                  onClick={() => setSelection({ kind: 'builtin', id })}
+                  key={p.id}
+                  selected={selection.kind === 'preset' && selection.id === p.id}
+                  onClick={() => setSelection({ kind: 'preset', id: p.id })}
                   icon={<LockOutlined aria-hidden />}
                 >
-                  {t(`builtin.${id}`)}
+                  {nameOf(p)}
                 </PresetItem>
               ))}
             </PresetGroup>
             <PresetGroup label={t('list.saved')}>
-              {listError != null && <ErrorAlert error={listError} />}
-              {presets.data?.length === 0 && selection.kind !== 'new' && (
+              {presets.data && saved.length === 0 && selection.kind !== 'new' && (
                 <Typography variant="body2" sx={{ color: 'var(--color-neutral)' }}>
                   {t('list.empty')}
                 </Typography>
               )}
-              {presets.data?.map((p) => (
+              {saved.map((p) => (
                 <PresetItem
                   key={p.id}
-                  selected={selection.kind === 'saved' && selection.id === p.id}
-                  onClick={() => setSelection({ kind: 'saved', id: p.id })}
+                  selected={selection.kind === 'preset' && selection.id === p.id}
+                  onClick={() => setSelection({ kind: 'preset', id: p.id })}
                   icon={<SubtitlesOutlined aria-hidden />}
                 >
                   {p.name}
@@ -139,8 +130,8 @@ export function OverlayPresetsPage() {
           <PresetEditor
             key={key}
             target={target}
-            onSaved={(id) => setSelection({ kind: 'saved', id })}
-            onDeleted={() => setSelection({ kind: 'builtin', id: 'classic' })}
+            onSaved={(id) => setSelection({ kind: 'preset', id })}
+            onDeleted={() => setSelection({ kind: 'preset', id: builtIns[0]?.id ?? 'classic' })}
             onDuplicate={startNew}
           />
         )}

@@ -12,7 +12,7 @@ import { Panel } from '../../components/Panel'
 import { overlayUrl } from './presetForm'
 
 export interface OverlayUrlsProps {
-  /** Built-in name or saved id; absent while a new preset isn't saved yet. */
+  /** The server's preset id (built-in or saved); absent while a new preset isn't saved yet. */
   presetId?: string
 }
 
