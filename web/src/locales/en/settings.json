@@ -1,0 +1,202 @@
+{
+  "retry": "Try again",
+  "save": "Save settings",
+  "saved": "Saved",
+  "unsaved": "Unsaved changes",
+  "invalidForm": "Some fields need a fix before saving. They’re marked below.",
+  "languages": {
+    "title": "Default languages",
+    "intro": "New sessions start with these. Each session can change them before it goes live.",
+    "source": "Spoken language",
+    "sourceHelp": "Automatic detects English and Spanish sentence by sentence.",
+    "sourceOption": {
+      "auto": "Automatic (English or Spanish)",
+      "en": "English",
+      "es": "Spanish"
+    },
+    "targets": "Caption languages",
+    "targetsHelp": "Viewers pick one of these on their phone."
+  },
+  "providers": {
+    "title": "AI providers",
+    "intro": "Which models each provider uses. The Google API key is on the Providers and keys page.",
+    "gemini": "Gemini",
+    "liveModel": "Live transcription model",
+    "translationModel": "Translation model",
+    "local": "Local (whisper + Ollama)",
+    "whisperUrl": "whisper-server address",
+    "whisperModel": "Whisper model",
+    "ollamaUrl": "Ollama address",
+    "gemmaModel": "Translation model in Ollama",
+    "fallback": "Switch to the other provider if one fails",
+    "fallbackHelp": "Captions keep going with the other provider instead of stopping.",
+    "contextSentences": "Context sentences for translation",
+    "contextSentencesHelp": "Earlier sentences sent along so the translation stays consistent (0–10)."
+  },
+  "captions": {
+    "title": "Caption formatting",
+    "maxCharsPerLine": "Characters per line",
+    "maxCharsPerLineHelp": "42 is the broadcast standard.",
+    "maxLines": "Lines per caption",
+    "maxLinesHelp": "Usually 2."
+  },
+  "network": {
+    "title": "Network",
+    "publicBaseUrl": "Public address",
+    "publicBaseUrlHelp": "Used in links and QR codes instead of the LAN address, e.g. https://subs.example.org. Leave empty to use the LAN.",
+    "preferredInterface": "Network interface",
+    "preferredInterfaceHelp": "The address viewers’ phones use to reach this computer.",
+    "automatic": "Automatic"
+  },
+  "recording": {
+    "title": "Recording",
+    "enabledByDefault": "Record new sessions",
+    "enabledByDefaultHelp": "Keeps the audio so captions can be reviewed or reprocessed later.",
+    "bitrate": "Audio quality",
+    "bitrateOption": "{{kbps}} kbps",
+    "bitrateHelp": "32 kbps is plenty for speech and uses about 14 MB per hour.",
+    "retentionDays": "Keep recordings for (days)",
+    "retentionDaysHelp": "0 keeps them forever."
+  },
+  "obs": {
+    "title": "OBS",
+    "websocketUrl": "OBS WebSocket address",
+    "websocketUrlHelp": "Where to send captions for OBS’s own caption track. The password is on the Providers and keys page."
+  },
+  "srt": {
+    "title": "SRT input",
+    "enabled": "Accept audio over SRT",
+    "enabledHelp": "For a mixer or encoder that sends an SRT stream instead of using the capture page.",
+    "port": "Port",
+    "portHelp": "UDP port, 1–65535.",
+    "latencyMs": "Latency (ms)",
+    "latencyMsHelp": "Higher values survive a worse network but add delay.",
+    "passphraseSet": "Passphrase set",
+    "passphraseUnset": "No passphrase"
+  },
+  "invalid": {
+    "required": "Fill this in.",
+    "integer": "Enter a whole number from {{min}} to {{max}}.",
+    "url": "Enter a full address starting with http:// or https://.",
+    "wsUrl": "Enter a full address starting with ws:// or wss://.",
+    "languages": "Pick at least one caption language.",
+    "server": "The server didn’t accept this value."
+  },
+  "keys": {
+    "banner": {
+      "gemini": "Using Gemini",
+      "geminiBody": "New sessions use Gemini by default because a valid Google API key is set.",
+      "local": "Using local: add a Google API key to use Gemini",
+      "localInvalid": "Using local: Google rejected the API key, so Gemini is off",
+      "localBody": "New sessions run on this computer with whisper and Ollama. Add a key below to switch to Gemini.",
+      "mock": "Using the simulated provider",
+      "mockBody": "This is a development server: sessions show scripted captions."
+    },
+    "providersTitle": "Providers",
+    "available": "Available",
+    "unavailable": "Not available",
+    "realtime": "Keeps up in real time",
+    "notRealtime": "Too slow for live use",
+    "provider": {
+      "gemini": "Gemini",
+      "local": "Local (whisper + Ollama)",
+      "mock": "Simulated (scripted)"
+    },
+    "secret": {
+      "google_api_key": {
+        "title": "Google API key",
+        "intro": "Lets sessions use Gemini. Create one in Google AI Studio.",
+        "field": "New API key"
+      },
+      "obs_websocket_password": {
+        "title": "OBS WebSocket password",
+        "intro": "Only needed to send captions to OBS’s own caption track.",
+        "field": "New password"
+      }
+    },
+    "fieldHelp": "Stored encrypted on this computer. It can’t be shown again, only replaced.",
+    "notSet": "Not set",
+    "current": "Current value",
+    "stored": "Stored in",
+    "source": {
+      "keychain": "the system keychain",
+      "encrypted_file": "an encrypted file",
+      "env": "an environment variable"
+    },
+    "updated": "Updated {{date}}",
+    "valid": "Valid",
+    "invalid": "Rejected",
+    "unchecked": "Not checked",
+    "save": "Save key",
+    "validate": "Check key",
+    "accepted": "Google accepted the key.",
+    "remove": "Remove",
+    "removeConfirm": "Remove this key?",
+    "removeYes": "Remove it",
+    "removeNo": "Keep it",
+    "envReadOnly": "Set by an environment variable, so it can only be changed where the server is started."
+  },
+  "tls": {
+    "certTitle": "Certificate",
+    "status": "HTTPS",
+    "on": "On",
+    "off": "Off",
+    "offNotice": "HTTPS is off. Phones can still watch captions, but their browsers won’t allow the microphone on the capture page.",
+    "mode": "Certificate type",
+    "modeOption": {
+      "local-ca": "Made by this server (local CA)",
+      "provided": "Provided by you",
+      "acme": "From Let’s Encrypt",
+      "disabled": "None"
+    },
+    "port": "HTTPS port",
+    "sans": "Valid for",
+    "notAfter": "Expires",
+    "fingerprint": "CA fingerprint · SHA-256",
+    "installTitle": "Trust the certificate on each device",
+    "installIntro": "This server signs its own certificate. Install its CA once on each phone or computer that opens the capture page, so the browser trusts it and allows the microphone. Viewers only watching captions don’t need it.",
+    "download": "Download CA certificate",
+    "notLocalCa": "This certificate doesn’t come from this server’s CA, so there’s nothing to install: browsers already trust it, or you manage it yourself.",
+    "os": "Device",
+    "checkFingerprint": "If asked, check that the fingerprint matches the one above.",
+    "osName": {
+      "macos": "macOS",
+      "windows": "Windows",
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "linux": "Linux"
+    },
+    "steps": {
+      "macos": [
+        "Download the CA certificate and open the file: Keychain Access opens.",
+        "Add it to the “System” keychain and enter your Mac password.",
+        "In Keychain Access, double-click “Live Subtitles CA”, open Trust and set “When using this certificate” to “Always Trust”.",
+        "Close the window, enter your password again, and reload the page."
+      ],
+      "windows": [
+        "Download the CA certificate and open the file.",
+        "Click “Install Certificate…”, choose “Local Machine” and continue.",
+        "Pick “Place all certificates in the following store”, then “Trusted Root Certification Authorities”.",
+        "Finish the wizard, accept the security warning, and restart the browser."
+      ],
+      "ios": [
+        "Open this page in Safari and tap Download CA certificate, then Allow.",
+        "Open Settings › General › VPN & Device Management, tap the “Live Subtitles CA” profile and install it.",
+        "Go to Settings › General › About › Certificate Trust Settings and turn on full trust for “Live Subtitles CA”.",
+        "Go back to Safari and reload the page."
+      ],
+      "android": [
+        "Tap Download CA certificate.",
+        "Open Settings › Security › Encryption & credentials › Install a certificate › CA certificate (names vary by phone).",
+        "Tap “Install anyway”, pick the downloaded file and confirm with your screen lock.",
+        "Reopen Chrome and reload the page."
+      ],
+      "linux": [
+        "Download the CA certificate.",
+        "Copy it into /usr/local/share/ca-certificates/ with a .crt name and run sudo update-ca-certificates (Debian, Ubuntu) or use trust anchor on Fedora.",
+        "Firefox and Chrome keep their own list: import it under Settings › Privacy & Security › Certificates › Authorities, and trust it for websites.",
+        "Restart the browser and reload the page."
+      ]
+    }
+  }
+}

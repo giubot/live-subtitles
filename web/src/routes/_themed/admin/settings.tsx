@@ -1,19 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import Typography from '@mui/material/Typography'
 import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-import { AdminPage } from '../../../features/admin/AdminLayout'
+import { SettingsPage } from '../../../features/settings/SettingsPage'
 
 export const Route = createFileRoute('/_themed/admin/settings')({
-  component: Page,
+  component: SettingsPage,
 })
-
-function Page() {
-  const { t } = useTranslation('admin')
-  const { t: tc } = useTranslation()
-  return (
-    <AdminPage title={t('nav.settings')}>
-      <Typography>{tc('stub')}</Typography>
-    </AdminPage>
-  )
-}
