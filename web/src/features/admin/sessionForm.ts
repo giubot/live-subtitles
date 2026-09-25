@@ -22,10 +22,6 @@ export const streamCaptionTargets: StreamCaptionTarget[] = ['youtube_http', 'obs
 /** Same rule as the server (and api/openapi.yaml `Slug`). */
 export const slugPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 
-/** Languages offered as caption tracks; a session may add others via the API. */
-export const commonLanguages = ['es', 'en', 'pt', 'fr', 'de', 'it'] as const
-
-export const sourceLanguages: SourceLanguage[] = ['auto', 'en', 'es']
 export const providers: ProviderChoice[] = ['default', 'gemini', 'local', 'mock']
 
 export interface SessionFormValues {

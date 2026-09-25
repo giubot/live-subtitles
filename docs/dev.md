@@ -60,12 +60,13 @@ curl --cacert livesubs-ca.crt https://localhost:8443/healthz
 
 ## Sessions and realtime
 
-Manage sessions at `/admin` → **New session**: give it a name (the address, or slug, is derived from it), languages and provider, then use **Start**, **Pause** and **Stop** on its card. **Links** shows the viewer, stage, overlay and capture links with a QR code for the audience. The capture link carries the session's ingest token, which the server only stores hashed: it's shown right after creating the session, or after **Make a new capture link** (which retires the old one). When the admin runs on `localhost`, the capture link stays on `localhost` too, so the browser allows the microphone.
+Manage sessions at `/admin` → **New session**: give it a name (the address, or slug, is derived from it), languages and provider, then use **Start**, **Pause** and **Stop** on its card. **Links** shows the viewer, stage, overlay and capture links with a QR code for the audience. The capture link carries the session's ingest token, which the server only stores hashed: it's shown right after creating the session, or after **Make a new capture link** (which retires the old one). When the admin runs on `localhost`, the capture link stays on `localhost` too, so the browser allows the microphone. To rehearse without a microphone, **Play a file** on an idle session's card feeds a file under the server's data or testdata folder (or an http(s) link) at real-time speed, optionally from a start time and on a loop; **Stop file** stops it. Once the provider reports usage, the card also shows the audio minutes and the estimated cost in USD.
 
 After the PIN, `/setup` walks through the hardware check, local models, the Google key and the first session; every step after the PIN can be skipped (**Finish later** goes to `/admin`). In the admin, **Ctrl+K** (⌘K on a Mac) opens the command palette. The other admin pages:
 
 - `/admin/glossaries`: terms per glossary. **Paste CSV** takes comma, semicolon or tab separated rows; with a header, the columns are `term`, language codes (`es`, `en`, …), `note` and `keep`; without one, the order is term, the table's languages, then note.
 - `/admin/overlays`: built-in and saved overlay presets with a live preview. A saved preset's overlay link is `/overlay/<session>?lang=es&preset=<preset id>`.
+- `/admin/recordings`: disk used by recordings and every recording (filterable by session), with its replay, the audio as M4A and delete. A recording still being written can't be deleted.
 - `/admin/providers`: which provider new sessions use, and the write-only Google API key.
 - `/admin/settings` and `/admin/tls` (certificate details and how to trust the local CA on each OS).
 

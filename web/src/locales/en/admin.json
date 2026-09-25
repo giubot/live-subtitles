@@ -9,6 +9,7 @@
     "server": "This server",
     "glossaries": "Glossaries",
     "overlays": "Overlays",
+    "recordings": "Recordings",
     "providers": "Providers & keys",
     "settings": "Settings",
     "tls": "HTTPS",
@@ -69,7 +70,24 @@
     "ccSeq": "seq {{seq}}",
     "ccSent": "sent {{time}}",
     "clipping": "The input is clipping. Lower the mixer’s output a little.",
-    "silent": "No sound is reaching the server. Check the mixer’s output and the capture computer’s input."
+    "silent": "No sound is reaching the server. Check the mixer’s output and the capture computer’s input.",
+    "playFile": "Play a file",
+    "stopFile": "Stop file",
+    "cost": "Est. cost",
+    "tokens": "{{value}} tokens",
+    "audio": "Audio",
+    "minutes": "{{value}} min"
+  },
+  "file": {
+    "title": "Play a file into {{name}}",
+    "uri": "File or link",
+    "uriHelp": "A file in the server’s data or testdata folder, or an http(s) link. It plays at real-time speed, as if someone were speaking.",
+    "uriRequired": "Enter a file path or a link.",
+    "startAt": "Start at (seconds)",
+    "startAtInvalid": "Use a number of seconds, 0 or more.",
+    "loop": "Repeat when it ends",
+    "play": "Play",
+    "cancel": "Cancel"
   },
   "links": {
     "viewer": "Audience viewer",

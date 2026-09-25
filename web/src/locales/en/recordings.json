@@ -1,0 +1,36 @@
+{
+  "title": "Recordings",
+  "usage": {
+    "title": "Disk usage",
+    "used": "Used by recordings",
+    "free": "Free on disk",
+    "count": "Recordings"
+  },
+  "list": {
+    "title": "All recordings"
+  },
+  "filter": {
+    "label": "Session",
+    "all": "All sessions"
+  },
+  "empty": {
+    "title": "No recordings yet",
+    "filteredTitle": "No recordings for this session",
+    "body": "Sessions with recording on save their audio here while they’re live. Replay it with the transcript, download it or delete it."
+  },
+  "status": {
+    "recording": "Recording",
+    "complete": "Complete",
+    "failed": "Failed"
+  },
+  "row": {
+    "session": "Session: {{name}}",
+    "replay": "Open replay",
+    "audio": "Download audio (M4A)",
+    "delete": "Delete",
+    "deleteBusy": "Stop the session to delete this recording.",
+    "deleteConfirm": "Delete this recording and its audio? This can’t be undone.",
+    "deleteYes": "Delete recording",
+    "deleteNo": "Keep it"
+  }
+}

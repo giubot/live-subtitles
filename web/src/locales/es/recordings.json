@@ -1,0 +1,36 @@
+{
+  "title": "Grabaciones",
+  "usage": {
+    "title": "Uso de disco",
+    "used": "Usado por grabaciones",
+    "free": "Libre en disco",
+    "count": "Grabaciones"
+  },
+  "list": {
+    "title": "Todas las grabaciones"
+  },
+  "filter": {
+    "label": "Sesión",
+    "all": "Todas las sesiones"
+  },
+  "empty": {
+    "title": "Todavía no hay grabaciones",
+    "filteredTitle": "Esta sesión no tiene grabaciones",
+    "body": "Las sesiones con grabación activada guardan su audio acá mientras están en vivo. Podés reproducirlo con la transcripción, descargarlo o borrarlo."
+  },
+  "status": {
+    "recording": "Grabando",
+    "complete": "Completa",
+    "failed": "Falló"
+  },
+  "row": {
+    "session": "Sesión: {{name}}",
+    "replay": "Abrir reproducción",
+    "audio": "Descargar audio (M4A)",
+    "delete": "Borrar",
+    "deleteBusy": "Detené la sesión para borrar esta grabación.",
+    "deleteConfirm": "¿Borrar esta grabación y su audio? No se puede deshacer.",
+    "deleteYes": "Borrar grabación",
+    "deleteNo": "Conservarla"
+  }
+}

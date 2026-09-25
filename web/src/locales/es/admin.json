@@ -9,6 +9,7 @@
     "server": "Este servidor",
     "glossaries": "Glosarios",
     "overlays": "Overlays",
+    "recordings": "Grabaciones",
     "providers": "Proveedores y claves",
     "settings": "Ajustes",
     "tls": "HTTPS",
@@ -69,7 +70,24 @@
     "ccSeq": "seq {{seq}}",
     "ccSent": "enviado {{time}}",
     "clipping": "La entrada está saturando. Bajá un poco la salida de la consola.",
-    "silent": "No llega sonido al servidor. Revisá la salida de la consola y la entrada de la computadora de captura."
+    "silent": "No llega sonido al servidor. Revisá la salida de la consola y la entrada de la computadora de captura.",
+    "playFile": "Reproducir un archivo",
+    "stopFile": "Detener archivo",
+    "cost": "Costo est.",
+    "tokens": "{{value}} tokens",
+    "audio": "Audio",
+    "minutes": "{{value}} min"
+  },
+  "file": {
+    "title": "Reproducir un archivo en {{name}}",
+    "uri": "Archivo o enlace",
+    "uriHelp": "Un archivo en la carpeta de datos o testdata del servidor, o un enlace http(s). Se reproduce a velocidad real, como si alguien estuviera hablando.",
+    "uriRequired": "Escribí la ruta de un archivo o un enlace.",
+    "startAt": "Empezar en (segundos)",
+    "startAtInvalid": "Usá una cantidad de segundos, 0 o más.",
+    "loop": "Repetir al terminar",
+    "play": "Reproducir",
+    "cancel": "Cancelar"
   },
   "links": {
     "viewer": "Visor del público",
