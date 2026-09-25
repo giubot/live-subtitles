@@ -21,7 +21,14 @@ export type AdminPath =
   | '/admin/tls'
 
 export type AdminPageKey =
-  'sessions' | 'glossaries' | 'overlays' | 'recordings' | 'providers' | 'models' | 'settings' | 'tls'
+  | 'sessions'
+  | 'glossaries'
+  | 'overlays'
+  | 'recordings'
+  | 'providers'
+  | 'models'
+  | 'settings'
+  | 'tls'
 
 export interface AdminNavItem {
   to: AdminPath
