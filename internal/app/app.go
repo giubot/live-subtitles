@@ -153,6 +153,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		Settings:        st,
 		Bus:             captionBus,
 		DefaultProvider: rule.DefaultProvider,
+		// The session's glossary goes to the ASR and the translators (AI-7).
+		Glossaries: st,
 		Providers: map[domain.ProviderKind]session.Provider{
 			api.ProviderKindMock: {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
 			api.ProviderKindGemini: {

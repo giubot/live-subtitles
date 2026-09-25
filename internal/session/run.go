@@ -37,6 +37,8 @@ type run struct {
 	source     domain.AudioSource
 	// offset places this run on the session clock (see Manager.clockOrigin).
 	offset time.Duration
+	// glossary is loaded at start and used by the ASR and the translators.
+	glossary *domain.Glossary
 
 	ctx        context.Context // the whole run
 	cancel     context.CancelFunc
@@ -89,7 +91,8 @@ func (r *run) start(ctx context.Context) error {
 		r.abort()
 		return fmt.Errorf("%w: source: %v", ErrUnavailable, err)
 	}
-	in, out, err := r.asr.Start(r.ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage})
+	r.glossary = r.m.glossary(ctx, r.sess)
+	in, out, err := r.asr.Start(r.ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage, Glossary: r.glossary})
 	if err != nil {
 		e := api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
 			Params: &map[string]any{"provider": r.provider}}

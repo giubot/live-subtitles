@@ -54,6 +54,8 @@ type Options struct {
 	// Settings, if set, is read at each start for
 	// translation.contextSentences.
 	Settings domain.SettingsStore
+	// Glossaries, if set, loads the session's glossary at each start (AI-7).
+	Glossaries domain.GlossaryStore
 	// ContextSentences is how many previous final sentences go to the
 	// translator as context when the settings don't say (default 3).
 	ContextSentences int

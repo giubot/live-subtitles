@@ -20,9 +20,9 @@ func (r *run) newFanout(ctx context.Context) *translate.Fanout {
 		Translator:       r.translator,
 		Targets:          r.sess.TargetLanguages,
 		ContextSentences: r.m.contextSentences(ctx),
-		// Glossary: P2-06 resolves r.sess.GlossaryId (or the default) here.
-		Timeout: r.m.opts.TranslateTimeout,
-		Logger:  r.m.log,
+		Glossary:         r.glossary,
+		Timeout:          r.m.opts.TranslateTimeout,
+		Logger:           r.m.log,
 		Publish: func(c api.Caption) {
 			c.LatencyMs = r.latencyMs(secondsToDuration(c.End))
 			r.publish(c)
