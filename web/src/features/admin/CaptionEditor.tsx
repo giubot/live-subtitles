@@ -109,6 +109,8 @@ export function CaptionEditor({ session, onClose }: CaptionEditorProps) {
     }
   }
 
+  // The text's own language for screen readers (OUT-11): the source track mixes languages.
+  const lineLang = (c: Caption) => (track === sourceTrack ? c.sourceLang : c.lang)
   const trackLabel = (lang: string) =>
     lang === sourceTrack
       ? session.sourceLanguage && session.sourceLanguage !== 'auto'
@@ -223,7 +225,7 @@ export function CaptionEditor({ session, onClose }: CaptionEditorProps) {
           <Box component="li" sx={{ ...rowSx, color: 'var(--color-muted)', fontStyle: 'italic' }}>
             <Box sx={timeSx}>{clockTime(current.interim.start)}</Box>
             <Box sx={{ minInlineSize: 0 }}>
-              {current.interim.text}{' '}
+              <span lang={lineLang(current.interim)}>{current.interim.text}</span>{' '}
               <StatusChip status="starting" label={t('corrections.inProgress')} />
             </Box>
           </Box>
@@ -271,7 +273,7 @@ export function CaptionEditor({ session, onClose }: CaptionEditorProps) {
                     textDecoration: line.hidden ? 'line-through' : undefined,
                   }}
                 >
-                  {c.text}
+                  <span lang={lineLang(c)}>{c.text}</span>
                   {(c.edited || line.hidden) && (
                     <Box
                       component="span"

@@ -11,7 +11,7 @@ export function NotFound() {
   const { t } = useTranslation()
   return (
     <AppThemeProvider>
-      <Container component="main" maxWidth="sm" sx={{ py: 6 }}>
+      <Container component="main" maxWidth="sm" sx={{ paddingBlock: 'var(--space-xl)' }}>
         <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
           <Typography variant="h4" component="h1">
             {t('notFound.title')}
