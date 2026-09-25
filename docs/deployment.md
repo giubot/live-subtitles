@@ -1,6 +1,6 @@
 # Deployment
 
-How to run Live Subtitles outside development: a release binary, or Docker, in one of the [deployment modes](#deployment-modes) (dev, edge, cloud). For running from source, see [dev.md](dev.md); for the event day, the [runbook](runbook.md); for sizing, [scaling.md](scaling.md).
+How to run Live Subtitles outside development: a release binary, or Docker, in one of the [deployment modes](#deployment-modes) (dev, edge, cloud). For running from source, see [dev.md](dev.md); for the event day, the [runbook](runbook.md); for how many rooms and viewers one node handles, the hardware per edge node and the Gemini cost per hour, [scaling.md](scaling.md).
 
 ## Ports
 

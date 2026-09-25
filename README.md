@@ -58,7 +58,7 @@ task docker:up                  # Gemini only (profile app)
 task docker:up PROFILE=local    # + whisper-server and Ollama; GPU=1 for NVIDIA
 ```
 
-Run it from a clone of this repository: the first `docker:up` builds the image. Keep the `.env` file: without the same master key, the saved keys can't be decrypted. Then open http://localhost:8080/setup. See [`docs/deployment.md`](docs/deployment.md) for the image, the profiles and the ports.
+Run it from a clone of this repository: the first `docker:up` builds the image. Keep the `.env` file: without the same master key, the saved keys can't be decrypted. Then open http://localhost:8080/setup. See [`docs/deployment.md`](docs/deployment.md) for the image, the profiles and the ports, and [`docs/scaling.md`](docs/scaling.md) for going from 2 to 30+ rooms, hardware per room and the Gemini cost per hour.
 
 ### From source
 
