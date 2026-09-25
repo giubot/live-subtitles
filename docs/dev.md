@@ -105,7 +105,7 @@ A running session is one pipeline: audio source → speech recognition → one t
 
 The key is checked by listing one model (`GET /v1beta/models?pageSize=1`), which costs no tokens. A 429 counts as valid (the key works, it's over quota). A result is kept for 10 minutes per key value (only a hash of it is kept), and after that the old result is used while a background check refreshes it. If Google can't be reached, a key keeps its last result and is retried after 30 s. Saving a key checks it right away (unless the body has `"validate": false`); an invalid key is still stored and the response says `"valid": false`. `POST /api/secrets/google_api_key/validate` checks it on demand, with a repeat within 5 s returning the previous result. `SecretInfo.valid` is the last result for the current value. The OBS password has no check (422 `secret.validation_unsupported`).
 
-When the default falls back to local because the key is rejected, removed or can't be checked, `/ws/admin` gets one `log` event at level `warn` with the code `provider.fallback_key_invalid`, `provider.fallback_key_removed` or `provider.fallback_key_unverified`. Having no key from the start is normal and doesn't warn. `GET /api/providers` gives the same decision for a lasting banner, plus whether each provider is available: gemini when the key is valid, local when whisper-server (`/health`) and Ollama (`/api/version`) answer at the URLs in the settings (`provider.whisper_unreachable`, `provider.ollama_unreachable`), and mock always. Local is still the default when its sidecars are down; the session then fails at start with `provider.unavailable`.
+When the default falls back to local because the key is rejected, removed or can't be checked, `/ws/admin` gets one `log` event at level `warn` with the code `provider.fallback_key_invalid`, `provider.fallback_key_removed` or `provider.fallback_key_unverified`. Having no key from the start is normal and doesn't warn. `GET /api/providers` gives the same decision for a lasting banner, plus whether each provider is available: gemini when the key is valid, local when whisper-server (`/health`) and Ollama (`/api/version`) answer at the URLs in the settings (`provider.whisper_unreachable`, `provider.ollama_unreachable`), and mock always. Local is still the default when its sidecars are down; the session then fails at start with `provider.unavailable`, unless [provider fallback](#provider-fallback) is on and Gemini is usable.
 
 ### Latency and cost
 
@@ -159,7 +159,25 @@ A running session recovers on its own when part of the pipeline fails (SES-5). T
 - **Gaps**: every stretch of audio that never reached the provider (a restart, or a capture reconnect) is logged as an `audio.gap` admin event with its length. The next captions carry `gapBeforeMs` on every track, so viewers and the dashboard can mark the gap. It's live only: the caption store doesn't keep it.
 - **Giving up**: 5 failed attempts in a row (a restart that fails to start, or a stream or source that crashes again within 30 s of its restart) end the run in `error` with `provider.failed` or `source.failed`. A stream or source that ran longer than 30 s before failing starts counting from 1 again.
 
-The admin log shows `provider.restarting` / `source.restarting` (warn) for each attempt and `provider.restarted` / `source.restarted` (info) when it worked. Local sidecars also retry within a stream: see [How the local provider uses whisper-server](#how-the-local-provider-uses-whisper-server) and [Gemma translation](#gemma-translation).
+The admin log shows `provider.restarting` / `source.restarting` (warn) for each attempt and `provider.restarted` / `source.restarted` (info) when it worked. Local sidecars also retry within a stream: see [How the local provider uses whisper-server](#how-the-local-provider-uses-whisper-server) and [Gemma translation](#gemma-translation). With [provider fallback](#provider-fallback) on, a provider that keeps failing is replaced by the other one before the run gives up.
+
+### Provider fallback
+
+With `providers.fallback: true` in the settings (off by default: a switch can send audio meant to stay on the local box to Google, or start billing), a running session moves to the other provider when the one it runs on keeps failing (AI-8). Gemini falls back to local and local to Gemini. Mock never switches.
+
+| Trigger | `reasonCode` |
+|---|---|
+| Google refuses a transcription or a translation for its quota (429, `RESOURCE_EXHAUSTED`) | `provider.quota_exhausted`, at once |
+| Google rejects the key (401, 403, `API_KEY_INVALID`) | `provider.auth_failed`, at once |
+| 5 provider errors (stream errors and failed translations) within a minute | `provider.errors_repeated` |
+| 2 restarts of a crashed stream fail in a row (a crash loop, or whisper-server gone) | `provider.restarts_failed` |
+| The provider doesn't start at all | `provider.unavailable`, before the session goes live |
+
+The switch only happens when the other provider is usable by the [default-provider rule](#default-provider-rule): Gemini needs a key Google accepted, local needs whisper-server and Ollama to answer. Otherwise the session goes on with automatic recovery as before, and the other provider is checked again at most every 10 s.
+
+On a switch the session stays `live`. The old speech stream is closed and a new one opens on the other provider, with segment IDs `r0-f1-…`. Translation uses the new provider from the next caption. Captions go on in the same tracks, and the audio the old stream hadn't finalized, plus any audio lost while switching, is a gap: an `audio.gap` event and `gapBeforeMs` on the next captions. `status.provider` shows the provider in use, and `status.fallback` has `from`, `to`, `at`, `reasonCode`, the `error` behind it and `switches`. `/ws/admin` gets a `provider.fallback` log event (warn, with `from`, `to` and `reason`), and the server logs `provider fallback`. Usage before the switch is priced for the old provider.
+
+A run switches at most once every 10 minutes, so two failing providers don't flap. Stopping and starting the session again starts on its own provider.
 
 ## Gemini provider
 

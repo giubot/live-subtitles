@@ -70,6 +70,15 @@ type Options struct {
 	// Restart configures the automatic restart of a crashed provider
 	// stream or a failed source (SES-5).
 	Restart RestartPolicy
+	// Fallback configures the switch of a running session to the other
+	// provider while settings.providers.fallback is on (AI-8); it needs
+	// Settings.
+	Fallback FallbackPolicy
+	// FallbackAvailable reports whether a session may switch to kind, with
+	// a translatable reason when it can't (the provider/selector rule:
+	// Gemini with a valid key, local with its sidecars up); nil: any
+	// provider in Providers.
+	FallbackAvailable func(ctx context.Context, kind domain.ProviderKind) (ok bool, reasonCode string)
 	// StreamCaptions, if set, is told when a run starts and when it
 	// ends, and gives SessionStatus.streamCaptions (P3-16).
 	StreamCaptions StreamCaptions
@@ -159,6 +168,7 @@ func New(opts Options) *Manager {
 		opts.TranslateTimeout = 15 * time.Second
 	}
 	opts.Restart = opts.Restart.withDefaults()
+	opts.Fallback = opts.Fallback.withDefaults(opts.Restart)
 	pricing := metrics.DefaultPricing()
 	if opts.Pricing != nil {
 		pricing = *opts.Pricing
@@ -225,7 +235,7 @@ func (m *Manager) Start(ctx context.Context, id string, src domain.AudioSource) 
 		m.log.Warn("session failed to start", "session", id, "err", err)
 		return m.publishStatus(ctx, id), err
 	}
-	m.log.Info("session live", "session", id, "provider", r.provider, "source", r.source.Kind())
+	m.log.Info("session live", "session", id, "provider", r.kind(), "source", r.source.Kind())
 	return m.changed(r), nil
 }
 

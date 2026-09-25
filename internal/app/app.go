@@ -183,6 +183,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		Settings:        st,
 		Bus:             a.cc.Tap(captionBus),
 		DefaultProvider: rule.DefaultProvider,
+		// settings.providers.fallback switches to the other provider only
+		// when the rule says it's usable (AI-8).
+		FallbackAvailable: rule.Available,
 		// The session's glossary goes to the ASR and the translators (AI-7).
 		Glossaries: st,
 		Providers: map[domain.ProviderKind]session.Provider{
