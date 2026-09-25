@@ -1186,6 +1186,24 @@ export interface components {
             recovering?: components["schemas"]["RecoveryStatus"];
             /** @description Automatic restarts of the provider stream or the audio source in this run (SES-5) */
             restarts?: number;
+            fallback?: components["schemas"]["ProviderFallback"];
+            error?: components["schemas"]["Error"];
+        };
+        /** @description Present once the running session has switched to the other provider because the one it started on kept failing (AI-8, `settings.providers.fallback`). `provider` in the status is the one in use now; the session's own `provider` choice is unchanged, so the next start uses it again. */
+        ProviderFallback: {
+            from: components["schemas"]["ProviderKind"];
+            to: components["schemas"]["ProviderKind"];
+            at: components["schemas"]["Timestamp"];
+            /**
+             * @description Translatable reason (UI-4): `provider.quota_exhausted`, `provider.auth_failed`, `provider.errors_repeated`, `provider.restarts_failed` or `provider.unavailable` (it failed to start)
+             * @example provider.quota_exhausted
+             */
+            reasonCode: string;
+            /**
+             * @description Provider switches in this run (at most one per cooldown)
+             * @example 1
+             */
+            switches: number;
             error?: components["schemas"]["Error"];
         };
         /** @description Present while the session restarts a crashed provider stream or a failed audio source (SES-5). The session stays `live`; after `maxAttempts` failed restarts in a row it goes to `error`. */
@@ -1393,7 +1411,7 @@ export interface components {
                     gemmaModel: string;
                 };
                 /**
-                 * @description Fall back to the other provider on failure (AI-8, stretch)
+                 * @description Switch a running session to the other provider (Gemini ⇄ local) when its provider runs out of quota, rejects the key, keeps erroring or can't be restarted, provided the other one is available (AI-8). Off by default: it can move audio to the cloud or start billing. See SessionStatus.fallback.
                  * @default false
                  */
                 fallback: boolean;

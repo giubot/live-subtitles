@@ -1496,6 +1496,33 @@ components:
         restarts:
           type: integer
           description: Automatic restarts of the provider stream or the audio source in this run (SES-5)
+        fallback: { $ref: "#/components/schemas/ProviderFallback" }
+        error: { $ref: "#/components/schemas/Error" }
+    ProviderFallback:
+      type: object
+      description: >-
+        Present once the running session has switched to the other provider
+        because the one it started on kept failing (AI-8,
+        `settings.providers.fallback`). `provider` in the status is the one
+        in use now; the session's own `provider` choice is unchanged, so the
+        next start uses it again.
+      required: [from, to, at, reasonCode, switches]
+      properties:
+        from: { $ref: "#/components/schemas/ProviderKind" }
+        to: { $ref: "#/components/schemas/ProviderKind" }
+        at: { $ref: "#/components/schemas/Timestamp" }
+        reasonCode:
+          type: string
+          description: >-
+            Translatable reason (UI-4): `provider.quota_exhausted`,
+            `provider.auth_failed`, `provider.errors_repeated`,
+            `provider.restarts_failed` or `provider.unavailable` (it failed to
+            start)
+          example: provider.quota_exhausted
+        switches:
+          type: integer
+          description: Provider switches in this run (at most one per cooldown)
+          example: 1
         error: { $ref: "#/components/schemas/Error" }
     RecoveryStatus:
       type: object
@@ -1717,7 +1744,12 @@ components:
             fallback:
               type: boolean
               default: false
-              description: Fall back to the other provider on failure (AI-8, stretch)
+              description: >-
+                Switch a running session to the other provider (Gemini ⇄ local)
+                when its provider runs out of quota, rejects the key, keeps
+                erroring or can't be restarted, provided the other one is
+                available (AI-8). Off by default: it can move audio to the
+                cloud or start billing. See SessionStatus.fallback.
         translation:
           type: object
           properties:
