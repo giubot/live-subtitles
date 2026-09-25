@@ -38,7 +38,8 @@ type Options struct {
 	// ContextSentences is how many previous final source sentences go with
 	// each request (0: none). See ContextSentences for the settings value.
 	ContextSentences int
-	// Glossary goes into every request (AI-7); P2-06 resolves it.
+	// Glossary goes into every request (AI-7), and its do-not-translate
+	// entries are enforced on the output (see EnforceDoNotTranslate).
 	Glossary *domain.Glossary
 	// Timeout bounds one translation call (default DefaultTimeout).
 	Timeout time.Duration
@@ -295,7 +296,7 @@ func (t *target) translate(it item) {
 	if f.opts.Usage != nil {
 		f.opts.Usage(res.Usage)
 	}
-	t.emit(src, res.Text)
+	t.emit(src, t.keepTerms(req, res.Text))
 }
 
 // partial publishes a final's streamed output as an interim of its
@@ -321,6 +322,7 @@ func (t *target) partial(src api.Caption) func(string) {
 		if stale {
 			return
 		}
+		text, _ = EnforceDoNotTranslate(t.f.opts.Glossary, src.Text, text)
 		c := src
 		c.Final = false
 		t.emit(c, text)
