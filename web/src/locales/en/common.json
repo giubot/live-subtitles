@@ -330,6 +330,38 @@
         "why": "Model names, the interface name and the glossary are limited to 200 characters.",
         "fix": "Shorten the value, then save again."
       }
+    },
+    "overlay": {
+      "not_found": {
+        "title": "We can't find that overlay preset",
+        "why": "It may have been deleted, or the link has a typo.",
+        "fix": "Pick a preset from the overlay presets page, or use a built-in one such as classic."
+      },
+      "builtin_read_only": {
+        "title": "Built-in presets can't be changed",
+        "why": "Classic box, Outline only and Lower third are part of the app, so they can't be edited or deleted.",
+        "fix": "Duplicate the preset and edit the copy."
+      },
+      "invalid": {
+        "title": "The preset isn't valid",
+        "why": "The server didn't save it because several fields have problems.",
+        "fix": "Correct the highlighted fields, then save again."
+      },
+      "invalid_name": {
+        "title": "The preset needs a name",
+        "why": "A preset name has 1 to 80 characters.",
+        "fix": "Type a name, then save again."
+      },
+      "invalid_color": {
+        "title": "That colour isn't valid",
+        "why": "Colours are CSS colours such as #FFFFFF or rgba(0,0,0,0.5), or transparent for the background.",
+        "fix": "Correct the colour, then save again."
+      },
+      "out_of_range": {
+        "title": "A size is out of range",
+        "why": "One of the sizes or times is outside the values the overlay accepts.",
+        "fix": "Use a value within the range shown under the field, then save again."
+      }
     }
   }
 }

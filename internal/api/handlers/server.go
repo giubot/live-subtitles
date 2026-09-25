@@ -31,6 +31,9 @@ type Server struct {
 	Sessions domain.SessionStore
 	Captions domain.CaptionStore
 	Settings domain.SettingsStore
+	// OverlayPresets stores saved overlay presets; nil: only the built-ins
+	// are listed and the write operations answer 501.
+	OverlayPresets OverlayPresets
 
 	// Manager runs sessions (start, pause, stop, status); nil: those
 	// operations answer 501.

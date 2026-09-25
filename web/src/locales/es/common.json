@@ -330,6 +330,38 @@
         "why": "Los nombres de modelo, el nombre de la interfaz y el glosario tienen un máximo de 200 caracteres.",
         "fix": "Acortá el valor y volvé a guardar."
       }
+    },
+    "overlay": {
+      "not_found": {
+        "title": "No encontramos ese preset de overlay",
+        "why": "Puede que lo hayan borrado, o que el enlace tenga un error.",
+        "fix": "Elegí un preset en la página de presets de overlay, o usá uno incluido, como classic."
+      },
+      "builtin_read_only": {
+        "title": "Los presets incluidos no se pueden cambiar",
+        "why": "Caja clásica, Solo contorno y Tercio inferior vienen con la app, así que no se pueden editar ni borrar.",
+        "fix": "Duplicá el preset y editá la copia."
+      },
+      "invalid": {
+        "title": "El preset no es válido",
+        "why": "El servidor no lo guardó porque varios campos tienen problemas.",
+        "fix": "Corregí los campos marcados y volvé a guardar."
+      },
+      "invalid_name": {
+        "title": "El preset necesita un nombre",
+        "why": "El nombre de un preset tiene de 1 a 80 caracteres.",
+        "fix": "Escribí un nombre y volvé a guardar."
+      },
+      "invalid_color": {
+        "title": "Ese color no es válido",
+        "why": "Los colores son colores CSS, como #FFFFFF o rgba(0,0,0,0.5), o transparent para el fondo.",
+        "fix": "Corregí el color y volvé a guardar."
+      },
+      "out_of_range": {
+        "title": "Un tamaño está fuera de rango",
+        "why": "Uno de los tamaños o tiempos está fuera de los valores que acepta el overlay.",
+        "fix": "Usá un valor dentro del rango que se indica debajo del campo y volvé a guardar."
+      }
     }
   }
 }

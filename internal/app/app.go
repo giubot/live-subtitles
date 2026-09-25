@@ -117,6 +117,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.Network = a.network
 	srv.Secrets = sec
 	srv.Sessions, srv.Captions, srv.Settings = st, st, st
+	srv.OverlayPresets = st
 	srv.Auth = auth.New(st, auth.Options{AdminToken: cfg.AdminToken})
 	srv.TLS = a.tls
 
