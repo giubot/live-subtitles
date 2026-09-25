@@ -1022,6 +1022,11 @@ export interface components {
                 localRealtimeLikely: boolean;
             };
             lastBenchmark?: components["schemas"]["BenchmarkResult"];
+            /**
+             * @description Absolute path of the directory the server downloads whisper models into (`--models-dir`). whisper-server is started with `--model <modelsDir>/ggml-<name>.bin`, so the setup guide shows it.
+             * @example /Users/ana/livesubs/models
+             */
+            modelsDir?: string;
         };
         RuntimeStatus: {
             reachable: boolean;
