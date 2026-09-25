@@ -212,6 +212,21 @@ scrape_configs:
 
 Counters and histograms start at zero when the server starts. The gauges are read from the running services at each scrape.
 
+## Stream closed captions (YouTube)
+
+A session can send the final captions of one track to a YouTube live stream as closed captions that viewers switch on in the player (CC-1). It works the same whether the stream comes from OBS or vMix, because the captions go straight to YouTube over HTTP, not through the video.
+
+1. In YouTube Live Control Room, open the stream's settings → Closed captions, pick **POST captions to URL** and copy the ingestion URL. Set a broadcast delay of 30 to 60 s, so captions arrive before the video they belong to.
+2. Save the URL for the session: `PUT /api/sessions/main/stream-captions/youtube-url` with `{"value":"http://upload.youtube.com/closedcaption?cid=…"}`, or export `LIVESUBS_SECRET_SESSION_MAIN_YOUTUBE_URL` before starting the server. It's a secret (keychain or encrypted file): the API only ever shows its last 4 characters, and it's masked in logs. `DELETE` on the same path removes it; deleting the session removes it too.
+3. In the session, set `streamCaptions`: `enabled: true`, `track` (a target language or `source`, default `en`; YouTube takes one track) and `maxCharsPerLine` (default 32).
+4. `POST /api/sessions/main/stream-captions/test` (optional `{"text":"…"}`) sends a caption right away, running or not, and answers with the delivery result. It answers 422 `streamcc.no_url` when no URL is saved.
+
+While the session runs, each final caption of the track is wrapped into lines of `maxCharsPerLine`, two lines per cue, and sent as one POST: a UTC timestamp line (`YYYY-MM-DDTHH:MM:SS.mmm`) before each cue, lines joined with `<br>`, and an increasing `seq` added to the URL. The timestamp is when the words were spoken, estimated from the caption's latency and duration, and moved onto YouTube's clock using the time YouTube sends back with each answer (`clockOffsetMs`, local minus YouTube). Corrections of a caption already sent aren't sent again.
+
+Failed POSTs (network errors, HTTP 5xx, 408, 429) are retried with the same `seq`, with backoff from 0.5 s doubling to 10 s. Other 4xx answers (`streamcc.rejected`) aren't retried. Up to 64 captions wait in a queue per session; when it's full the oldest is dropped. A caption whose speech ended more than 60 s ago is dropped instead of being sent late, so after an outage the stream doesn't replay old lines; the dashboard gets a `streamcc.dropped` log with the count. When the session stops, what's queued gets up to 10 s to go out.
+
+The configuration and the URL are read when the session starts; a URL saved or removed while it runs takes effect at the next caption. `streamCaptions` in the session status (and on `/ws/admin`, as `sessionStatus` and `streamCaptionStatus` events) shows `state` (`disabled`, `idle`, `ok`, `retrying`, `error`), `lastSeq`, `lastSentAt`, `clockOffsetMs` and the last `error`.
+
 ## Local AI provider
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.

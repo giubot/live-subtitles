@@ -70,6 +70,9 @@ type Options struct {
 	// Restart configures the automatic restart of a crashed provider
 	// stream or a failed source (SES-5).
 	Restart RestartPolicy
+	// StreamCaptions, if set, is told when a run starts and when it
+	// ends, and gives SessionStatus.streamCaptions (P3-16).
+	StreamCaptions StreamCaptions
 }
 
 // Observer receives pipeline measurements (metrics.App implements it).
@@ -80,6 +83,17 @@ type Observer interface {
 	CaptionLatency(provider domain.ProviderKind, track string, ms int)
 	// SessionError: a run reported an error with this code.
 	SessionError(provider domain.ProviderKind, code string)
+}
+
+// StreamCaptions sends a session's final captions to the live stream
+// while it runs (internal/streamcc). It gets the captions from the bus.
+type StreamCaptions interface {
+	// RunStarted is called when a run starts (not on resume), before its
+	// pipeline; RunEnded follows when it ends or fails to start.
+	RunStarted(sess domain.Session)
+	RunEnded(sessionID string)
+	// Status is nil when there's nothing to show.
+	Status(sessionID string) *api.StreamCaptionStatus
 }
 
 // Errors returned by Manager methods, besides domain.ErrNotFound.
@@ -200,6 +214,9 @@ func (m *Manager) Start(ctx context.Context, id string, src domain.AudioSource) 
 	m.changed(r)
 
 	if err := m.launch(ctx, r, src); err != nil {
+		if sc := m.opts.StreamCaptions; sc != nil {
+			sc.RunEnded(id)
+		}
 		m.mu.Lock()
 		delete(m.runs, id)
 		m.failed[id] = r.lastError()
@@ -230,6 +247,10 @@ func (m *Manager) launch(ctx context.Context, r *run, src domain.AudioSource) er
 	r.provider, r.asr, r.translator = kind, p.ASR, p.Translator
 	r.source, r.offset = src, offset
 	r.mu.Unlock()
+	// Before the pipeline starts, so its end (finished) comes after.
+	if sc := m.opts.StreamCaptions; sc != nil {
+		sc.RunStarted(r.sess)
+	}
 	if err := r.start(ctx); err != nil {
 		return err
 	}
@@ -356,6 +377,9 @@ func (m *Manager) finished(r *run) {
 	if m.opts.ReleaseIngest != nil {
 		m.opts.ReleaseIngest(r.id)
 	}
+	if sc := m.opts.StreamCaptions; sc != nil {
+		sc.RunEnded(r.id)
+	}
 	m.publishStatus(context.Background(), r.id)
 	m.log.Info("session stopped", "session", r.id)
 }
@@ -446,6 +470,9 @@ func (m *Manager) status(id string) api.SessionStatus {
 		st.Usage = used.stats()
 	}
 	st.Latency = latency
+	if sc := m.opts.StreamCaptions; sc != nil {
+		st.StreamCaptions = sc.Status(id)
+	}
 	if m.opts.IngestStatus != nil {
 		a := m.opts.IngestStatus(id)
 		st.Audio = &a

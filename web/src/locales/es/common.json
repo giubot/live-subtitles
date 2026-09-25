@@ -491,6 +491,38 @@
         "why": "{{gapMs}} ms de audio en el segundo {{atSec}} no llegaron al proveedor, porque se reinició o la estación de captura se reconectó. Esas palabras no tienen subtítulos.",
         "fix": "Si pasa poco, no hace falta hacer nada. Si pasa seguido, revisá la red de la estación de captura y el proveedor."
       }
+    },
+    "streamcc": {
+      "no_url": {
+        "title": "Falta la URL de ingesta de subtítulos",
+        "why": "Esta sesión tiene activados los subtítulos en la transmisión, pero no hay una URL de ingesta de YouTube guardada, así que no hay adónde mandarlos.",
+        "fix": "En YouTube Live Control Room, abrí Configuración de la transmisión → Subtítulos → \"POST captions to URL\", copiá la URL y pegala en los subtítulos de la sesión."
+      },
+      "url_invalid": {
+        "title": "Eso no es una URL de ingesta de subtítulos",
+        "why": "La URL de ingesta tiene que ser una dirección completa http:// o https://.",
+        "fix": "Copiá la URL entera de YouTube Live Control Room (empieza con http://upload.youtube.com/closedcaption) y pegala de nuevo."
+      },
+      "unreachable": {
+        "title": "No se puede llegar a YouTube para mandar subtítulos",
+        "why": "El envío de subtítulos no tuvo respuesta: puede que este servidor esté sin conexión o que YouTube no sea accesible desde su red.",
+        "fix": "Revisá la conexión a internet del servidor. Los subtítulos se reintentan solos; las líneas de hace más de un minuto se saltean."
+      },
+      "server_error": {
+        "title": "YouTube no está aceptando subtítulos ahora",
+        "why": "YouTube respondió con un error temporal (HTTP {{status}}).",
+        "fix": "Por ahora no hace falta hacer nada: los subtítulos se reintentan solos. Si sigue, revisá la transmisión en YouTube Live Control Room."
+      },
+      "rejected": {
+        "title": "YouTube rechazó el subtítulo",
+        "why": "YouTube no aceptó el subtítulo (HTTP {{status}}). Puede que la URL de ingesta sea vieja, sea de otra transmisión o que la transmisión no esté en vivo.",
+        "fix": "Fijate que la transmisión esté en vivo y que esté elegido \"POST captions to URL\"; después copiá de nuevo la URL de ingesta actual y mandá un subtítulo de prueba."
+      },
+      "dropped": {
+        "title": "Se saltearon algunos subtítulos",
+        "why": "{{count}} subtítulos no se pudieron mandar a tiempo y eran demasiado viejos para mostrarlos en la transmisión.",
+        "fix": "Revisá la conexión con YouTube. Los subtítulos nuevos se mandan apenas se recupere."
+      }
     }
   }
 }

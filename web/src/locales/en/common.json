@@ -491,6 +491,38 @@
         "why": "{{gapMs}} ms of audio at {{atSec}} s never reached the provider, because it restarted or the capture station reconnected. Those words have no captions.",
         "fix": "Nothing to do if it's rare. If it happens often, check the capture station's network and the provider."
       }
+    },
+    "streamcc": {
+      "no_url": {
+        "title": "No caption ingestion URL",
+        "why": "This session has stream captions on, but YouTube's caption ingestion URL isn't saved, so there's nowhere to send them.",
+        "fix": "In YouTube Live Control Room, open Stream settings → Closed captions → \"POST captions to URL\", copy the URL and paste it in the session's stream captions."
+      },
+      "url_invalid": {
+        "title": "That isn't a caption ingestion URL",
+        "why": "The ingestion URL must be a full http:// or https:// address.",
+        "fix": "Copy the whole URL from YouTube Live Control Room (it starts with http://upload.youtube.com/closedcaption) and paste it again."
+      },
+      "unreachable": {
+        "title": "Can't reach YouTube to send captions",
+        "why": "The caption POST got no answer: this server may be offline or YouTube may be unreachable from its network.",
+        "fix": "Check the server's internet connection. Captions are retried automatically; lines older than about a minute are skipped."
+      },
+      "server_error": {
+        "title": "YouTube is not accepting captions right now",
+        "why": "YouTube answered with a temporary error (HTTP {{status}}).",
+        "fix": "Nothing to do yet: captions are retried automatically. If it lasts, check the stream in YouTube Live Control Room."
+      },
+      "rejected": {
+        "title": "YouTube rejected the caption",
+        "why": "YouTube refused the caption (HTTP {{status}}). The ingestion URL may be old, belong to another stream, or the stream may not be live.",
+        "fix": "Make sure the stream is live and \"POST captions to URL\" is selected, then copy the current ingestion URL again and send a test caption."
+      },
+      "dropped": {
+        "title": "Some captions were skipped",
+        "why": "{{count}} captions couldn't be sent in time and were too old to show on the stream.",
+        "fix": "Check the connection to YouTube. New captions are sent as soon as it recovers."
+      }
     }
   }
 }

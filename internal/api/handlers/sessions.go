@@ -396,6 +396,7 @@ func (s *Server) present(ctx context.Context, sess domain.Session) domain.Sessio
 			}
 		}
 	}
+	s.withStreamCaptions(ctx, &sess)
 	return sess
 }
 
@@ -586,6 +587,9 @@ func (s *Server) DeleteSession(ctx context.Context, req api.DeleteSessionRequest
 	}
 	if s.SRT != nil {
 		s.SRT.Release(req.SessionId)
+	}
+	if s.StreamCaptions != nil {
+		s.StreamCaptions.Forget(ctx, req.SessionId)
 	}
 	s.sessionEvent(api.AdminEventTypeSessionDeleted, nil, req.SessionId)
 	return api.DeleteSession204Response{}, nil

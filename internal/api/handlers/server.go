@@ -52,6 +52,9 @@ type Server struct {
 	// Recordings lists, serves and deletes recordings; nil: the recordings
 	// operations (and captions by recordingId) answer 501.
 	Recordings Recordings
+	// StreamCaptions sends closed captions to the live stream; nil: the
+	// streamCaptions operations answer 501.
+	StreamCaptions StreamCaptions
 
 	// WebSocket endpoints need the raw connection, so they are served
 	// outside the strict handler; nil: 501.

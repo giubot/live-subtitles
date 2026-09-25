@@ -43,6 +43,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/internal/session"
 	"github.com/iencodev/live-subtitles/internal/store"
+	"github.com/iencodev/live-subtitles/internal/streamcc"
 	"github.com/iencodev/live-subtitles/internal/tlsutil"
 )
 
@@ -67,6 +68,7 @@ type App struct {
 	manager *session.Manager
 	tls     *tlsutil.Manager // HTTPS certificate; mode disabled when off
 	rec     *recording.Recorder
+	cc      *streamcc.Service
 }
 
 // New opens the data directory and wires services and routes. dist is the
@@ -148,6 +150,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	}
 	a.rec.StartRetention()
 	srv.Recordings = a.rec
+	// Stream closed captions (P3-16) see the captions the manager publishes.
+	a.cc = streamcc.New(streamcc.Options{Secrets: sec, Redactor: red, Logger: log})
+	srv.StreamCaptions = a.cc
 	// Metrics (P3-13): gauges read the manager and recorder at scrape time.
 	var mt *metrics.App
 	var observer session.Observer
@@ -162,7 +167,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		Sessions:        st,
 		Captions:        st,
 		Settings:        st,
-		Bus:             captionBus,
+		Bus:             a.cc.Tap(captionBus),
 		DefaultProvider: rule.DefaultProvider,
 		// The session's glossary goes to the ASR and the translators (AI-7).
 		Glossaries: st,
@@ -178,14 +183,16 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 				Translator: &gemma.Translator{Settings: st.Settings},
 			},
 		},
-		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
-		IngestStatus:  a.hub.Status,
-		ReleaseIngest: a.hub.Remove,
-		Pricing:       &metrics.Pricing{GeminiASR: cfg.GeminiASRPrices, GeminiTranslation: cfg.GeminiTranslationPrices},
-		Recorder:      a.rec,
-		Observer:      observer,
-		Logger:        log,
+		IngestSource:   func(id string) domain.AudioSource { return a.hub.Source(id) },
+		IngestStatus:   a.hub.Status,
+		ReleaseIngest:  a.hub.Remove,
+		Pricing:        &metrics.Pricing{GeminiASR: cfg.GeminiASRPrices, GeminiTranslation: cfg.GeminiTranslationPrices},
+		Recorder:       a.rec,
+		Observer:       observer,
+		StreamCaptions: a.cc,
+		Logger:         log,
 	})
+	a.cc.Bind(a.manager.Events().Publish, a.manager.StatusOf)
 	srv.Manager = a.manager
 	rule.Warm(ctx)
 	// Test sources may read files from the data directory and ./testdata.
@@ -229,6 +236,7 @@ func optionalKey(key func(context.Context) (string, error)) func(context.Context
 // Close stops running sessions and releases the data directory.
 func (a *App) Close() error {
 	a.manager.Close()
+	a.cc.Close()
 	a.rec.Close()
 	a.hub.Close()
 	return a.store.Close()

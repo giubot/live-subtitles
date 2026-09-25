@@ -426,10 +426,14 @@ func (r *run) status() api.SessionStatus {
 		srt = &v
 	}
 	viewers := r.m.opts.Bus.Viewers(r.id)
+	var cc *api.StreamCaptionStatus
+	if sc := r.m.opts.StreamCaptions; sc != nil {
+		cc = sc.Status(r.id)
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	st := api.SessionStatus{SessionId: r.id, State: r.st, Viewers: viewers, Srt: srt}
+	st := api.SessionStatus{SessionId: r.id, State: r.st, Viewers: viewers, Srt: srt, StreamCaptions: cc}
 	if r.provider != "" {
 		p := r.provider
 		st.Provider = &p
