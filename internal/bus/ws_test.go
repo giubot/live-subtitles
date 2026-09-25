@@ -220,10 +220,15 @@ func TestCaptionsLoad(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make(chan error, clients)
 	ready := make(chan struct{}, clients)
+	// Dial in batches: 500 connects at once overflow the listen backlog
+	// (128 on macOS) and the kernel resets some of them.
+	dialing := make(chan struct{}, 64)
 	for i := range clients {
 		track := []string{domain.SourceTrack, "es"}[i%2]
 		wg.Go(func() {
+			dialing <- struct{}{}
 			c, err := dial(ctx, srv, "/ws/captions/main?lang="+track)
+			<-dialing
 			if err != nil {
 				errs <- err
 				return
