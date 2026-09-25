@@ -66,6 +66,7 @@ After the PIN, `/setup` walks through the hardware check, local models, the Goog
 
 - `/admin/glossaries`: terms per glossary. **Paste CSV** takes comma, semicolon or tab separated rows; with a header, the columns are `term`, language codes (`es`, `en`, …), `note` and `keep`; without one, the order is term, the table's languages, then note.
 - `/admin/overlays`: built-in and saved overlay presets with a live preview. A saved preset's overlay link is `/overlay/<session>?lang=es&preset=<preset id>`.
+- `/admin/recordings`: disk used by recordings and every recording (filterable by session), with its replay, the audio as M4A and delete. A recording still being written can't be deleted.
 - `/admin/providers`: which provider new sessions use, and the write-only Google API key.
 - `/admin/settings` and `/admin/tls` (certificate details and how to trust the local CA on each OS).
 

@@ -19,6 +19,7 @@ import { Route as ThemedAdminIndexRouteImport } from './routes/_themed/admin/ind
 import { Route as ThemedAdminGlossariesRouteImport } from './routes/_themed/admin/glossaries'
 import { Route as ThemedAdminOverlaysRouteImport } from './routes/_themed/admin/overlays'
 import { Route as ThemedAdminProvidersRouteImport } from './routes/_themed/admin/providers'
+import { Route as ThemedAdminRecordingsRouteImport } from './routes/_themed/admin/recordings'
 import { Route as ThemedAdminSettingsRouteImport } from './routes/_themed/admin/settings'
 import { Route as ThemedAdminTlsRouteImport } from './routes/_themed/admin/tls'
 import { Route as ThemedCaptureIdRouteImport } from './routes/_themed/capture/$id'
@@ -76,6 +77,11 @@ const ThemedAdminProvidersRoute = ThemedAdminProvidersRouteImport.update({
   path: '/providers',
   getParentRoute: () => ThemedAdminRouteRoute,
 } as any)
+const ThemedAdminRecordingsRoute = ThemedAdminRecordingsRouteImport.update({
+  id: '/recordings',
+  path: '/recordings',
+  getParentRoute: () => ThemedAdminRouteRoute,
+} as any)
 const ThemedAdminSettingsRoute = ThemedAdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/admin/glossaries': typeof ThemedAdminGlossariesRoute
   '/admin/overlays': typeof ThemedAdminOverlaysRoute
   '/admin/providers': typeof ThemedAdminProvidersRoute
+  '/admin/recordings': typeof ThemedAdminRecordingsRoute
   '/admin/settings': typeof ThemedAdminSettingsRoute
   '/admin/tls': typeof ThemedAdminTlsRoute
   '/capture/$id': typeof ThemedCaptureIdRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/admin/glossaries': typeof ThemedAdminGlossariesRoute
   '/admin/overlays': typeof ThemedAdminOverlaysRoute
   '/admin/providers': typeof ThemedAdminProvidersRoute
+  '/admin/recordings': typeof ThemedAdminRecordingsRoute
   '/admin/settings': typeof ThemedAdminSettingsRoute
   '/admin/tls': typeof ThemedAdminTlsRoute
   '/capture/$id': typeof ThemedCaptureIdRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/_themed/admin/glossaries': typeof ThemedAdminGlossariesRoute
   '/_themed/admin/overlays': typeof ThemedAdminOverlaysRoute
   '/_themed/admin/providers': typeof ThemedAdminProvidersRoute
+  '/_themed/admin/recordings': typeof ThemedAdminRecordingsRoute
   '/_themed/admin/settings': typeof ThemedAdminSettingsRoute
   '/_themed/admin/tls': typeof ThemedAdminTlsRoute
   '/_themed/capture/$id': typeof ThemedCaptureIdRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/admin/glossaries'
     | '/admin/overlays'
     | '/admin/providers'
+    | '/admin/recordings'
     | '/admin/settings'
     | '/admin/tls'
     | '/capture/$id'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/admin/glossaries'
     | '/admin/overlays'
     | '/admin/providers'
+    | '/admin/recordings'
     | '/admin/settings'
     | '/admin/tls'
     | '/capture/$id'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/_themed/admin/glossaries'
     | '/_themed/admin/overlays'
     | '/_themed/admin/providers'
+    | '/_themed/admin/recordings'
     | '/_themed/admin/settings'
     | '/_themed/admin/tls'
     | '/_themed/capture/$id'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThemedAdminProvidersRouteImport
       parentRoute: typeof ThemedAdminRouteRoute
     }
+    '/_themed/admin/recordings': {
+      id: '/_themed/admin/recordings'
+      path: '/recordings'
+      fullPath: '/admin/recordings'
+      preLoaderRoute: typeof ThemedAdminRecordingsRouteImport
+      parentRoute: typeof ThemedAdminRouteRoute
+    }
     '/_themed/admin/settings': {
       id: '/_themed/admin/settings'
       path: '/settings'
@@ -358,6 +377,7 @@ interface ThemedAdminRouteRouteChildren {
   ThemedAdminGlossariesRoute: typeof ThemedAdminGlossariesRoute
   ThemedAdminOverlaysRoute: typeof ThemedAdminOverlaysRoute
   ThemedAdminProvidersRoute: typeof ThemedAdminProvidersRoute
+  ThemedAdminRecordingsRoute: typeof ThemedAdminRecordingsRoute
   ThemedAdminSettingsRoute: typeof ThemedAdminSettingsRoute
   ThemedAdminTlsRoute: typeof ThemedAdminTlsRoute
   ThemedAdminIndexRoute: typeof ThemedAdminIndexRoute
@@ -367,6 +387,7 @@ const ThemedAdminRouteRouteChildren: ThemedAdminRouteRouteChildren = {
   ThemedAdminGlossariesRoute: ThemedAdminGlossariesRoute,
   ThemedAdminOverlaysRoute: ThemedAdminOverlaysRoute,
   ThemedAdminProvidersRoute: ThemedAdminProvidersRoute,
+  ThemedAdminRecordingsRoute: ThemedAdminRecordingsRoute,
   ThemedAdminSettingsRoute: ThemedAdminSettingsRoute,
   ThemedAdminTlsRoute: ThemedAdminTlsRoute,
   ThemedAdminIndexRoute: ThemedAdminIndexRoute,

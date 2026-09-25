@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import HttpsOutlined from '@mui/icons-material/HttpsOutlined'
 import KeyOutlined from '@mui/icons-material/KeyOutlined'
+import GraphicEqOutlined from '@mui/icons-material/GraphicEqOutlined'
 import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import SubtitlesOutlined from '@mui/icons-material/SubtitlesOutlined'
@@ -13,10 +14,12 @@ export type AdminPath =
   | '/admin/glossaries'
   | '/admin/overlays'
   | '/admin/providers'
+  | '/admin/recordings'
   | '/admin/settings'
   | '/admin/tls'
 
-export type AdminPageKey = 'sessions' | 'glossaries' | 'overlays' | 'providers' | 'settings' | 'tls'
+export type AdminPageKey =
+  'sessions' | 'glossaries' | 'overlays' | 'recordings' | 'providers' | 'settings' | 'tls'
 
 export interface AdminNavItem {
   to: AdminPath
@@ -30,6 +33,7 @@ export const adminNav: AdminNavItem[] = [
   { to: '/admin', key: 'sessions', icon: <ViewAgendaOutlined /> },
   { to: '/admin/glossaries', key: 'glossaries', icon: <MenuBookOutlined /> },
   { to: '/admin/overlays', key: 'overlays', icon: <SubtitlesOutlined /> },
+  { to: '/admin/recordings', key: 'recordings', icon: <GraphicEqOutlined /> },
   { to: '/admin/providers', key: 'providers', icon: <KeyOutlined /> },
   { to: '/admin/settings', key: 'settings', icon: <SettingsOutlined /> },
   { to: '/admin/tls', key: 'tls', icon: <HttpsOutlined /> },

@@ -36,13 +36,15 @@ const formats: DownloadFormat[] = ['srt', 'vtt', 'txt']
 
 export interface ReplayPageProps {
   sessionId: string
+  /** Recording to open first (`?recording=`); defaults to the newest. */
+  recordingId?: string
 }
 
 /**
  * Replay (REC-4, OUT-8): a recording's audio with a clickable transcript
  * that follows playback, one `<track>` per language, and downloads.
  */
-export function ReplayPage({ sessionId }: ReplayPageProps) {
+export function ReplayPage({ sessionId, recordingId }: ReplayPageProps) {
   const { t, i18n } = useTranslation('replay')
   const session = api.useQuery('get', '/api/public/sessions/{sessionId}', {
     params: { path: { sessionId } },
@@ -51,7 +53,7 @@ export function ReplayPage({ sessionId }: ReplayPageProps) {
     params: { query: { sessionId } },
   })
   const recordings = useMemo(() => newestFirst(recordingsQuery.data ?? []), [recordingsQuery.data])
-  const [chosenRecording, setChosenRecording] = useState<string>()
+  const [chosenRecording, setChosenRecording] = useState<string | undefined>(recordingId)
   const recording = pickRecording(recordings, chosenRecording)
 
   const languages = recording?.languages.length

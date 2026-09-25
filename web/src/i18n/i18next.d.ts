@@ -8,6 +8,7 @@ import type glossary from '../locales/en/glossary.json'
 import type presets from '../locales/en/presets.json'
 import type settings from '../locales/en/settings.json'
 import type overlay from '../locales/en/overlay.json'
+import type recordings from '../locales/en/recordings.json'
 import type replay from '../locales/en/replay.json'
 import type setup from '../locales/en/setup.json'
 import type stage from '../locales/en/stage.json'
@@ -27,6 +28,7 @@ declare module 'i18next' {
       stage: typeof stage
       overlay: typeof overlay
       replay: typeof replay
+      recordings: typeof recordings
       settings: typeof settings
       glossary: typeof glossary
       presets: typeof presets
