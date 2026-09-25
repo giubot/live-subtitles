@@ -45,11 +45,18 @@ export const emptySession: SessionCaptions = Object.freeze({
  * order, and clears the interim of its segment; an interim replaces the
  * current interim unless its segment is already final (a late interim).
  * A hidden final (ADM-4) is removed.
+ *
+ * `gapBeforeMs` (SES-5) is only on the live captions right after a gap, and
+ * the history never has it: a caption that replaces another of its segment
+ * without one keeps the earlier mark, so the marker survives interim → final,
+ * corrections and reconnects, and shows once per segment.
  */
 export function addCaption(track: TrackCaptions, c: Caption): TrackCaptions {
   const i = track.finals.findIndex((f) => f.segmentId === c.segmentId)
   if (!c.final) {
-    return i >= 0 ? track : { ...track, interim: c }
+    if (i >= 0) return track
+    const prev = track.interim?.segmentId === c.segmentId ? track.interim : undefined
+    return { ...track, interim: keepGap(c, prev) }
   }
   // Plain slices rather than toSpliced/with, which older phones lack.
   let finals: Caption[]
@@ -57,8 +64,9 @@ export function addCaption(track: TrackCaptions, c: Caption): TrackCaptions {
     finals = i >= 0 ? [...track.finals.slice(0, i), ...track.finals.slice(i + 1)] : track.finals
   } else if (i >= 0) {
     finals = track.finals.slice()
-    finals[i] = c
+    finals[i] = keepGap(c, track.finals[i])
   } else {
+    if (track.interim?.segmentId === c.segmentId) c = keepGap(c, track.interim)
     // Usually the newest: append. Otherwise insert after every earlier start.
     let at = track.finals.length
     while (at > 0 && track.finals[at - 1]!.start > c.start) at--
@@ -67,6 +75,12 @@ export function addCaption(track: TrackCaptions, c: Caption): TrackCaptions {
   }
   const interim = track.interim?.segmentId === c.segmentId ? null : track.interim
   return { finals, interim }
+}
+
+/** c, with prev's gap marker when c has none. */
+function keepGap(c: Caption, prev: Caption | null | undefined): Caption {
+  if (c.gapBeforeMs || !prev?.gapBeforeMs) return c
+  return { ...c, gapBeforeMs: prev.gapBeforeMs }
 }
 
 /**
@@ -80,10 +94,19 @@ export function applyCaptionMessage(
 ): SessionCaptions {
   switch (msg.type) {
     case 'history': {
-      const tracks: Record<string, TrackCaptions> = {}
-      for (const [lang, t] of Object.entries(s.tracks)) tracks[lang] = { ...t, interim: null }
-      for (const c of msg.captions ?? [])
+      // Old interims stay while the history merges, so a final that took
+      // one's place keeps its gap marker; then only the history's remain.
+      const tracks: Record<string, TrackCaptions> = { ...s.tracks }
+      const interims: Record<string, Caption> = {}
+      for (const c of msg.captions ?? []) {
         tracks[c.lang] = addCaption(tracks[c.lang] ?? emptyTrack, c)
+        const interim = tracks[c.lang]!.interim
+        if (!c.final && interim?.segmentId === c.segmentId) interims[c.lang] = interim
+        else if (interims[c.lang]?.segmentId === c.segmentId) delete interims[c.lang]
+      }
+      for (const [lang, t] of Object.entries(tracks))
+        if (t.interim !== (interims[lang] ?? null))
+          tracks[lang] = { ...t, interim: interims[lang] ?? null }
       return { ...s, tracks, error: undefined }
     }
     case 'caption': {

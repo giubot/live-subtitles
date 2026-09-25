@@ -185,9 +185,16 @@ export function StagePage({ sessionId, search, WebSocket }: StagePageProps) {
             <p
               key={c.segmentId}
               lang={langOf(c, opts.lang)}
+              data-gap={c.gapBeforeMs ? true : undefined}
               style={{
                 margin: 0,
                 maxInlineSize: '36ch',
+                // Audio was lost before this line (SES-5): a thin dashed
+                // rule, no text, so it takes no line from the captions.
+                ...(c.gapBeforeMs && {
+                  borderBlockStart: `max(1px, 0.15vw) dashed ${colours.secondary}`,
+                  paddingBlockStart: '0.6vw',
+                }),
                 fontWeight: 600,
                 fontSize: 'var(--text-caption-stage)',
                 lineHeight: 1.28,

@@ -9,6 +9,11 @@ export function timecode(seconds: number): string {
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
 }
 
+/** A gap marker's length in whole seconds, at least 1. */
+export function gapSeconds(ms: number): number {
+  return Math.max(1, Math.round(ms / 1000))
+}
+
 /** How a session state reads on a status chip. */
 export const stateChip: Record<SessionState, ChipStatus> = {
   idle: 'idle',

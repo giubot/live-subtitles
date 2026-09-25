@@ -21,7 +21,7 @@ import { segmentedSx } from '../../components/segmented'
 import { currentLanguage } from '../../i18n'
 import { emptyTrack, useCaptions } from '../../realtime/captions'
 import type { WebSocketFactory } from '../../realtime/socket'
-import { stateChip, timecode } from './format'
+import { gapSeconds, stateChip, timecode } from './format'
 import {
   langStorageKey,
   pickTrack,
@@ -317,6 +317,7 @@ function Line({
       data-tone={tone}
       sx={{ display: 'grid', gap: 'var(--space-3xs)' }}
     >
+      {!!caption.gapBeforeMs && <GapMarker ms={caption.gapBeforeMs} />}
       <Box
         component="time"
         sx={{
@@ -360,6 +361,35 @@ function Line({
       >
         {caption.text}
       </Box>
+    </Box>
+  )
+}
+
+/**
+ * A quiet rule before a caption that follows lost audio (SES-5): the
+ * provider or the audio source restarted, or the capture station reconnected.
+ */
+function GapMarker({ ms }: { ms: number }) {
+  const { t } = useTranslation('viewer')
+  return (
+    <Box
+      data-gap
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-xs)',
+        marginBlockEnd: 'var(--space-2xs)',
+        fontSize: 'var(--text-xs)',
+        lineHeight: 1,
+        color: 'var(--color-muted)',
+        '&::before, &::after': {
+          content: '""',
+          flex: '1 1 0',
+          borderBlockStart: 'var(--rule-hair) dashed var(--color-rule-2)',
+        },
+      }}
+    >
+      {t('gap', { seconds: gapSeconds(ms) })}
     </Box>
   )
 }
