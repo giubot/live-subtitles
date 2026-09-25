@@ -91,7 +91,7 @@ task          # list every command
 | `LIVESUBS_MASTER_KEY` | Saving keys in the UI where there is no OS keychain (Docker, headless Linux) | Environment only |
 | YouTube caption ingestion URL | YouTube closed captions | Per session, in the session's stream captions |
 | OBS websocket password | OBS closed captions (`SendStreamCaption`) | Admin → Providers |
-| SRT passphrase (optional, 10–79 characters) | Encrypted SRT ingest | `PUT /api/secrets/srt_passphrase`, or `LIVESUBS_SECRET_SRT_PASSPHRASE` |
+| SRT passphrase (optional, 10–79 characters) | Encrypted SRT ingest | Admin → Settings, `PUT /api/secrets/srt_passphrase`, or `LIVESUBS_SECRET_SRT_PASSPHRASE` |
 
 Secrets saved in the UI go to the OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service) or, without one, to `<data dir>/secrets.enc`, encrypted with `LIVESUBS_MASTER_KEY`. A secret set by an environment variable can't be changed from the UI. Every secret also has a generic variable, `LIVESUBS_SECRET_<NAME>` (for example `LIVESUBS_SECRET_OBS_WEBSOCKET_PASSWORD`, or `LIVESUBS_SECRET_SESSION_MAIN_YOUTUBE_URL` for session `main`).
 

@@ -92,23 +92,19 @@ Instead of the mini PC's line-in, the production can send the mixed program audi
 - ffmpeg must be built with libsrt: `ffmpeg -hide_banner -protocols | grep -w srt`. The Docker image and most Linux packages have it; Homebrew's default ffmpeg doesn't (see [dev.md § SRT ingest](dev.md#srt-ingest)).
 - SRT is on by default (Admin → Settings → SRT: first UDP port, default 9000, and latency, default 200 ms).
 - Each session that uses SRT gets **its own UDP port**, counting up from the first port (9000, 9001, …). Open those UDP ports in the firewall; 9000–9009 covers ten sessions.
-- The session's SRT URL is `urls.srtIngest` in the session:
+- In the session dialog (Admin → Sessions → edit), set **Audio input** to *SRT from an encoder (OBS, vMix…)*. The session's links then show **SRT input for the encoder**, the address to paste into OBS or vMix (for example `srt://192.168.1.20:9000?streamid=main-stage`). Start the session: it goes live and waits for the sender. The choice is kept per session in that browser.
+- The dashboard card then shows **SRT input**: *Connected* or *Disconnected*, and the received bitrate.
+- From a script, the address is `urls.srtIngest` in the session, and the start takes the source in its body:
 
   ```sh
   curl -s -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" \
     http://192.168.1.20:8080/api/sessions/main-stage | jq -r .urls.srtIngest
   # srt://192.168.1.20:9000?streamid=main-stage
-  ```
-
-- Start the session with the SRT source; it goes live and waits for the sender:
-
-  ```sh
   curl -X POST -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" -H "Content-Type: application/json" \
     -d '{"source":"srt"}' http://192.168.1.20:8080/api/sessions/main-stage/start
   ```
 
-  The dashboard card then shows **SRT input**: *Connected* or *Disconnected*, and the received bitrate.
-- **Optional encryption**: store a passphrase of 10–79 characters as the `srt_passphrase` secret (`PUT /api/secrets/srt_passphrase` with `{"value":"…"}`, or `LIVESUBS_SECRET_SRT_PASSPHRASE`) and set the same one on the sender. Without it, only unencrypted senders are accepted.
+- **Optional encryption**: set a passphrase of 10–79 characters in Admin → Settings → SRT passphrase (or `PUT /api/secrets/srt_passphrase` with `{"value":"…"}`, or `LIVESUBS_SECRET_SRT_PASSPHRASE`) and set the same one on the sender. Without it, only unencrypted senders are accepted.
 
 The listener takes one sender at a time. When the sender disconnects, the listener reopens and the session stays live; the gap is marked. The `streamid` in the URL is sent but not checked yet.
 
