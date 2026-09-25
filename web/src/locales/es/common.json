@@ -560,6 +560,33 @@
         "why": "whisper-server respondió pero no transcribió nada del audio de prueba.",
         "fix": "Revisá que whisper-server use un modelo multilingüe (por ejemplo large-v3-turbo) y probá de nuevo."
       }
+    },
+    "model": {
+      "not_found": {
+        "title": "Modelo desconocido",
+        "why": "{{model}} no está en la lista de modelos de este servidor.",
+        "fix": "Elegí un modelo de la lista."
+      },
+      "ollama_unreachable": {
+        "title": "No se puede conectar con Ollama",
+        "why": "Ollama descarga y ejecuta los modelos Gemma, y el servidor no lo alcanza.",
+        "fix": "Iniciá Ollama (o revisá su dirección en Configuración) y probá de nuevo."
+      },
+      "download_failed": {
+        "title": "Falló la descarga",
+        "why": "Falló la conexión con el servidor de modelos, o rechazó el pedido.",
+        "fix": "Revisá la conexión a internet y probá de nuevo: la descarga sigue desde donde quedó."
+      },
+      "checksum_mismatch": {
+        "title": "El modelo descargado está dañado",
+        "why": "El archivo de {{model}} no coincide con su checksum publicado, así que se borró.",
+        "fix": "Descargalo de nuevo."
+      },
+      "pull_failed": {
+        "title": "Ollama no pudo descargar el modelo",
+        "why": "Ollama informó un error al descargar {{model}}.",
+        "fix": "Revisá el log de Ollama y la conexión a internet, y probá de nuevo."
+      }
     }
   }
 }

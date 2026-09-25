@@ -73,6 +73,8 @@ type Server struct {
 	// operations answer 501, and health and system info leave out ffmpeg
 	// and the sidecars.
 	Hardware HardwareService
+	// Models lists and downloads local models; nil: 501.
+	Models ModelService
 	// Build is what GetSystemInfo reports.
 	Build BuildInfo
 

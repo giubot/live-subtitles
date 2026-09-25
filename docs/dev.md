@@ -245,7 +245,7 @@ The local provider needs two sidecars: **whisper-server** (whisper.cpp) for spee
 | whisper-server | `8178` | `ggml-large-v3-turbo` (multilingual; smaller: `medium`, `small`) |
 | Ollama | `11434` | `gemma3:4b` (smaller: `gemma3:1b`) |
 
-`task models:pull` downloads the whisper model into `./models` (checked against Hugging Face's SHA-256) and pulls Gemma through Ollama. Override with `WHISPER_MODEL=small` or `GEMMA_MODEL=gemma3:1b`. English-only whisper models (`*.en`) are refused, because Spanish needs a multilingual model.
+`task models:pull` downloads the whisper model into `./models` (checked against Hugging Face's SHA-256) and pulls Gemma through Ollama. Override with `WHISPER_MODEL=small` or `GEMMA_MODEL=gemma3:1b`. English-only whisper models (`*.en`) are refused, because Spanish needs a multilingual model. The server can also download them itself (see [Model downloads](#model-downloads)).
 
 ### macOS (Apple Silicon): native, with Metal
 
@@ -324,6 +324,13 @@ At startup the server logs a hardware check, and `GET /api/system/hardware` (adm
 `GET /healthz` lists `database`, `ffmpeg`, `whisper` and `ollama` under `checks`. It reports `degraded` only when the database or ffmpeg fails, since the sidecars matter only to local-provider sessions. `GET /api/system/info` sets `features.srtIngest` when `ffmpeg -protocols` lists `srt` as an input (ffmpeg built with libsrt; Homebrew's default build has no libsrt). Other code can reuse the same probe through `ffmpeg.Probe` or the caching `ffmpeg.Prober`.
 
 On an Apple M5 Pro (48 GB, Metal) with whisper.cpp 1.9.4 (`large-v3-turbo`) and Ollama 0.34.2 (`gemma3:4b`), four runs gave a real-time factor of 0.14 (about 3.4 s of speech recognition and 1.8 s of translation for the 37.6 s clip).
+
+### Model downloads
+
+`GET /api/models` (admin) lists the catalog (`internal/models/catalog.go`): whisper `large-v3-turbo`, `medium` and `small` (multilingual GGML files from Hugging Face, each with its size and SHA-256), and `gemma3:4b` and `gemma3:1b` through Ollama. `recommended` follows the hardware check. `POST /api/models/{id}/download` starts the download in the background and answers 202. Progress goes out as `modelProgress` events on `/ws/admin`, at most one per percent or per second, and `GET /api/models` shows it too.
+
+- **whisper**: the file goes to `<models dir>/ggml-<name>.bin.part` and is renamed to `ggml-<name>.bin` once its SHA-256 matches. An interrupted download resumes with an HTTP `Range` request, both on the automatic retries (3 attempts) and on the next `POST`. A checksum mismatch deletes the file (`model.checksum_mismatch`). The models directory is `./models` by default (`--models-dir` / `LIVESUBS_MODELS_DIR`). That is the directory `task models:pull` fills and `compose.dev.yaml` mounts into whisper-server. whisper-server loads its model at launch, so restart it with `--model <models dir>/ggml-<name>.bin` and set `providers.local.whisperModel` to match.
+- **Gemma**: the server asks Ollama at `providers.local.ollamaUrl` to pull the tag (`POST /api/pull`). Ollama resumes partial layers and checks their digests itself. Without Ollama the `POST` answers 409 `model.ollama_unreachable`.
 
 ## Test audio
 

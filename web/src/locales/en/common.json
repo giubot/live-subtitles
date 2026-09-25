@@ -560,6 +560,33 @@
         "why": "whisper-server answered but transcribed nothing from the test clip.",
         "fix": "Check that whisper-server runs a multilingual model (for example large-v3-turbo), then try again."
       }
+    },
+    "model": {
+      "not_found": {
+        "title": "Unknown model",
+        "why": "{{model}} isn't in this server's model list.",
+        "fix": "Pick a model from the list."
+      },
+      "ollama_unreachable": {
+        "title": "Ollama isn't reachable",
+        "why": "Ollama downloads and runs the Gemma models, and the server can't reach it.",
+        "fix": "Start Ollama (or check its address in Settings), then try again."
+      },
+      "download_failed": {
+        "title": "The download failed",
+        "why": "The connection to the model server failed, or it refused the request.",
+        "fix": "Check the internet connection and try again: the download resumes where it stopped."
+      },
+      "checksum_mismatch": {
+        "title": "The downloaded model is damaged",
+        "why": "The file for {{model}} doesn't match its published checksum, so it was deleted.",
+        "fix": "Download it again."
+      },
+      "pull_failed": {
+        "title": "Ollama couldn't download the model",
+        "why": "Ollama reported an error while pulling {{model}}.",
+        "fix": "Check Ollama's log and the internet connection, then try again."
+      }
     }
   }
 }

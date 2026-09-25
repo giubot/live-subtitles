@@ -35,6 +35,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/hwcheck"
 	"github.com/iencodev/live-subtitles/internal/metrics"
+	"github.com/iencodev/live-subtitles/internal/models"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
 	"github.com/iencodev/live-subtitles/internal/provider/gemini"
 	"github.com/iencodev/live-subtitles/internal/provider/local/gemma"
@@ -71,6 +72,7 @@ type App struct {
 	tls     *tlsutil.Manager // HTTPS certificate; mode disabled when off
 	rec     *recording.Recorder
 	cc      *streamcc.Service
+	models  *models.Manager
 }
 
 // Version is the build version, set by cmd/livesubs from its ldflags.
@@ -200,11 +202,21 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	a.cc.Bind(a.manager.Events().Publish, a.manager.StatusOf)
 	srv.Manager = a.manager
 	rule.Warm(ctx)
-	// Hardware self-check and benchmark (AI-12).
+	// Hardware self-check and benchmark (AI-12), model downloads (AI-13).
 	hw := hwcheck.New(hwcheck.Options{Settings: st.Settings, FFmpeg: &ffmpeg.Prober{Binary: cfg.FFmpeg},
 		ASR: localASR, Translator: localTranslator, DataDir: cfg.DataDir, Logger: log})
 	srv.Hardware = hw
 	go logHardware(context.WithoutCancel(ctx), hw, log)
+	a.models = models.New(models.Options{Dir: cfg.ModelsDir, Settings: st.Settings, Logger: log,
+		Recommended: func(ctx context.Context) (string, string) {
+			r := hw.Recommendation(ctx)
+			return r.WhisperModel, r.GemmaModel
+		},
+		Publish: func(m api.LocalModel) {
+			a.manager.Events().Publish(api.AdminEvent{Type: api.AdminEventTypeModelProgress, At: time.Now(), Model: &m})
+		},
+	})
+	srv.Models = a.models
 	// Test sources may read files from the data directory and ./testdata.
 	srv.Files = &ffmpeg.Files{Binary: cfg.FFmpeg, Roots: []string{cfg.DataDir, "testdata"}}
 	// SRT ingest (AUD-5): one ffmpeg listener per session, from settings.srt.port up.
@@ -275,6 +287,7 @@ func optionalKey(key func(context.Context) (string, error)) func(context.Context
 
 // Close stops running sessions and releases the data directory.
 func (a *App) Close() error {
+	a.models.Close()
 	a.manager.Close()
 	a.cc.Close()
 	a.rec.Close()

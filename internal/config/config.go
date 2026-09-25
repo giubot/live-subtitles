@@ -28,6 +28,7 @@ type Config struct {
 	PublicBaseURL string // overrides LAN detection for generated URLs
 	NoKeychain    bool   // never use the OS keychain for secrets
 	FFmpeg        string // ffmpeg executable for file, URL and SRT sources
+	ModelsDir     string // local models, shared with whisper-server (AI-13)
 	Version       bool   // print the version and exit
 	Metrics       bool   // serve Prometheus metrics at /metrics (admin only)
 
@@ -70,6 +71,7 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	}
 	fs.BoolVar(&c.NoKeychain, "no-keychain", noKeychain, "keep secrets in the encrypted file only, never the OS keychain (LIVESUBS_NO_KEYCHAIN)")
 	fs.StringVar(&c.FFmpeg, "ffmpeg", env("FFMPEG", "ffmpeg"), "ffmpeg executable (LIVESUBS_FFMPEG)")
+	fs.StringVar(&c.ModelsDir, "models-dir", env("MODELS_DIR", "./models"), "local models directory, shared with whisper-server (LIVESUBS_MODELS_DIR)")
 	fs.BoolVar(&c.Version, "version", false, "print the version and exit")
 	metricsOn, err := strconv.ParseBool(env("METRICS", "false"))
 	if err != nil {
