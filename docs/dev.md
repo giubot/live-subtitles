@@ -282,6 +282,26 @@ The fixtures are about 8 s of synthetic speech each. Measure WER on the real tal
 
 The server decodes the file with ffmpeg (`--ffmpeg` / `LIVESUBS_FFMPEG` if it isn't in `PATH`). Only files under the data directory and `./testdata`, or `http(s)` URLs, are accepted; relative paths are resolved from the server's working directory.
 
+## SRT ingest
+
+A session can take its audio from an SRT sender (vMix, OBS, a hardware encoder) instead of browser capture (AUD-5). Start it with `POST /api/sessions/{id}/start` and `{"source":"srt"}`: the server opens an ffmpeg SRT listener and the session goes live, waiting for a sender. The sender pushes MPEG-TS with any audio codec ffmpeg decodes (AAC, MP2, Opus, AC-3; video is ignored) to the session's `urls.srtIngest`, e.g. `srt://192.168.1.20:9000?streamid=main`. When the sender disconnects the listener reopens, so the session stays live and the next connection continues it (`audio.lastGapMs` shows the gap). Stop the session to close the listener.
+
+- **One UDP port per session.** ffmpeg's listener takes one caller and can't route by `streamid`, so each session gets its own port, counting up from `settings.srt.port` (default 9000) in the order sessions are listed or started, at most 100. A session keeps its port until the server restarts or the session is deleted. `streamid=<session>` is in the URL but not checked. Open the UDP ports on the event LAN's firewall (9000–9009 covers ten SRT sessions).
+- **Latency** is `settings.srt.latencyMs` (default 200 ms). Senders usually negotiate the larger of theirs and ours.
+- **Passphrase**: store `srt_passphrase` (10–79 characters) with `PUT /api/secrets/srt_passphrase`, and set the same passphrase on the sender. Without it only unencrypted senders are accepted. A sender with the wrong passphrase is refused and logged as `srt caller rejected`; the passphrase itself is passed to ffmpeg as an option and never logged (it is visible to local users in the process list, like any command-line argument).
+- **Status**: `SessionStatus.srt` has `connected` and `bitrateKbps` (the received audio stream, measured from a stream copy of it). ffmpeg doesn't expose libsrt's RTT and packet-loss counters, so those fields stay empty.
+- **libsrt**: ffmpeg must be built with it. Check with `ffmpeg -hide_banner -protocols | grep -w srt`. Most Linux packages (Debian/Ubuntu `apt install ffmpeg`) have it; Homebrew's default `ffmpeg` formula doesn't, so on macOS use the `homebrew-ffmpeg/ffmpeg` tap (`brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-srt`) or Docker. Without libsrt, `srtIngest` is absent and starting with SRT answers `source.srt_unavailable`.
+
+Try it with ffmpeg as the sender (add `&passphrase=…`, URL-encoded, if one is set):
+
+```sh
+ffmpeg -re -i testdata/audio/fixtures/en.wav -c:a aac -f mpegts 'srt://127.0.0.1:9000?streamid=main'
+```
+
+**OBS**: Settings → Stream → Service *Custom…*, Server `srt://<server-ip>:9000?streamid=main` (append `&passphrase=…` if one is set; `&latency=200000` sets the sender's latency in microseconds), Stream Key empty. OBS sends MPEG-TS over SRT by itself, and its default AAC audio works. Start the session, then Start Streaming. **vMix**: add an SRT output in *Caller* mode to the same host and port, with the same passphrase and latency.
+
+The SRT tests (`internal/audio/ffmpeg/srt_e2e_test.go`, `internal/api/handlers/srt_test.go`) push the fixture through a real connection and skip without libsrt. To run them on a Mac without it, use Docker: `docker run --rm -v "$PWD":/src -w /src golang:1.26-trixie sh -c 'apt-get update -qq && apt-get install -y -qq ffmpeg >/dev/null && go test -run SRT ./internal/audio/ffmpeg/ ./internal/api/handlers/'`.
+
 ## Troubleshooting
 
 - **`localhost:8080` answers with another app's 404.** Another process is listening on `127.0.0.1:8080`, and the Go server binds `*:8080` alongside it without an error. Check with `lsof -nP -iTCP:8080 -sTCP:LISTEN`, then stop it or use `task dev PORT=18080`.

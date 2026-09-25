@@ -368,6 +368,11 @@ type audioStatuser interface {
 	Status() api.AudioStatus
 }
 
+// srtStatuser is implemented by the SRT listener source (SRT-4).
+type srtStatuser interface {
+	SRTStats() api.SrtStats
+}
+
 func (r *run) status() api.SessionStatus {
 	r.mu.Lock()
 	src := r.source
@@ -379,11 +384,16 @@ func (r *run) status() api.SessionStatus {
 		kind := src.Kind()
 		audio = api.AudioStatus{Connected: true, Source: &kind}
 	}
+	var srt *api.SrtStats
+	if s, ok := src.(srtStatuser); ok {
+		v := s.SRTStats()
+		srt = &v
+	}
 	viewers := r.m.opts.Bus.Viewers(r.id)
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	st := api.SessionStatus{SessionId: r.id, State: r.st, Viewers: viewers}
+	st := api.SessionStatus{SessionId: r.id, State: r.st, Viewers: viewers, Srt: srt}
 	if r.provider != "" {
 		p := r.provider
 		st.Provider = &p

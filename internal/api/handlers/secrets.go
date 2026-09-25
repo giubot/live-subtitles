@@ -12,7 +12,7 @@ import (
 )
 
 // knownSecrets are the names the admin UI manages (the SecretName enum).
-var knownSecrets = []api.SecretName{api.GoogleApiKey, api.ObsWebsocketPassword}
+var knownSecrets = []api.SecretName{api.GoogleApiKey, api.ObsWebsocketPassword, api.SrtPassphrase}
 
 func (s *Server) ListSecrets(ctx context.Context, _ api.ListSecretsRequestObject) (api.ListSecretsResponseObject, error) {
 	if s.Secrets == nil {

@@ -266,6 +266,26 @@
         "title": "No test file is playing",
         "why": "This session isn't fed by a file right now.",
         "fix": "Nothing to stop. To stop browser capture, stop the session."
+      },
+      "srt_unavailable": {
+        "title": "SRT ingest isn't available",
+        "why": "The server's ffmpeg was built without libsrt, so it can't receive SRT streams.",
+        "fix": "Install an ffmpeg built with libsrt (most Linux packages and the Docker image have one; Homebrew’s default ffmpeg doesn’t), or use browser capture."
+      },
+      "srt_disabled": {
+        "title": "SRT ingest is turned off",
+        "why": "SRT is disabled in the settings.",
+        "fix": "Turn SRT on in Settings, or use browser capture."
+      },
+      "srt_port_busy": {
+        "title": "The SRT port is in use",
+        "why": "UDP port {{port}} is already taken by another program, or there are no SRT ports left.",
+        "fix": "Close the program using that port, or change the first SRT port in Settings."
+      },
+      "srt_passphrase_invalid": {
+        "title": "The SRT passphrase isn't valid",
+        "why": "SRT passphrases must be {{min}} to {{max}} characters long.",
+        "fix": "Set a new SRT passphrase in Settings, or remove it to receive without encryption."
       }
     },
     "capture": {

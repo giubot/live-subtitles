@@ -266,6 +266,26 @@
         "title": "No se está reproduciendo ningún archivo de prueba",
         "why": "Esta sesión no está recibiendo audio de un archivo ahora.",
         "fix": "No hay nada que detener. Para cortar la captura del navegador, detené la sesión."
+      },
+      "srt_unavailable": {
+        "title": "La ingesta SRT no está disponible",
+        "why": "El ffmpeg del servidor se compiló sin libsrt, así que no puede recibir streams SRT.",
+        "fix": "Instalá un ffmpeg compilado con libsrt (la mayoría de los paquetes de Linux y la imagen de Docker lo traen; el ffmpeg por defecto de Homebrew no), o usá la captura del navegador."
+      },
+      "srt_disabled": {
+        "title": "La ingesta SRT está desactivada",
+        "why": "SRT está desactivado en la configuración.",
+        "fix": "Activá SRT en Configuración, o usá la captura del navegador."
+      },
+      "srt_port_busy": {
+        "title": "El puerto SRT está en uso",
+        "why": "Otro programa ya usa el puerto UDP {{port}}, o no quedan puertos SRT libres.",
+        "fix": "Cerrá el programa que usa ese puerto, o cambiá el primer puerto SRT en Configuración."
+      },
+      "srt_passphrase_invalid": {
+        "title": "La contraseña SRT no es válida",
+        "why": "Las contraseñas SRT deben tener entre {{min}} y {{max}} caracteres.",
+        "fix": "Poné una nueva contraseña SRT en Configuración, o borrala para recibir sin cifrado."
       }
     },
     "capture": {

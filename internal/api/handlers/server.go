@@ -10,6 +10,7 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/audio/ffmpeg"
+	"github.com/iencodev/live-subtitles/internal/audio/srt"
 	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/session"
@@ -45,6 +46,9 @@ type Server struct {
 	Manager *session.Manager
 	// Files opens file and URL test sources (sources/file); nil: 501.
 	Files *ffmpeg.Files
+	// SRT opens SRT listener sources (start with source srt) and builds
+	// SessionUrls.srtIngest; nil: SRT answers source.srt_unavailable.
+	SRT *srt.Service
 	// Recordings lists, serves and deletes recordings; nil: the recordings
 	// operations (and captions by recordingId) answer 501.
 	Recordings Recordings
