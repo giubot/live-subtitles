@@ -137,6 +137,10 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	// Realtime: browser audio in (/ws/ingest), sessions, captions out
 	// (/ws/captions) and admin events (/ws/admin).
 	captionBus := bus.New()
+	// Corrections go to viewers straight on the bus, not through the
+	// stream-captions tap: a closed-caption line already sent to the live
+	// stream can't be taken back (ADM-4).
+	srv.CaptionEdits, srv.CaptionBus = st, captionBus
 	// The Gemini key and model are read at each session start (AI-11).
 	geminiKey := googleAPIKey(sec)
 	// Default-provider rule (AI-11): Gemini with a valid Google API key,

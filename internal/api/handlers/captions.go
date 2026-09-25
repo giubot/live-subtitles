@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/domain"
@@ -129,6 +130,54 @@ func (s *Server) GetSubtitles(ctx context.Context, req api.GetSubtitlesRequestOb
 		return nil, err
 	}
 	return api.GetSubtitles200TextvttResponse{Body: &b, ContentLength: int64(b.Len()), Headers: headers}, nil
+}
+
+var captionNotFound = api.NotFoundJSONResponse{Code: "caption.not_found", Message: "caption not found"}
+
+// PatchCaption corrects or hides one stored final caption (ADM-4) and
+// broadcasts the result to the track's live viewers, who replace the line
+// by segmentId. Exports, replay and the bus history then show the
+// correction and leave out hidden lines.
+func (s *Server) PatchCaption(ctx context.Context, req api.PatchCaptionRequestObject) (api.PatchCaptionResponseObject, error) {
+	if s.Sessions == nil || s.CaptionEdits == nil {
+		return nil, api.ErrNotImplemented
+	}
+	invalid := func(field, msg string) api.PatchCaption400JSONResponse {
+		return api.PatchCaption400JSONResponse{BadRequestJSONResponse: api.BadRequestJSONResponse{
+			Code: "request.invalid", Message: msg, Fields: &map[string]string{field: "request.invalid"},
+		}}
+	}
+	var e domain.CaptionEdit
+	if req.Body != nil {
+		e.Hidden = req.Body.Hidden
+		if req.Body.Text != nil {
+			text := strings.TrimSpace(*req.Body.Text)
+			if text == "" {
+				return invalid("text", "text must not be blank; hide the caption instead"), nil
+			}
+			e.Text = &text
+		}
+	}
+	if e.Text == nil && e.Hidden == nil {
+		return invalid("text", "set text or hidden"), nil
+	}
+	if _, err := s.Sessions.GetSession(ctx, req.SessionId); errors.Is(err, domain.ErrNotFound) {
+		return api.PatchCaption404JSONResponse{NotFoundJSONResponse: sessionNotFound}, nil
+	} else if err != nil {
+		return nil, err
+	}
+	c, err := s.CaptionEdits.EditCaption(ctx, req.SessionId, req.Params.Lang, req.SegmentId, e)
+	if errors.Is(err, domain.ErrNotFound) {
+		return api.PatchCaption404JSONResponse{NotFoundJSONResponse: captionNotFound}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if s.CaptionBus != nil {
+		live := c
+		s.CaptionBus.Publish(req.SessionId, domain.BusMessage{Type: api.CaptionsServerMessageTypeCaption, Caption: &live})
+	}
+	return api.PatchCaption200JSONResponse(c), nil
 }
 
 // allCaptions returns every visible final caption q selects, in order.

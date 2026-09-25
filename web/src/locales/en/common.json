@@ -389,6 +389,13 @@
         "fix": "Pick the recording from the session's list of recordings."
       }
     },
+    "caption": {
+      "not_found": {
+        "title": "Caption line not found",
+        "why": "The line isn't stored for that language yet, which happens with text still being recognized, or the session's captions were removed.",
+        "fix": "Wait until the line is final and try again, or reload the captions."
+      }
+    },
     "settings": {
       "invalid": {
         "title": "Some settings aren't valid",

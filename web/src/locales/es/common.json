@@ -389,6 +389,13 @@
         "fix": "Elegí la grabación desde la lista de grabaciones de la sesión."
       }
     },
+    "caption": {
+      "not_found": {
+        "title": "No encontramos esa línea de subtítulos",
+        "why": "La línea todavía no está guardada para ese idioma, algo que pasa con el texto que se sigue reconociendo, o se borraron los subtítulos de la sesión.",
+        "fix": "Esperá a que la línea quede final y probá de nuevo, o recargá los subtítulos."
+      }
+    },
     "settings": {
       "invalid": {
         "title": "Hay ajustes que no son válidos",

@@ -134,6 +134,21 @@ Final captions of every track can be downloaded while a session runs or afterwar
 
 VTT and SRT cues hold at most 2 lines of 42 characters (settings `captions.maxLines` / `maxCharsPerLine`), break between sentences where they can, and stay on screen 5/6 s to 7 s. Captions an admin hid are left out.
 
+### Live correction
+
+An admin corrects or hides a final caption line with `PATCH /api/sessions/{id}/captions/{segmentId}?lang=es` and a body of `{"text": "…"}`, `{"hidden": true}` (or `false` to show it again), or both. Only final captions that are already stored can be patched (`404 caption.not_found` otherwise); a blank `text` or an empty body is `400 request.invalid`. The change:
+
+- is stored with `edited: true`, so exports, `/captions` and replay show the new text and leave out hidden lines;
+- goes to `/ws/captions` viewers of that track as a `caption` message with `edited: true` (and `hidden: true` when hidden), which replaces the line with the same `segmentId`; viewers who connect later get it in their `history`, without hidden lines;
+- survives a late re-final from the provider for the same segment, which neither the database nor the bus lets overwrite an edited line;
+- is not re-sent as a stream closed caption: YouTube and OBS captions already sent can't be taken back.
+
+```sh
+curl -X PATCH -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"text":"Hoy hablamos de observabilidad."}' \
+  'http://localhost:8080/api/sessions/main/captions/s-000123?lang=es'
+```
+
 ## Automatic recovery
 
 A running session recovers on its own when part of the pipeline fails (SES-5). The state stays `live` throughout. `status.recovering` says what is restarting (`provider` or `source`), the attempt, the bound and the next retry, and `status.restarts` counts the restarts of the current run.
