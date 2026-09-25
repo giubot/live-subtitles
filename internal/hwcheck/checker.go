@@ -42,6 +42,10 @@ type Options struct {
 	// DataDir keeps the last benchmark (BenchmarkFile); empty keeps it in
 	// memory only.
 	DataDir string
+	// ModelsDir is where whisper models are downloaded (--models-dir); the
+	// report gives it as an absolute path so the setup guide can show the
+	// whisper-server command. Empty leaves it out.
+	ModelsDir string
 	// HTTPClient checks the sidecars (default http.DefaultClient; every
 	// call has its own timeout).
 	HTTPClient *http.Client
@@ -159,6 +163,13 @@ func (c *Checker) Report(ctx context.Context) api.HardwareReport {
 	rep.Recommendation.WhisperModel = rec.WhisperModel
 	rep.Recommendation.GemmaModel = rec.GemmaModel
 	rep.Recommendation.LocalRealtimeLikely = rec.RealtimeLikely
+	if c.opts.ModelsDir != "" {
+		dir, err := filepath.Abs(c.opts.ModelsDir)
+		if err != nil {
+			dir = c.opts.ModelsDir
+		}
+		rep.ModelsDir = &dir
+	}
 	c.mu.Lock()
 	rep.LastBenchmark = c.last
 	c.mu.Unlock()

@@ -211,7 +211,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	rule.Warm(ctx)
 	// Hardware self-check and benchmark (AI-12), model downloads (AI-13).
 	hw := hwcheck.New(hwcheck.Options{Settings: st.Settings, FFmpeg: &ffmpeg.Prober{Binary: cfg.FFmpeg},
-		ASR: localASR, Translator: localTranslator, DataDir: cfg.DataDir, Logger: log})
+		ASR: localASR, Translator: localTranslator, DataDir: cfg.DataDir, ModelsDir: cfg.ModelsDir, Logger: log})
 	srv.Hardware = hw
 	go logHardware(context.WithoutCancel(ctx), hw, log)
 	a.models = models.New(models.Options{Dir: cfg.ModelsDir, Settings: st.Settings, Logger: log,
