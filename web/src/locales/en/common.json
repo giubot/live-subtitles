@@ -247,6 +247,38 @@
         "why": "The browser failed to set up audio processing.",
         "fix": "Reload the page and start again. If it keeps failing, try an up-to-date Chrome, Edge, Firefox or Safari."
       }
+    },
+    "not_implemented": {
+      "title": "This isn’t available yet",
+      "why": "This server version doesn’t have this feature yet.",
+      "fix": "Update Live Subtitles, or use it once the next version is out."
+    },
+    "secret": {
+      "read_only_env": {
+        "title": "This key is set by an environment variable",
+        "why": "The server reads it from its environment, so it can’t be changed or removed here.",
+        "fix": "Change or remove the variable where the server is started, then restart it."
+      },
+      "no_backend": {
+        "title": "There’s nowhere safe to store the key",
+        "why": "This computer has no system keychain, and no master key is set for the encrypted file.",
+        "fix": "Set LIVESUBS_MASTER_KEY (see docs/dev.md) and restart the server."
+      },
+      "not_found": {
+        "title": "That key isn’t stored",
+        "why": "It may have been removed already.",
+        "fix": "Reload the page to see the current keys."
+      },
+      "value_required": {
+        "title": "The key is empty",
+        "why": "There’s nothing to save.",
+        "fix": "Paste the key and try again."
+      },
+      "unknown_name": {
+        "title": "The server doesn’t know this key",
+        "why": "The app and the server are probably different versions.",
+        "fix": "Reload the page. If it keeps happening, update the server."
+      }
     }
   }
 }
