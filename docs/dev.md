@@ -297,6 +297,8 @@ With `target: obs_websocket` the captions go to OBS instead, through obs-websock
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.
 
+When either one doesn't answer, the setup wizard and **Admin → Models & hardware** show the install and start steps in the UI, for macOS, Linux, Windows and Docker. The tab for the server's OS is selected by default. The commands are filled in with the configured addresses, the absolute models directory (`modelsDir` in `GET /api/system/hardware`) and the selected models. The steps below are the same, for working from a checkout with `task`.
+
 | Service | Port | Default model |
 |---|---|---|
 | whisper-server | `8178` | `ggml-large-v3-turbo` (multilingual; smaller: `medium`, `small`) |

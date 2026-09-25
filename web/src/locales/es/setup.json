@@ -48,7 +48,7 @@
     "recheck": "Revisar de nuevo",
     "version": "Versión {{version}}",
     "notAnswering": "No responde en {{url}}",
-    "localMissing": "No están corriendo: {{names}}. El proveedor local y la prueba necesitan los dos. Inicialos (ver docs/dev.md) y revisá de nuevo, o seguí y agregá una API key de Google para usar Gemini.",
+    "localMissing": "No están corriendo: {{names}}. El proveedor local y la prueba necesitan los dos. Inicialos con los pasos de abajo y revisá de nuevo, o seguí y agregá una API key de Google para usar Gemini.",
     "slowMeasured": "La prueba indica que los modelos locales no llegan a tiempo real acá. Usá modelos más chicos, o agregá una API key de Google en un paso siguiente para usar Gemini.",
     "benchmarkRunning": "Corriendo la prueba…",
     "benchmarkSkip": "La prueba es opcional: seguí sin ella y corrala más tarde desde esta página.",
@@ -89,7 +89,7 @@
     "verifying": "Verificando el checksum del archivo…",
     "whisperDown": "whisper-server no responde en {{url}}. Los modelos de voz se descargan igual, pero hay que iniciar whisper-server con uno (--model <carpeta de modelos>/ggml-<nombre>.bin) para que funcionen las sesiones locales.",
     "ollamaDown": "Ollama no responde en {{url}}, y los modelos de traducción Gemma se descargan a través de él.",
-    "startSidecars": "Inicialos (ver docs/dev.md) y revisá de nuevo, o salteá este paso si vas a usar Gemini."
+    "startSidecars": "Inicialos con los pasos de abajo y revisá de nuevo, o salteá este paso si vas a usar Gemini."
   },
   "google": {
     "heading": "API key de Google (opcional)",

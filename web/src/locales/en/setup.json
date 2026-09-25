@@ -48,7 +48,7 @@
     "recheck": "Check again",
     "version": "Version {{version}}",
     "notAnswering": "Not answering at {{url}}",
-    "localMissing": "Not running: {{names}}. The local provider and the benchmark need both. Start them (see docs/dev.md), then check again, or skip ahead and add a Google API key to use Gemini.",
+    "localMissing": "Not running: {{names}}. The local provider and the benchmark need both. Start them with the steps below, then check again, or skip ahead and add a Google API key to use Gemini.",
     "slowMeasured": "The benchmark says the local models don’t keep up in real time here. Use smaller models, or add a Google API key in a later step to use Gemini.",
     "benchmarkRunning": "Running the benchmark…",
     "benchmarkSkip": "The benchmark is optional: continue without it, and run it later from this page.",
@@ -89,7 +89,7 @@
     "verifying": "Checking the file’s checksum…",
     "whisperDown": "whisper-server isn’t answering at {{url}}. The speech models still download here, but whisper-server has to be started with one (--model <models dir>/ggml-<name>.bin) before local sessions work.",
     "ollamaDown": "Ollama isn’t answering at {{url}}, and the Gemma translation models download through it.",
-    "startSidecars": "Start them (see docs/dev.md) and check again, or skip this step if you’ll use Gemini."
+    "startSidecars": "Start them with the steps below, then check again, or skip this step if you’ll use Gemini."
   },
   "google": {
     "heading": "Google API key (optional)",

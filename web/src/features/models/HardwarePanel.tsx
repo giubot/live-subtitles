@@ -14,6 +14,7 @@ import { Panel } from '../../components/Panel'
 import { Stat } from '../../components/Stat'
 import { StatusChip } from '../../components/StatusChip'
 import { localRuntimesMissing } from '../admin/setupSteps'
+import { SidecarGuide } from './SidecarGuide'
 
 type BenchmarkResult = Schemas['BenchmarkResult']
 type RuntimeStatus = Schemas['RuntimeStatus']
@@ -26,6 +27,8 @@ export function HardwarePanel() {
   const { t, i18n } = useTranslation('models')
   const queryClient = useQueryClient()
   const hw = api.useQuery('get', '/api/system/hardware')
+  // Shared with ModelsPanel on the same page: the models new sessions use.
+  const local = api.useQuery('get', '/api/settings').data?.providers.local
   const bench = api.useMutation('post', '/api/system/benchmark', {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['get', '/api/system/hardware'] }),
   })
@@ -149,6 +152,11 @@ export function HardwarePanel() {
               })}
             </Notice>
           )}
+          <SidecarGuide
+            report={report}
+            whisperModel={local?.whisperModel}
+            gemmaModel={local?.gemmaModel}
+          />
           <Typography>
             {t('hardware.recommend', {
               whisper: report.recommendation.whisperModel,

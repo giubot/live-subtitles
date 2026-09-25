@@ -14,6 +14,7 @@ import { ErrorAlert } from '../../components/ErrorAlert'
 import { Notice } from '../../components/Notice'
 import type { ChipStatus } from '../../components/StatusChip'
 import { StatusChip } from '../../components/StatusChip'
+import { SidecarGuide } from '../models/SidecarGuide'
 import { SetupFrame, StepActions } from './SetupFrame'
 
 type LocalModel = Schemas['LocalModel']
@@ -124,6 +125,7 @@ export function SetupModels({ onBack, onNext }: { onBack: () => void; onNext: ()
             .join(' ')}
         </Notice>
       )}
+      {hw.data && <SidecarGuide report={hw.data} />}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
         {missingRecommended.length > 0 && (
           <Button
