@@ -65,6 +65,9 @@ func BuildPrompt(req domain.TranslateRequest) Prompt {
 	sys.WriteString("- Keep names, product names, code, numbers and units as they are unless the glossary says otherwise.\n")
 	sys.WriteString("- The caption comes from speech recognition and may contain mistakes; translate what the speaker meant.\n")
 	sys.WriteString("- Earlier captions are context only; never translate or repeat them.\n")
+	if strings.Contains(req.Text, "⟦") {
+		sys.WriteString(placeholderRule + "\n")
+	}
 	if !req.Final {
 		sys.WriteString("- The caption is an unfinished fragment that is still being spoken: translate only what is there, don't complete it.\n")
 	}
@@ -90,7 +93,8 @@ func BuildPrompt(req domain.TranslateRequest) Prompt {
 	return Prompt{System: strings.TrimRight(sys.String(), "\n"), User: user.String()}
 }
 
-// glossaryTerms renders the glossary entries whose term occurs in text and
+// glossaryTerms renders the glossary entries whose term occurs in text (as
+// a whole word, ignoring case) and
 // that have a translation into to or a note.
 func glossaryTerms(g *domain.Glossary, text string, to domain.LanguageCode) []string {
 	if g == nil {
@@ -98,7 +102,7 @@ func glossaryTerms(g *domain.Glossary, text string, to domain.LanguageCode) []st
 	}
 	var out []string
 	for _, t := range g.Terms {
-		if t.Term == "" || !containsFold(text, t.Term) {
+		if t.Term == "" || !containsTerm(text, t.Term) {
 			continue
 		}
 		var tr string
@@ -130,15 +134,11 @@ func doNotTranslate(g *domain.Glossary, text string) []string {
 	var out []string
 	for _, k := range g.DoNotTranslate {
 		k = strings.TrimSpace(k)
-		if k != "" && containsFold(text, k) && !slices.ContainsFunc(out, func(o string) bool { return strings.EqualFold(o, k) }) {
+		if k != "" && containsTerm(text, k) && !slices.ContainsFunc(out, func(o string) bool { return strings.EqualFold(o, k) }) {
 			out = append(out, k)
 		}
 	}
 	return out
-}
-
-func containsFold(s, sub string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
 }
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }

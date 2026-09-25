@@ -13,6 +13,7 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/audio/ffmpeg"
+	"github.com/iencodev/live-subtitles/internal/audio/srt"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/session"
 )
@@ -43,15 +44,34 @@ func (s *Server) StartSession(ctx context.Context, req api.StartSessionRequestOb
 	if s.Manager == nil {
 		return nil, api.ErrNotImplemented
 	}
-	if req.Body != nil && req.Body.Source != nil && *req.Body.Source != api.AudioSourceKindBrowser {
-		// File audio has its own endpoint (sources/file); SRT and device
-		// capture come later (P3-11, P5-08).
+	var src domain.AudioSource // nil: browser ingest
+	if req.Body != nil && req.Body.Source != nil && *req.Body.Source == api.AudioSourceKindSrt {
+		srtSrc, err := s.openSRT(ctx, req.SessionId)
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			return api.StartSession404JSONResponse{NotFoundJSONResponse: sessionNotFound}, nil
+		case errors.Is(err, session.ErrState):
+			return api.StartSession409JSONResponse{ConflictJSONResponse: s.stateConflict(req.SessionId)}, nil
+		case err != nil:
+			e := api.Error{Code: srt.CodeUnavailable, Message: err.Error()}
+			if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
+				e.Code = coded.Code
+				if coded.Params != nil {
+					e.Params = &coded.Params
+				}
+			}
+			return api.StartSession422JSONResponse{UnprocessableJSONResponse: api.UnprocessableJSONResponse(e)}, nil
+		}
+		src = srtSrc
+	} else if req.Body != nil && req.Body.Source != nil && *req.Body.Source != api.AudioSourceKindBrowser {
+		// File audio has its own endpoint (sources/file); device capture
+		// comes later (P5-08).
 		return api.StartSession422JSONResponse{UnprocessableJSONResponse: api.UnprocessableJSONResponse{
 			Code: "source.unsupported", Message: "start this source from its own endpoint, or use browser capture",
 			Params: &map[string]any{"source": *req.Body.Source},
 		}}, nil
 	}
-	st, err := s.Manager.Start(ctx, req.SessionId, nil)
+	st, err := s.Manager.Start(ctx, req.SessionId, src)
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		return api.StartSession404JSONResponse{NotFoundJSONResponse: sessionNotFound}, nil
@@ -67,6 +87,24 @@ func (s *Server) StartSession(ctx context.Context, req api.StartSessionRequestOb
 		return nil, err
 	}
 	return api.StartSession200JSONResponse(st), nil
+}
+
+// openSRT opens the session's SRT listener source (AUD-5).
+func (s *Server) openSRT(ctx context.Context, id string) (domain.AudioSource, error) {
+	if _, err := s.Manager.Status(ctx, id); err != nil {
+		return nil, err
+	}
+	if s.SRT == nil {
+		return nil, &domain.CodedError{Code: srt.CodeUnavailable, Message: "SRT ingest is not available"}
+	}
+	if s.running(id) { // its listener may hold the port already
+		return nil, session.ErrState
+	}
+	src, err := s.SRT.Open(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return src, nil
 }
 
 func (s *Server) PauseSession(ctx context.Context, req api.PauseSessionRequestObject) (api.PauseSessionResponseObject, error) {
@@ -351,6 +389,14 @@ func (s *Server) present(ctx context.Context, sess domain.Session) domain.Sessio
 		sess.EffectiveProvider = s.Manager.EffectiveProvider(ctx, sess.Provider)
 	}
 	sess.Urls = s.sessionURLs(sess)
+	if s.SRT != nil && s.Network != nil {
+		if u, err := url.Parse(s.Network().ViewerBaseUrl); err == nil {
+			if srtURL, ok := s.SRT.IngestURL(ctx, u.Hostname(), sess.Id); ok {
+				sess.Urls.SrtIngest = &srtURL
+			}
+		}
+	}
+	s.withStreamCaptions(ctx, &sess)
 	return sess
 }
 
@@ -424,6 +470,9 @@ func (s *Server) CreateSession(ctx context.Context, req api.CreateSessionRequest
 	if !slugPattern.MatchString(b.Slug) {
 		bad["slug"] = "session.slug_invalid"
 	}
+	if err := s.checkGlossaryRef(ctx, b.GlossaryId, "glossaryId", bad); err != nil {
+		return nil, err
+	}
 	if len(bad) > 0 {
 		return api.CreateSession400JSONResponse{BadRequestJSONResponse: invalidSession(bad)}, nil
 	}
@@ -481,7 +530,11 @@ func (s *Server) UpdateSession(ctx context.Context, req api.UpdateSessionRequest
 	if req.Body == nil {
 		return api.UpdateSession400JSONResponse{BadRequestJSONResponse: invalidSession(map[string]string{})}, nil
 	}
-	if bad := validateSession(*req.Body, false); len(bad) > 0 {
+	bad := validateSession(*req.Body, false)
+	if err := s.checkGlossaryRef(ctx, req.Body.GlossaryId, "glossaryId", bad); err != nil {
+		return nil, err
+	}
+	if len(bad) > 0 {
 		return api.UpdateSession400JSONResponse{BadRequestJSONResponse: invalidSession(bad)}, nil
 	}
 	sess, err := s.Sessions.GetSession(ctx, req.SessionId)
@@ -531,6 +584,12 @@ func (s *Server) DeleteSession(ctx context.Context, req api.DeleteSessionRequest
 	}
 	if err != nil {
 		return nil, err
+	}
+	if s.SRT != nil {
+		s.SRT.Release(req.SessionId)
+	}
+	if s.StreamCaptions != nil {
+		s.StreamCaptions.Forget(ctx, req.SessionId)
 	}
 	s.sessionEvent(api.AdminEventTypeSessionDeleted, nil, req.SessionId)
 	return api.DeleteSession204Response{}, nil

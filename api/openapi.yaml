@@ -117,6 +117,7 @@ paths:
               schema: { $ref: "#/components/schemas/BenchmarkResult" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
 
   /api/languages:
     get:
@@ -423,6 +424,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
     delete:
       tags: [streamCaptions]
       operationId: deleteYoutubeCaptionUrl
@@ -431,6 +433,7 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/sessions/{sessionId}/stream-captions/test:
     parameters:
@@ -758,6 +761,10 @@ paths:
       tags: [secrets]
       operationId: validateSecret
       summary: Check the stored secret against its service (e.g. Gemini API key) (SEC-5)
+      description: >-
+        Results are cached per key value and a repeated check within a few seconds
+        returns the previous result. 404 `secret.not_found` when the secret isn't set;
+        422 `secret.validation_unsupported` for a secret that has no check.
       responses:
         "200":
           description: Validation result
@@ -766,6 +773,7 @@ paths:
               schema: { $ref: "#/components/schemas/SecretValidation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
 
   # ───────────────────────────── glossaries ─────────────────────────────
   /api/glossaries:
@@ -852,6 +860,10 @@ paths:
       operationId: listOverlayPresets
       security: []
       summary: Public, the overlay page loads its preset without auth
+      description: |
+        The built-in presets from docs/design.md (`classic`, `outline`,
+        `lower-third`, marked `builtIn`) come first, then the saved ones,
+        by name. Built-ins can't be updated or deleted.
       responses:
         "200":
           description: OK
@@ -914,6 +926,8 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        # A built-in preset (overlay.builtin_read_only).
+        "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [overlays]
       operationId: deleteOverlayPreset
@@ -922,6 +936,8 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        # A built-in preset (overlay.builtin_read_only).
+        "409": { $ref: "#/components/responses/Conflict" }
 
   # ───────────────────────────── network ─────────────────────────────
   /api/network:
@@ -1210,8 +1226,12 @@ components:
       enum: [vtt, srt, txt, json]
     SecretName:
       type: string
-      enum: [google_api_key, obs_websocket_password]
-      description: Known secret names; extended as providers are added
+      enum: [google_api_key, obs_websocket_password, srt_passphrase, youtube_caption_url]
+      description: >-
+        Known secret names; extended as providers are added.
+        `srt_passphrase` encrypts SRT ingest (10–79 characters).
+        `youtube_caption_url` is per session: it is managed through
+        /api/sessions/{sessionId}/stream-captions/youtube-url and is not listed by /api/secrets.
     Timestamp:
       type: string
       format: date-time
@@ -1322,8 +1342,12 @@ components:
           description: Processing time / audio duration; < 1 means faster than real time
         asrMs: { type: integer }
         translationMs: { type: integer }
-        ok: { type: boolean }
+        ok: { type: boolean, description: "realTimeFactor is at most maxRealTimeFactor: the local provider keeps up" }
         ranAt: { $ref: "#/components/schemas/Timestamp" }
+        audioMs: { type: integer, description: Duration of the benchmark clip }
+        maxRealTimeFactor: { type: number, example: 0.8, description: Highest realTimeFactor that counts as ok }
+        whisperModel: { type: string, example: large-v3-turbo }
+        gemmaModel: { type: string, example: "gemma3:4b" }
 
     # ── setup & auth ──
     SetupStatus:
@@ -1410,7 +1434,7 @@ components:
         overlay: { type: string, example: "http://192.168.1.20:8080/overlay/main-stage?lang=en" }
         capture: { type: string, description: Without token; the admin UI appends it, example: "http://192.168.1.20:8080/capture/main-stage" }
         replay: { type: string, example: "http://192.168.1.20:8080/replay/main-stage" }
-        srtIngest: { type: string, nullable: true, example: "srt://192.168.1.20:9000?streamid=main-stage" }
+        srtIngest: { type: string, nullable: true, description: "Where an encoder pushes MPEG-TS over SRT; absent when ffmpeg lacks libsrt or SRT is disabled", example: "srt://192.168.1.20:9000?streamid=main-stage" }
     StageStyle:
       type: object
       properties:
@@ -1420,6 +1444,7 @@ components:
         lines: { type: integer, minimum: 1, maximum: 5, default: 3 }
     SessionStartRequest:
       type: object
+      description: "`source: browser` (the default) waits for /ws/ingest; `source: srt` opens the session's SRT listener (SessionUrls.srtIngest)"
       properties:
         source: { $ref: "#/components/schemas/AudioSourceKind" }
     FileSourceRequest:
@@ -1466,6 +1491,27 @@ components:
         recordingId: { type: string, nullable: true, example: rec-main-stage-20260925-133000 }
         srt: { $ref: "#/components/schemas/SrtStats" }
         streamCaptions: { $ref: "#/components/schemas/StreamCaptionStatus" }
+        recovering: { $ref: "#/components/schemas/RecoveryStatus" }
+        restarts:
+          type: integer
+          description: Automatic restarts of the provider stream or the audio source in this run (SES-5)
+        error: { $ref: "#/components/schemas/Error" }
+    RecoveryStatus:
+      type: object
+      description: >-
+        Present while the session restarts a crashed provider stream or a
+        failed audio source (SES-5). The session stays `live`; after
+        `maxAttempts` failed restarts in a row it goes to `error`.
+      required: [component, attempt, maxAttempts, since]
+      properties:
+        component:
+          type: string
+          enum: [provider, source]
+          x-enum-varnames: [RecoveryComponentProvider, RecoveryComponentSource]
+        attempt: { type: integer, description: "Restart attempt in progress (the first is 1)" }
+        maxAttempts: { type: integer }
+        since: { $ref: "#/components/schemas/Timestamp" }
+        retryAt: { $ref: "#/components/schemas/Timestamp" }
         error: { $ref: "#/components/schemas/Error" }
     AudioStatus:
       type: object
@@ -1546,6 +1592,14 @@ components:
         end: { type: number, example: 757.9 }
         sourceLang: { $ref: "#/components/schemas/LanguageCode" }
         latencyMs: { type: integer, example: 1720 }
+        gapBeforeMs:
+          type: integer
+          description: >-
+            Audio lost just before this caption, because the provider or the
+            audio source restarted or the capture station reconnected (SES-5).
+            Set on the first captions after the gap, on every track; live
+            only, not kept in the caption store.
+          example: 2400
         edited: { type: boolean, default: false }
         hidden: { type: boolean, default: false }
     CaptionPage:
@@ -1683,9 +1737,10 @@ components:
             websocketUrl: { type: string, default: "ws://127.0.0.1:4455" }
         srt:
           type: object
+          description: SRT ingest (AUD-5); the passphrase is stored as the `srt_passphrase` secret
           properties:
             enabled: { type: boolean, default: true }
-            port: { type: integer, default: 9000 }
+            port: { type: integer, default: 9000, description: "First UDP port: each session that uses SRT gets its own listener port from here up (see SessionUrls.srtIngest)" }
             latencyMs: { type: integer, default: 200 }
             passphraseSet: { type: boolean, readOnly: true }
     ProvidersResponse:
@@ -1696,6 +1751,7 @@ components:
           $ref: "#/components/schemas/ProviderKind"
         defaultReason:
           type: string
+          description: Omitted when a Google API key is set but couldn't be checked yet (Google unreachable); the gemini entry's `reasonCode` then says why.
           enum: [google_api_key_valid, no_google_api_key, google_api_key_invalid]
         providers:
           type: array
@@ -1795,6 +1851,10 @@ components:
           required: [id]
           properties:
             id: { type: string }
+            builtIn:
+              type: boolean
+              readOnly: true
+              description: A built-in preset from docs/design.md, which can't be changed
 
     # ── network ──
     NetworkInfo:

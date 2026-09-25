@@ -65,6 +65,17 @@ func TestBuildPrompt(t *testing.T) {
 			sysHasNot: []string{"sidecar", "clúster", "React", "Kubernetes, "},
 		},
 		{
+			name:      "masked do-not-translate entries",
+			req:       domain.TranslateRequest{Text: "⟦1⟧ on ⟦2⟧", From: "en", To: "es", Final: true, Glossary: glossary},
+			sysHas:    []string{"Copy every ⟦n⟧ placeholder"},
+			sysHasNot: []string{"Never translate"},
+		},
+		{
+			name:      "terms match whole words only",
+			req:       domain.TranslateRequest{Text: "Reactive rapid deployment", From: "en", To: "es", Final: true, Glossary: glossary},
+			sysHasNot: []string{"Glossary", "Never translate"},
+		},
+		{
 			name:      "unknown language code is used as is",
 			req:       domain.TranslateRequest{Text: "hi", From: "en", To: "sv", Final: true},
 			sysHas:    []string{"from English to sv"},

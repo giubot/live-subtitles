@@ -30,8 +30,8 @@ type Options struct {
 	Bus      domain.CaptionBus
 	// Providers by kind. A session whose provider is missing fails to start.
 	Providers map[domain.ProviderKind]Provider
-	// DefaultProvider resolves `provider: default` (AI-11); nil means mock
-	// until the default-provider rule lands (P2-07).
+	// DefaultProvider resolves `provider: default` (AI-11, the
+	// provider/selector rule); nil means mock (tests).
 	DefaultProvider func(ctx context.Context) domain.ProviderKind
 	// IngestSource returns the session's browser ingest source (/ws/ingest),
 	// used when Start gets no source.
@@ -54,6 +54,8 @@ type Options struct {
 	// Settings, if set, is read at each start for
 	// translation.contextSentences.
 	Settings domain.SettingsStore
+	// Glossaries, if set, loads the session's glossary at each start (AI-7).
+	Glossaries domain.GlossaryStore
 	// ContextSentences is how many previous final sentences go to the
 	// translator as context when the settings don't say (default 3).
 	ContextSentences int
@@ -62,6 +64,36 @@ type Options struct {
 	// Pricing estimates the cost of provider usage in
 	// SessionStatus.usage (AI-9); nil uses metrics.DefaultPricing.
 	Pricing *metrics.Pricing
+	// Observer, if set, gets caption latencies and run errors as they
+	// happen, for /metrics (P3-13).
+	Observer Observer
+	// Restart configures the automatic restart of a crashed provider
+	// stream or a failed source (SES-5).
+	Restart RestartPolicy
+	// StreamCaptions, if set, is told when a run starts and when it
+	// ends, and gives SessionStatus.streamCaptions (P3-16).
+	StreamCaptions StreamCaptions
+}
+
+// Observer receives pipeline measurements (metrics.App implements it).
+// Calls must be quick: they run on the pipeline goroutines.
+type Observer interface {
+	// CaptionLatency: a final caption on track was emitted ms after its
+	// audio reached the server.
+	CaptionLatency(provider domain.ProviderKind, track string, ms int)
+	// SessionError: a run reported an error with this code.
+	SessionError(provider domain.ProviderKind, code string)
+}
+
+// StreamCaptions sends a session's final captions to the live stream
+// while it runs (internal/streamcc). It gets the captions from the bus.
+type StreamCaptions interface {
+	// RunStarted is called when a run starts (not on resume), before its
+	// pipeline; RunEnded follows when it ends or fails to start.
+	RunStarted(sess domain.Session)
+	RunEnded(sessionID string)
+	// Status is nil when there's nothing to show.
+	Status(sessionID string) *api.StreamCaptionStatus
 }
 
 // Errors returned by Manager methods, besides domain.ErrNotFound.
@@ -126,6 +158,7 @@ func New(opts Options) *Manager {
 	if opts.TranslateTimeout <= 0 {
 		opts.TranslateTimeout = 15 * time.Second
 	}
+	opts.Restart = opts.Restart.withDefaults()
 	pricing := metrics.DefaultPricing()
 	if opts.Pricing != nil {
 		pricing = *opts.Pricing
@@ -181,6 +214,9 @@ func (m *Manager) Start(ctx context.Context, id string, src domain.AudioSource) 
 	m.changed(r)
 
 	if err := m.launch(ctx, r, src); err != nil {
+		if sc := m.opts.StreamCaptions; sc != nil {
+			sc.RunEnded(id)
+		}
 		m.mu.Lock()
 		delete(m.runs, id)
 		m.failed[id] = r.lastError()
@@ -211,6 +247,10 @@ func (m *Manager) launch(ctx context.Context, r *run, src domain.AudioSource) er
 	r.provider, r.asr, r.translator = kind, p.ASR, p.Translator
 	r.source, r.offset = src, offset
 	r.mu.Unlock()
+	// Before the pipeline starts, so its end (finished) comes after.
+	if sc := m.opts.StreamCaptions; sc != nil {
+		sc.RunStarted(r.sess)
+	}
 	if err := r.start(ctx); err != nil {
 		return err
 	}
@@ -337,6 +377,9 @@ func (m *Manager) finished(r *run) {
 	if m.opts.ReleaseIngest != nil {
 		m.opts.ReleaseIngest(r.id)
 	}
+	if sc := m.opts.StreamCaptions; sc != nil {
+		sc.RunEnded(r.id)
+	}
 	m.publishStatus(context.Background(), r.id)
 	m.log.Info("session stopped", "session", r.id)
 }
@@ -427,6 +470,9 @@ func (m *Manager) status(id string) api.SessionStatus {
 		st.Usage = used.stats()
 	}
 	st.Latency = latency
+	if sc := m.opts.StreamCaptions; sc != nil {
+		st.StreamCaptions = sc.Status(id)
+	}
 	if m.opts.IngestStatus != nil {
 		a := m.opts.IngestStatus(id)
 		st.Audio = &a

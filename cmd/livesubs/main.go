@@ -42,6 +42,7 @@ func main() {
 	red := secrets.NewRedactor()
 	log := slog.New(secrets.NewRedactingHandler(cfg.Logger(os.Stderr).Handler(), red))
 	log.Info("starting livesubs", "version", version)
+	app.Version = version
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

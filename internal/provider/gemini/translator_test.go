@@ -311,8 +311,8 @@ func TestTranslatorHTTP(t *testing.T) {
 		}
 		if strings.HasSuffix(r.URL.Path, ":streamGenerateContent") {
 			w.Header().Set("Content-Type", "text/event-stream")
-			fmt.Fprintf(w, "data: %s\n\n", chunk("Hola", false))
-			fmt.Fprintf(w, "data: %s\n\n", chunk(" a todos.", true))
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", chunk("Hola", false))
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", chunk(" a todos.", true))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

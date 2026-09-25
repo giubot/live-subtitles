@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Live Subtitles with Docker Compose (P4-02). Pick a profile:
+#   docker compose -f deploy/compose/compose.yaml --profile app up -d     # Gemini only
+#   docker compose -f deploy/compose/compose.yaml --profile local up -d   # + whisper-server + Ollama
+#   … -f deploy/compose/compose.gpu.yaml --profile local up -d           # + NVIDIA GPU
+# or `task docker:up PROFILE=local GPU=1`. See docs/deployment.md.
+#
+# Configuration goes in deploy/compose/.env (gitignored, optional), passed
+# to the server as-is: LIVESUBS_PUBLIC_BASE_URL=http://<this machine's LAN
+# IP>:8080 (inside a container the server only sees its own IP, so the QR
+# codes need it), LIVESUBS_ADMIN_TOKEN, GEMINI_API_KEY, LIVESUBS_METRICS…
+name: livesubs
+
+services:
+  livesubs:
+    profiles: [app, local]
+    image: ${LIVESUBS_IMAGE:-livesubs:latest}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        VERSION: ${LIVESUBS_VERSION:-docker}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      LIVESUBS_LOG_FORMAT: ${LIVESUBS_LOG_FORMAT:-json}
+    ports:
+      - '${LIVESUBS_HTTP_PORT:-8080}:8080'
+      - '${LIVESUBS_HTTPS_PORT:-8443}:8443'
+      # SRT ingest (AUD-5): one UDP port per session from 9000.
+      - '9000-9009:9000-9009/udp'
+    volumes:
+      # SQLite, recordings, the local CA and the encrypted secrets file.
+      - data:/data
+    # The image's healthcheck probes /healthz.
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+  # ── Local AI provider (profile `local`) ─────────────────────────────────
+  # In Admin → Settings → Local provider, set the whisper URL to
+  # http://whisper:8178 and the Ollama URL to http://ollama:11434 (the
+  # defaults point at 127.0.0.1, which is the server's own container here).
+  whisper:
+    profiles: [local]
+    # The CPU image is amd64-only; on Apple Silicon it runs emulated and
+    # slowly. There, run whisper-server natively (docs/dev.md).
+    image: ghcr.io/ggml-org/whisper.cpp:main
+    command:
+      - >-
+        ./build/bin/whisper-server --host 0.0.0.0 --port 8178
+        --model /models/ggml-${WHISPER_MODEL:-large-v3-turbo}.bin
+    volumes:
+      # Download with `task models:pull` (or set LIVESUBS_MODELS_DIR).
+      - ${LIVESUBS_MODELS_DIR:-../../models}:/models:ro
+    healthcheck:
+      test: [CMD, bash, -c, 'exec 3<>/dev/tcp/127.0.0.1/8178']
+      interval: 15s
+      timeout: 3s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+
+  ollama:
+    profiles: [local]
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+
+  # Pulls the Gemma model into the ollama volume once, then exits.
+  ollama-pull:
+    profiles: [local]
+    image: ollama/ollama:latest
+    entrypoint: [ollama, pull, '${GEMMA_MODEL:-gemma3:4b}']
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: 'no'
+
+volumes:
+  data:
+  ollama:

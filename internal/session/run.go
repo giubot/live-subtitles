@@ -4,9 +4,7 @@ package session
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"maps"
 	"sync"
 	"time"
 
@@ -37,6 +35,8 @@ type run struct {
 	source     domain.AudioSource
 	// offset places this run on the session clock (see Manager.clockOrigin).
 	offset time.Duration
+	// glossary is loaded at start and used by the ASR and the translators.
+	glossary *domain.Glossary
 
 	ctx        context.Context // the whole run
 	cancel     context.CancelFunc
@@ -49,6 +49,7 @@ type run struct {
 	st        api.SessionState
 	startedAt time.Time
 	detected  domain.LanguageCode
+	pending   langVote  // evidence for switching detected (language.go)
 	err       api.Error // last error, shown in the status
 	fatal     bool      // err ended the run
 	// Usage reported during this run, by speech recognition and by the
@@ -65,6 +66,20 @@ type run struct {
 	sourceEnded      bool
 	// recording is the run's recording while it records (status.recordingId).
 	recording domain.RecordingSink
+
+	// Automatic restarts (restart.go).
+	prefix       string     // segment ID prefix of the run
+	link         *asrStream // the ASR stream feed sends to; nil while it restarts
+	ended        chan struct{}
+	recovering   *api.RecoveryStatus
+	restarts     int
+	provAttempts int // failed provider restarts in a row
+	srcAttempts  int
+	srcStarted   time.Time
+	lastFrameAt  time.Time
+	losing       bool          // frames are being lost (no ASR stream)
+	lostFrom     time.Duration // since this session clock time
+	gaps         []gap         // not yet reported by a caption
 }
 
 func newRun(m *Manager, sess domain.Session) *run {
@@ -74,6 +89,7 @@ func newRun(m *Manager, sess domain.Session) *run {
 		m: m, id: sess.Id, sess: sess,
 		ctx: ctx, cancel: cancel, srcCtx: srcCtx, stopSource: stopSource,
 		done:    make(chan struct{}),
+		ended:   make(chan struct{}),
 		st:      api.SessionStateStarting,
 		latency: map[string]*metrics.Latency{},
 	}
@@ -89,18 +105,19 @@ func (r *run) start(ctx context.Context) error {
 		r.abort()
 		return fmt.Errorf("%w: source: %v", ErrUnavailable, err)
 	}
-	in, out, err := r.asr.Start(r.ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage})
+	r.glossary = r.m.glossary(ctx, r.sess)
+	asr, err := r.openASR()
 	if err != nil {
-		e := api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
-			Params: &map[string]any{"provider": r.provider}}
-		if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
-			e.Code = coded.Code
-			maps.Copy(*e.Params, coded.Params)
-		}
-		r.fail(e)
+		r.fail(r.providerStartError(err))
 		r.abort()
 		return fmt.Errorf("%w: provider %s: %v", ErrUnavailable, r.provider, err)
 	}
+	r.mu.Lock()
+	r.prefix = fmt.Sprintf("r%d-", r.offset/time.Second)
+	r.srcStarted = r.m.opts.Clock.Now()
+	r.mu.Unlock()
+	asr.prefix = r.prefix
+	r.attach(asr)
 	var sink domain.RecordingSink
 	if rec := r.m.opts.Recorder; rec != nil && r.sess.RecordingEnabled {
 		if sink, err = rec.Start(ctx, r.id); err != nil {
@@ -110,8 +127,8 @@ func (r *run) start(ctx context.Context) error {
 	}
 
 	fan := r.newFanout(ctx)
-	go r.feed(frames, in, sink)
-	go r.consume(out, fan)
+	go r.feed(frames, sink)
+	go r.consume(asr, fan)
 	return nil
 }
 
@@ -122,10 +139,10 @@ func (r *run) abort() {
 }
 
 // feed forwards source frames to the recorder and the ASR, on the session
-// clock, dropping them while paused. It closes the ASR input when the
-// source ends.
-func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame, sink domain.RecordingSink) {
-	defer close(in)
+// clock, dropping them while paused. A source that fails is restarted
+// (restart.go). It closes the ASR input when the source ends.
+func (r *run) feed(frames <-chan domain.AudioFrame, sink domain.RecordingSink) {
+	defer r.endInput()
 	if sink != nil {
 		r.mu.Lock()
 		r.recording = sink
@@ -139,20 +156,48 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 			}
 		}()
 	}
+	for frames != nil {
+		if !r.pump(frames, &sink) {
+			return
+		}
+		err := r.source.Err()
+		if err == nil || r.srcCtx.Err() != nil {
+			return
+		}
+		frames = r.restartSource(err)
+	}
+}
+
+// pump forwards the frames of one source run; false if the run was
+// cancelled meanwhile.
+func (r *run) pump(frames <-chan domain.AudioFrame, sinkp *domain.RecordingSink) bool {
+	sink := *sinkp
+	defer func() { *sinkp = sink }()
 	for f := range frames {
 		now := r.m.opts.Clock.Now()
 		r.mu.Lock()
-		if !r.hasBase {
+		first := !r.hasBase
+		if first {
 			r.base, r.hasBase = f.T, true
 		}
 		f = domain.AudioFrame{PCM: f.PCM, T: r.offset + f.T - r.base}
+		// A jump in the source's timeline is audio that never arrived (the
+		// capture station reconnected).
+		g, gapped := gap{}, false
+		if !first && f.T > r.end+domain.FrameDuration/2 {
+			g, gapped = r.addGap(r.end, f.T)
+		}
 		r.end = f.End()
+		r.lastFrameAt = now
 		r.arrived.add(f.End(), now)
 		paused := r.st == api.SessionStatePaused
 		if !paused {
 			r.sent += f.End() - f.T
 		}
 		r.mu.Unlock()
+		if gapped {
+			r.logGap(g)
+		}
 		if paused {
 			continue
 		}
@@ -166,28 +211,33 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 				r.mu.Unlock()
 			}
 		}
-		select {
-		case in <- f:
-		case <-r.ctx.Done():
-			return
+		if !r.send(f) {
+			return false
 		}
 	}
-	r.mu.Lock()
-	r.sourceEnded = true
-	r.mu.Unlock()
-	if err := r.source.Err(); err != nil && r.srcCtx.Err() == nil {
-		r.failFatal(api.Error{Code: CodeSourceFailed, Message: err.Error(), Params: &map[string]any{"source": r.source.Kind()}})
-		r.m.logEvent(api.AdminEventLogLevelError, CodeSourceFailed, r.id, map[string]any{"source": r.source.Kind()})
-	}
+	return true
 }
 
 // consume turns ASR events into source captions and hands them to the
-// translation fan-out. When the ASR stream ends it drains the fan-out and
-// finishes the run.
-func (r *run) consume(out <-chan domain.ASREvent, fan *translate.Fanout) {
+// translation fan-out. A stream that crashes while audio is still coming
+// is restarted (restart.go). When the ASR stream ends it drains the
+// fan-out and finishes the run.
+func (r *run) consume(asr *asrStream, fan *translate.Fanout) {
 	defer r.finish()
-	prefix := fmt.Sprintf("r%d-", r.offset/time.Second)
-	for ev := range out {
+	for asr != nil {
+		r.events(asr, fan)
+		r.detach(asr)
+		if !r.crashed() {
+			break
+		}
+		asr = r.restartProvider(asr)
+	}
+	fan.Close()
+}
+
+// events publishes the captions of one ASR stream until it ends.
+func (r *run) events(asr *asrStream, fan *translate.Fanout) {
+	for ev := range asr.out {
 		if ev.Err != nil {
 			r.providerError(ev.Err)
 			continue
@@ -197,11 +247,11 @@ func (r *run) consume(out <-chan domain.ASREvent, fan *translate.Fanout) {
 		if text == "" {
 			continue
 		}
-		lang := r.sourceLang(ev.Lang, ev.Final)
+		lang := r.sourceLang(ev.Lang, ev.Final, text)
 		c := api.Caption{
 			SessionId:  r.id,
 			Lang:       domain.SourceTrack,
-			SegmentId:  prefix + ev.SegmentID,
+			SegmentId:  asr.prefix + ev.SegmentID,
 			Final:      ev.Final,
 			Text:       text,
 			Start:      domain.Seconds(ev.Start),
@@ -209,19 +259,9 @@ func (r *run) consume(out <-chan domain.ASREvent, fan *translate.Fanout) {
 			SourceLang: lang,
 		}
 		c.LatencyMs = r.latencyMs(ev.End)
+		c.GapBeforeMs = r.gapBefore(ev.End, ev.Final)
 		r.publish(c)
 		fan.Push(c)
-	}
-	fan.Close()
-	r.mu.Lock()
-	crashed := !r.sourceEnded && r.srcCtx.Err() == nil && r.ctx.Err() == nil
-	r.mu.Unlock()
-	if crashed {
-		// The provider closed its stream while audio was still coming
-		// (P3-12 will restart it).
-		r.failFatal(api.Error{Code: CodeProviderError, Message: "the provider stream ended unexpectedly",
-			Params: &map[string]any{"provider": r.provider}})
-		r.m.logEvent(api.AdminEventLogLevelError, CodeProviderError, r.id, map[string]any{"provider": r.provider})
 	}
 }
 
@@ -246,6 +286,9 @@ func (r *run) publish(c api.Caption) {
 		}
 		l.Add(*c.LatencyMs)
 		r.mu.Unlock()
+		if o := r.m.opts.Observer; o != nil {
+			o.CaptionLatency(r.provider, c.Lang, *c.LatencyMs)
+		}
 	}
 	if st := r.m.opts.Captions; st != nil {
 		// A stopped run still stores its last finals, so don't use r.ctx.
@@ -253,32 +296,6 @@ func (r *run) publish(c api.Caption) {
 			r.m.log.Error("store caption", "session", r.id, "track", c.Lang, "segment", c.SegmentId, "err", err)
 		}
 	}
-}
-
-// sourceLang is the caption's source language: the pinned one, else the
-// provider's detection, else the last detected language. A final with a
-// new language updates the detected language (AI-10; P2-05 adds hysteresis).
-func (r *run) sourceLang(detected domain.LanguageCode, final bool) domain.LanguageCode {
-	pinned := r.sess.SourceLanguage
-	r.mu.Lock()
-	lang := detected
-	switch {
-	case pinned == api.En || pinned == api.Es:
-		lang = domain.LanguageCode(pinned)
-	case lang == "" && r.detected != "":
-		lang = r.detected
-	case lang == "":
-		lang = "en"
-	}
-	changed := final && lang != r.detected
-	if changed {
-		r.detected = lang
-	}
-	r.mu.Unlock()
-	if changed {
-		r.m.changed(r)
-	}
-	return lang
 }
 
 // latencyMs is how long after the end of its audio (end, on the session
@@ -301,6 +318,7 @@ func (r *run) providerError(err error) {
 	r.mu.Lock()
 	r.err = api.Error{Code: CodeProviderError, Message: err.Error(), Params: &map[string]any{"provider": r.provider}}
 	r.mu.Unlock()
+	r.observeError(CodeProviderError)
 	r.m.log.Warn("provider error", "session", r.id, "provider", r.provider, "err", err)
 	r.m.logEvent(api.AdminEventLogLevelWarn, CodeProviderError, r.id, map[string]any{"provider": r.provider})
 }
@@ -321,12 +339,20 @@ func (r *run) fail(e api.Error) {
 	r.mu.Lock()
 	r.err = e
 	r.mu.Unlock()
+	r.observeError(e.Code)
 }
 
 func (r *run) failFatal(e api.Error) {
 	r.mu.Lock()
 	r.err, r.fatal = e, true
 	r.mu.Unlock()
+	r.observeError(e.Code)
+}
+
+func (r *run) observeError(code string) {
+	if o := r.m.opts.Observer; o != nil {
+		o.SessionError(r.provider, code)
+	}
 }
 
 func (r *run) lastError() api.Error {
@@ -378,6 +404,11 @@ type audioStatuser interface {
 	Status() api.AudioStatus
 }
 
+// srtStatuser is implemented by the SRT listener source (SRT-4).
+type srtStatuser interface {
+	SRTStats() api.SrtStats
+}
+
 func (r *run) status() api.SessionStatus {
 	r.mu.Lock()
 	src := r.source
@@ -389,11 +420,20 @@ func (r *run) status() api.SessionStatus {
 		kind := src.Kind()
 		audio = api.AudioStatus{Connected: true, Source: &kind}
 	}
+	var srt *api.SrtStats
+	if s, ok := src.(srtStatuser); ok {
+		v := s.SRTStats()
+		srt = &v
+	}
 	viewers := r.m.opts.Bus.Viewers(r.id)
+	var cc *api.StreamCaptionStatus
+	if sc := r.m.opts.StreamCaptions; sc != nil {
+		cc = sc.Status(r.id)
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	st := api.SessionStatus{SessionId: r.id, State: r.st, Viewers: viewers}
+	st := api.SessionStatus{SessionId: r.id, State: r.st, Viewers: viewers, Srt: srt, StreamCaptions: cc}
 	if r.provider != "" {
 		p := r.provider
 		st.Provider = &p
@@ -419,6 +459,14 @@ func (r *run) status() api.SessionStatus {
 	if r.err.Code != "" {
 		e := r.err
 		st.Error = &e
+	}
+	if r.recovering != nil {
+		rs := *r.recovering
+		st.Recovering = &rs
+	}
+	if r.restarts > 0 {
+		n := r.restarts
+		st.Restarts = &n
 	}
 	return st
 }
@@ -450,10 +498,4 @@ func (r *run) finalStats() (totals, *map[string]api.LatencyStats) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.totals(), r.latencyStats()
-}
-
-// errCanceled reports a context cancellation of the run itself (not a
-// provider timeout).
-func (r *run) errCanceled(err error) bool {
-	return errors.Is(err, context.Canceled) && r.ctx.Err() != nil
 }

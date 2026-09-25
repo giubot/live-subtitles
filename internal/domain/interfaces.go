@@ -112,6 +112,22 @@ type SettingsStore interface {
 	PutSettings(ctx context.Context, s api.Settings) error
 }
 
+// GlossaryStore persists glossaries (AI-7). Ids are assigned by the
+// caller.
+type GlossaryStore interface {
+	// CreateGlossary inserts g; ErrConflict if its id is taken.
+	CreateGlossary(ctx context.Context, g Glossary) error
+	GetGlossary(ctx context.Context, id string) (Glossary, error)
+	// ListGlossaries returns every glossary, by name.
+	ListGlossaries(ctx context.Context) ([]Glossary, error)
+	// UpdateGlossary replaces the glossary with g's id; ErrNotFound if none.
+	UpdateGlossary(ctx context.Context, g Glossary) error
+	// DeleteGlossary removes the glossary and detaches it from the sessions
+	// and the settings that name it; ErrNotFound if none. A running
+	// session keeps the copy it loaded at start.
+	DeleteGlossary(ctx context.Context, id string) error
+}
+
 // CaptionQuery selects stored final captions.
 type CaptionQuery struct {
 	SessionID string

@@ -10,6 +10,7 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/audio/ffmpeg"
+	"github.com/iencodev/live-subtitles/internal/audio/srt"
 	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/session"
@@ -25,21 +26,35 @@ type Server struct {
 
 	// Secrets stores API keys and passwords; nil: secrets operations answer 501.
 	Secrets domain.SecretStore
+	// Providers resolves the default provider and checks keys (P2-07);
+	// nil: listProviders and validateSecret answer 501.
+	Providers ProviderRule
 
 	// Sessions, Captions and Settings are the stores; nil: the operations
 	// that need them answer 501.
 	Sessions domain.SessionStore
 	Captions domain.CaptionStore
 	Settings domain.SettingsStore
+	// OverlayPresets stores saved overlay presets; nil: only the built-ins
+	// are listed and the write operations answer 501.
+	OverlayPresets OverlayPresets
+	// Glossaries stores glossaries (AI-7); nil: 501.
+	Glossaries domain.GlossaryStore
 
 	// Manager runs sessions (start, pause, stop, status); nil: those
 	// operations answer 501.
 	Manager *session.Manager
 	// Files opens file and URL test sources (sources/file); nil: 501.
 	Files *ffmpeg.Files
+	// SRT opens SRT listener sources (start with source srt) and builds
+	// SessionUrls.srtIngest; nil: SRT answers source.srt_unavailable.
+	SRT *srt.Service
 	// Recordings lists, serves and deletes recordings; nil: the recordings
 	// operations (and captions by recordingId) answer 501.
 	Recordings Recordings
+	// StreamCaptions sends closed captions to the live stream; nil: the
+	// streamCaptions operations answer 501.
+	StreamCaptions StreamCaptions
 
 	// WebSocket endpoints need the raw connection, so they are served
 	// outside the strict handler; nil: 501.
@@ -53,6 +68,15 @@ type Server struct {
 
 	// TLS describes HTTPS and serves the local CA (tls.go); nil: 501.
 	TLS TLSService
+
+	// Hardware is the hardware self-check and benchmark; nil: those
+	// operations answer 501, and health and system info leave out ffmpeg
+	// and the sidecars.
+	Hardware HardwareService
+	// Models lists and downloads local models; nil: 501.
+	Models ModelService
+	// Build is what GetSystemInfo reports.
+	Build BuildInfo
 
 	log *slog.Logger
 }

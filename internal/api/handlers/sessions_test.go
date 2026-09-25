@@ -58,7 +58,9 @@ func TestSessionControl(t *testing.T) {
 		{"GET", "/api/sessions/nope/status", "", "", "", 404, `"code":"session.not_found"`},
 		{"POST", "/api/sessions/gem/start", "", "", "", 422, `"code":"provider.unavailable"`},
 		{"GET", "/api/sessions/gem/status", "", "", "", 200, `"state":"error"`},
-		{"POST", "/api/sessions/main/start", `{"source":"srt"}`, "", "", 422, `"code":"source.unsupported"`},
+		{"POST", "/api/sessions/main/start", `{"source":"device"}`, "", "", 422, `"code":"source.unsupported"`},
+		{"POST", "/api/sessions/main/start", `{"source":"srt"}`, "", "", 422, `"code":"source.srt_unavailable"`},
+		{"POST", "/api/sessions/nope/start", `{"source":"srt"}`, "", "", 404, `"code":"session.not_found"`},
 		{"POST", "/api/sessions/main/pause", "", "", "", 409, `"code":"session.state_conflict"`},
 		{"POST", "/api/sessions/main/start", `{"source":"browser"}`, "", "", 200, `"state":"live"`},
 		{"POST", "/api/sessions/main/start", "", "", "", 409, `"params":{"state":"live"}`},
@@ -144,7 +146,7 @@ func TestSessionCRUD(t *testing.T) {
 	t.Cleanup(m.Close)
 	events := m.Events().Subscribe(t.Context())
 	s := New()
-	s.Sessions, s.Settings, s.Manager = st, st, m
+	s.Sessions, s.Settings, s.Glossaries, s.Manager = st, st, st, m
 	s.Auth = auth.New(st, auth.Options{AdminToken: testAdminToken})
 	s.Network = func() api.NetworkInfo { return api.NetworkInfo{ViewerBaseUrl: "http://192.168.1.20:8080"} }
 	h := s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
@@ -207,11 +209,15 @@ func TestSessionCRUD(t *testing.T) {
 		{"bad provider", `{"slug":"x","name":"x","provider":"openai"}`, 400, `"provider":"request.invalid"`},
 		{"bad stage lines", `{"slug":"x","name":"x","stageStyle":{"lines":9}}`, 400, `"stageStyle"`},
 		{"slug taken", `{"slug":"main","name":"Again"}`, 409, `"code":"session.slug_taken"`},
+		{"unknown glossary", `{"slug":"x","name":"x","glossaryId":"nope"}`, 400,
+			`"code":"glossary.not_found","fields":{"glossaryId":"glossary.not_found"}`},
 	} {
 		t.Run(c.name, func(t *testing.T) { admin("POST", "/api/sessions", c.body, c.status, c.want) })
 	}
 
 	admin("GET", "/api/sessions", "", 200, `"id":"main"`)
+	admin("PATCH", "/api/sessions/main", `{"glossaryId":"nope"}`, 400, `"fields":{"glossaryId":"glossary.not_found"}`)
+	admin("PATCH", "/api/sessions/side", `{"glossaryId":"tech-terms"}`, 200, `"glossaryId":"tech-terms"`)
 	admin("GET", "/api/sessions/main", "", 200, `"urls":{"capture":"http://192.168.1.20:8080/capture/main"`)
 	admin("GET", "/api/sessions/nope", "", 404, `"code":"session.not_found"`)
 	admin("PATCH", "/api/sessions/main", `{"sourceLanguage":"es","targetLanguages":["es","en","pt","fr","de","it","zh","ja","ko"]}`, 200,

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/backoff"
 	"github.com/iencodev/live-subtitles/internal/domain"
 )
 
@@ -33,7 +34,6 @@ const (
 	// probeTimeout allows for a cold model on a CPU.
 	probeTimeout     = 30 * time.Second
 	inferenceTimeout = 30 * time.Second
-	retryDelay       = 300 * time.Millisecond
 	// langLockAfter is the utterance audio after which its detected
 	// language is kept for its later interims.
 	langLockAfter = 2 * time.Second
@@ -51,7 +51,20 @@ type Provider struct {
 	HTTPClient *http.Client
 	VAD        VADConfig
 	Logger     *slog.Logger
+	// FinalRetries is how many times a failed final is sent again, after
+	// FinalBackoff, before its utterance is given up (default
+	// DefaultFinalRetries). This rides out a whisper-server restart:
+	// later chunks wait in order meanwhile.
+	FinalRetries int
+	// FinalBackoff defaults to DefaultFinalBackoff.
+	FinalBackoff backoff.Policy
 }
+
+// Defaults of the final retries: about 15 s in all.
+const DefaultFinalRetries = 6
+
+// DefaultFinalBackoff is 300 ms doubling to 5 s, with 20 % jitter.
+var DefaultFinalBackoff = backoff.Policy{Base: 300 * time.Millisecond, Max: 5 * time.Second, Jitter: 0.2}
 
 var _ domain.ASRProvider = (*Provider)(nil)
 
@@ -148,6 +161,13 @@ func (p *Provider) Start(ctx context.Context, cfg domain.ASRConfig) (chan<- doma
 		c: c, cfg: cfg, log: log.With("session", cfg.SessionID),
 		seg: newSegmenter(p.VAD), q: newQueue(), out: out,
 		prompt: glossaryPrompt(cfg.Glossary), prev: "en",
+		retries: p.FinalRetries, backoff: p.FinalBackoff,
+	}
+	if s.retries <= 0 {
+		s.retries = DefaultFinalRetries
+	}
+	if s.backoff.Base <= 0 {
+		s.backoff = DefaultFinalBackoff
 	}
 	if l, ok := languageCode(string(cfg.SourceLanguage)); ok {
 		s.pinned, s.prev = l, l
@@ -198,6 +218,9 @@ type stream struct {
 	out    chan<- domain.ASREvent
 	prompt string
 	pinned domain.LanguageCode // "" detects per utterance
+	// Retries of a failed final.
+	retries int
+	backoff backoff.Policy
 
 	// Owned by transcribe.
 	prev    domain.LanguageCode         // language of the last final
@@ -260,13 +283,14 @@ func (s *stream) process(ctx context.Context, c chunk) (domain.ASREvent, bool) {
 		End:       c.end,
 	}
 	text, lang, err := s.recognize(ctx, c)
-	if err != nil && c.final && ctx.Err() == nil {
-		// One retry: a lost final is a gap in the captions.
-		select {
-		case <-time.After(retryDelay):
-			text, lang, err = s.recognize(ctx, c)
-		case <-ctx.Done():
+	// A lost final is a gap in the captions: retry it while the server is
+	// down or restarting (a failed interim is covered by the next one).
+	for attempt := 1; err != nil && c.final && attempt <= s.retries; attempt++ {
+		s.log.Warn("whisper inference failed; retrying the final", "segment", ev.SegmentID, "attempt", attempt, "err", err)
+		if backoff.Wait(ctx, s.backoff.Delay(attempt)) != nil {
+			break
 		}
+		text, lang, err = s.recognize(ctx, c)
 	}
 	if ctx.Err() != nil {
 		return ev, false

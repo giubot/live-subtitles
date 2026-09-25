@@ -14,6 +14,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/iencodev/live-subtitles/internal/api/handlers"
 	"github.com/iencodev/live-subtitles/internal/config"
 )
 
@@ -50,7 +51,7 @@ func TestRoutes(t *testing.T) {
 		{"network on loopback", "GET", "/api/network", testDist, 200, `"viewerBaseUrl":"http://localhost:0"`, ""},
 		{"admin operation needs login", "GET", "/api/sessions", testDist, 401, `"code":"auth.required"`, ""},
 		{"setup status", "GET", "/api/setup", testDist, 200, `"adminPinSet":false`, ""},
-		{"unimplemented operation", "GET", "/api/overlay-presets", testDist, 501, `"code":"not_implemented"`, ""},
+		{"overlay presets are public", "GET", "/api/overlay-presets", testDist, 200, `"id":"classic"`, ""},
 		{"unknown api path", "GET", "/api/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"unknown ws path", "GET", "/ws/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"root", "GET", "/", testDist, 200, "<title>app</title>", "no-cache"},
@@ -117,5 +118,26 @@ func TestBanner(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "\x1b[") {
 		t.Error("banner printed a QR code to a non-terminal")
+	}
+}
+
+func TestNetworkFollowsSettings(t *testing.T) {
+	a := newTestApp(t, config.Config{PublicBaseURL: "https://flag.example.com"}, testDist)
+	get := func() string {
+		rec := httptest.NewRecorder()
+		a.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/network", nil))
+		return rec.Body.String()
+	}
+	if body := get(); !strings.Contains(body, `"viewerBaseUrl":"https://flag.example.com"`) {
+		t.Errorf("before saving: %s", body)
+	}
+	st := handlers.DefaultSettings()
+	public := "https://subs.example.com"
+	st.Network.PublicBaseUrl = &public
+	if err := a.store.PutSettings(t.Context(), st); err != nil {
+		t.Fatal(err)
+	}
+	if body := get(); !strings.Contains(body, `"viewerBaseUrl":"https://subs.example.com"`) {
+		t.Errorf("after saving: %s", body)
 	}
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package ffmpeg decodes audio with an ffmpeg subprocess into 16 kHz mono
-// s16le frames: local files and http(s) URLs now (AUD-3), the SRT listener
-// later (P3-11).
+// s16le frames: local files and http(s) URLs (AUD-3) and the SRT listener
+// (AUD-5, srt.go).
 package ffmpeg
 
 import (
@@ -11,7 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,7 +40,16 @@ type Source struct {
 	StartAt time.Duration
 	// Realtime reads the input at its native rate (-re), as a live source.
 	Realtime bool
-	kind     api.AudioSourceKind
+	// InputArgs are input options placed before -i (protocol options such
+	// as an SRT passphrase: they may hold secrets and are never logged).
+	InputArgs []string
+	// Tap, if set, also gets the input's first audio stream as it arrives,
+	// stream-copied into MPEG-TS, so its bitrate can be measured. Not
+	// supported on Windows, where it is ignored.
+	Tap io.Writer
+	// Stderr, if set, gets ffmpeg's log output as well.
+	Stderr io.Writer
+	kind   api.AudioSourceKind
 
 	mu  sync.Mutex
 	err error
@@ -61,6 +73,13 @@ func (s *Source) Err() error {
 	return s.err
 }
 
+// Restartable tells the session whether to start the source again after an
+// ffmpeg failure (SES-5): yes for a stream, no for a local file, which
+// would play again from its beginning.
+func (s *Source) Restartable() bool {
+	return !slices.Contains(s.Protocols, "file") && !strings.HasPrefix(s.Input, "file:")
+}
+
 func (s *Source) args() []string {
 	args := []string{"-hide_banner", "-loglevel", "error", "-nostdin"}
 	if s.Realtime {
@@ -75,10 +94,18 @@ func (s *Source) args() []string {
 	if len(s.Protocols) > 0 {
 		args = append(args, "-protocol_whitelist", strings.Join(s.Protocols, ","))
 	}
-	return append(args, "-i", s.Input,
+	args = append(args, s.InputArgs...)
+	args = append(args, "-i", s.Input,
 		"-vn", "-sn", "-dn", "-ac", "1", "-ar", strconv.Itoa(domain.SampleRate),
 		"-acodec", "pcm_s16le", "-f", "s16le", "pipe:1")
+	if s.tapping() {
+		// The tap is the child's fd 3 (cmd.ExtraFiles[0]).
+		args = append(args, "-map", "0:a:0", "-c", "copy", "-f", "mpegts", "-flush_packets", "1", "pipe:3")
+	}
+	return args
 }
+
+func (s *Source) tapping() bool { return s.Tap != nil && runtime.GOOS != "windows" }
 
 // Start runs ffmpeg and returns its audio in 20 ms frames, T counting from
 // 0. The channel closes at the end of the input, on an ffmpeg error (see
@@ -96,6 +123,24 @@ func (s *Source) Start(ctx context.Context) (<-chan domain.AudioFrame, error) {
 	}
 	stderr := &tail{max: 2048}
 	cmd.Stderr = stderr
+	if s.Stderr != nil {
+		cmd.Stderr = io.MultiWriter(stderr, s.Stderr)
+	}
+	var tapDone chan struct{}
+	if s.tapping() {
+		r, w, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+		cmd.ExtraFiles = []*os.File{w}
+		defer func() { _ = w.Close() }() // the child has its own copy once started
+		tapDone = make(chan struct{})
+		go func() {
+			defer close(tapDone)
+			_, _ = io.Copy(s.Tap, r)
+			_ = r.Close()
+		}()
+	}
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("start ffmpeg: %w", err)
 	}
@@ -108,6 +153,9 @@ func (s *Source) Start(ctx context.Context) (<-chan domain.AudioFrame, error) {
 		defer close(out)
 		readErr := readFrames(ctx, stdout, out)
 		waitErr := cmd.Wait()
+		if tapDone != nil {
+			<-tapDone
+		}
 		if ctx.Err() != nil {
 			return // cancelled: a killed ffmpeg is expected
 		}

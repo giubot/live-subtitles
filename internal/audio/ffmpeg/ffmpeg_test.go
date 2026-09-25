@@ -198,3 +198,32 @@ func TestErrors(t *testing.T) {
 		t.Error("Start succeeded without an ffmpeg binary")
 	}
 }
+
+func TestRestartable(t *testing.T) {
+	f := Files{Roots: []string{"."}}
+	url, err := f.Open(FileInput{URI: "https://example.com/live.m3u8"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := f.Open(FileInput{URI: "ffmpeg_test.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name string
+		src  *Source
+		want bool
+	}{
+		{"URL", url, true},
+		{"file", file, false},
+		{"bare file input", &Source{Input: "file:/tmp/a.wav"}, false},
+		{"other input", &Source{Input: "srt://0.0.0.0:9000?mode=listener"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.src.Restartable(); got != tt.want {
+				t.Errorf("Restartable() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -28,7 +28,7 @@ func TestWalkingSkeleton(t *testing.T) {
 	a := newTestApp(t, config.Config{AdminToken: walkToken}, testDist)
 	now := time.Now()
 	if err := a.store.CreateSession(t.Context(), domain.Session{Id: "main", Name: "Main", CreatedAt: now, UpdatedAt: now,
-		Provider: api.ProviderChoiceDefault, SourceLanguage: api.En, TargetLanguages: []string{"es"}}); err != nil {
+		Provider: api.ProviderChoiceMock, SourceLanguage: api.En, TargetLanguages: []string{"es"}}); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(a.Handler())

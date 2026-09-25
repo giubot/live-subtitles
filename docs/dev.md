@@ -19,6 +19,10 @@ How to run Live Subtitles from source. The [plan](plan.md) covers the architectu
 | `task gen` | Regenerate Go/TS code from the spec, the route tree and `palette.ts`. Commit the output. |
 | `task check` | Everything CI runs. |
 | `task build` | Web app + single binary in `bin/livesubs`. |
+| `task build:all` | Web app + binaries for macOS, Linux and Windows × amd64/arm64 in `bin/<os>_<arch>/`. |
+| `task release:snapshot` | GoReleaser dry run: the release archives (`.tar.gz`, `.zip` for Windows) and `checksums.txt` in `dist/`, nothing published. Uses `goreleaser` from `PATH`, else `go run` of the pinned version. |
+
+Every binary reports its version with `livesubs -version`: `git describe` locally, the tag in a release. Pushing a `v*` tag runs `.github/workflows/release.yml`, which makes a **draft** GitHub release with the archives and pushes the container image to GHCR ([deployment](deployment.md)).
 
 Environment variables are listed in [`.env.example`](../.env.example). Flags win over `LIVESUBS_*` variables, which win over defaults (`bin/livesubs -h`).
 
@@ -64,11 +68,11 @@ Manage sessions at `/admin` → **New session**: give it a name (the address, or
 
 After the PIN, `/setup` walks through the hardware check, local models, the Google key and the first session; every step after the PIN can be skipped (**Finish later** goes to `/admin`). In the admin, **Ctrl+K** (⌘K on a Mac) opens the command palette. The other admin pages:
 
-- `/admin/glossaries`: terms per glossary. **Paste CSV** takes comma, semicolon or tab separated rows; with a header, the columns are `term`, language codes (`es`, `en`, …), `note` and `keep`; without one, the order is term, the table's languages, then note.
-- `/admin/overlays`: built-in and saved overlay presets with a live preview. A saved preset's overlay link is `/overlay/<session>?lang=es&preset=<preset id>`.
+- `/admin/glossaries`: terms per glossary. **Paste CSV** takes comma, semicolon or tab separated rows; with a header, the columns are `term`, language codes (`es`, `en`, …), `note` and `keep`; without one, the order is term, the table's languages, then note. A new database comes with **Tech terms (EN/ES)** (id `tech-terms`, migration `0003`): common tech vocabulary with its preferred translation each way and a do-not-translate list of product names; edit it, or delete it for good. Deleting a glossary detaches it from the sessions and the settings default that use it; a running session keeps the copy it loaded until it stops.
+- `/admin/overlays`: built-in and saved overlay presets with a live preview. A saved preset's overlay link is `/overlay/<session>?lang=es&preset=<preset id>`. `GET /api/overlay-presets` (public) lists the built-ins `classic`, `outline` and `lower-third` (`builtIn: true`, which answer 409 `overlay.builtin_read_only` to `PUT` and `DELETE`), then the saved presets by name. A new preset's id comes from its name (`Caja clásica` → `caja-clasica`, then `caja-clasica-2`).
 - `/admin/recordings`: disk used by recordings and every recording (filterable by session), with its replay, the audio as M4A and delete. A recording still being written can't be deleted.
 - `/admin/providers`: which provider new sessions use, and the write-only Google API key.
-- `/admin/settings` and `/admin/tls` (certificate details and how to trust the local CA on each OS).
+- `/admin/settings` (`GET`/`PUT /api/settings`) and `/admin/tls` (certificate details and how to trust the local CA on each OS). Before the first save, `GET /api/settings` answers the defaults the server applies; a `PUT` fills left-out objects and blank strings with those defaults and answers 400 with per-field codes (`settings.invalid_language`, `settings.invalid_url`, `settings.out_of_range`, `settings.too_long`) in `fields`, keyed by path such as `providers.local.whisperUrl`. Saved settings apply without a restart: provider models and URLs at the next session start, recording bitrate and retention at the next recording, caption line limits at the next subtitle download, and **Network** (public URL and preferred interface) at once in `/api/network`, session links and QR codes. The saved public URL overrides `--public-base-url`, except for the HTTPS certificate (`acme` and the `local-ca` names), which reads the flag at startup.
 
 Scripts can do the same over the API. Anything left out comes from the settings (target languages `[es, en]`, source language `auto`, recording on). `GET /api/languages` lists the supported languages: captions can be translated into `es`, `en`, `pt`, `fr`, `de`, `it`, `zh`, `ja` and `ko`, and the source language is `auto`, `en` or `es` (`canBeSource`). Any other language answers 400 `session.invalid_language`:
 
@@ -81,11 +85,27 @@ The answer includes the session's `ingestToken` (shown only here and on rotation
 
 A running session is one pipeline: audio source → speech recognition → one translator per target language → the caption bus (`/ws/captions/{id}?lang=es&lang=source`) and, for final captions, the database. `POST /api/sessions/{id}/start` uses browser audio from `/ws/ingest/{id}?token=…` (the token comes from `POST /api/sessions/{id}/ingest-token`); `pause` stops feeding the provider without dropping the capture connection, `start` resumes, and `stop` waits for the provider to flush its last sentence.
 
-- Translation (`internal/translate`) runs one queue per target language. Final captions are translated in order and never dropped; interim captions are debounced to the translator's pace (only the newest waits); a target equal to the detected source language shows the original text without a translation call. Each request carries the last `translation.contextSentences` final sentences (default 3) as context. All text translators share one prompt template (`internal/translate/prompt.go`), which also renders the session glossary's terms and do-not-translate list. With Gemini, finals stream in as interims while they're translated; the model is `providers.gemini.translationModel` (default `gemini-3.5-flash-lite`, with thinking at its minimal level) and the key is the `google_api_key` secret, both read at call time.
+- Translation (`internal/translate`) runs one queue per target language. Final captions are translated in order and never dropped; interim captions are debounced to the translator's pace (only the newest waits); a target equal to the detected source language shows the original text without a translation call. Each caption carries its segment's `sourceLang`; the session's detected language (in the status and the `/ws/captions` `state` messages) switches only after four words in the other language, in one final or in consecutive ones, so an "OK" or "sí" from the room doesn't flip the translation direction. A pinned source language overrides detection. Each request carries the last `translation.contextSentences` final sentences (default 3) as context. All text translators share one prompt template (`internal/translate/prompt.go`), which also renders the session glossary's terms and do-not-translate list (matched as whole words, ignoring case, plurals included). The glossary is loaded once when the session starts, for the ASR and the translators, so edits apply from the next start. Do-not-translate entries are enforced on the output: an entry the model re-cased gets its glossary spelling back, and a final that lost one is translated once more with the entries masked as `⟦n⟧` placeholders, keeping the first result if that fails too. With Gemini, finals stream in as interims while they're translated; the model is `providers.gemini.translationModel` (default `gemini-3.5-flash-lite`, with thinking at its minimal level) and the key is the `google_api_key` secret, both read at call time.
 - A session with provider `gemini` runs on the [Gemini provider](#gemini-provider); provider `local` transcribes with whisper-server and translates with Gemma through Ollama ([Local AI provider](#local-ai-provider)).
-- Provider `mock`, and `default` until the default-provider rule (P2-07), runs on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
+- Provider `default` follows the [default-provider rule](#default-provider-rule): Gemini with a valid Google API key, local otherwise.
+- Provider `mock` runs on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions. It is never the default; name it on the session (development, demos, load tests).
 - Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
 - `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
+
+### Default-provider rule
+
+`provider: default` resolves when a session starts (and in each session's `effectiveProvider`), per AI-11 (`internal/provider/selector`):
+
+| Google API key (`google_api_key`) | Default | `defaultReason` |
+|---|---|---|
+| Saved, and Google accepts it | `gemini` | `google_api_key_valid` |
+| Not saved | `local` | `no_google_api_key` |
+| Saved, Google rejects it (400/401/403) | `local` | `google_api_key_invalid` |
+| Saved, Google unreachable and never checked | `local` | omitted; the gemini entry's `reasonCode` is `provider.key_unverified` |
+
+The key is checked by listing one model (`GET /v1beta/models?pageSize=1`), which costs no tokens. A 429 counts as valid (the key works, it's over quota). A result is kept for 10 minutes per key value (only a hash of it is kept), and after that the old result is used while a background check refreshes it. If Google can't be reached, a key keeps its last result and is retried after 30 s. Saving a key checks it right away (unless the body has `"validate": false`); an invalid key is still stored and the response says `"valid": false`. `POST /api/secrets/google_api_key/validate` checks it on demand, with a repeat within 5 s returning the previous result. `SecretInfo.valid` is the last result for the current value. The OBS password has no check (422 `secret.validation_unsupported`).
+
+When the default falls back to local because the key is rejected, removed or can't be checked, `/ws/admin` gets one `log` event at level `warn` with the code `provider.fallback_key_invalid`, `provider.fallback_key_removed` or `provider.fallback_key_unverified`. Having no key from the start is normal and doesn't warn. `GET /api/providers` gives the same decision for a lasting banner, plus whether each provider is available: gemini when the key is valid, local when whisper-server (`/health`) and Ollama (`/api/version`) answer at the URLs in the settings (`provider.whisper_unreachable`, `provider.ollama_unreachable`), and mock always. Local is still the default when its sidecars are down; the session then fails at start with `provider.unavailable`.
 
 ### Latency and cost
 
@@ -114,9 +134,21 @@ Final captions of every track can be downloaded while a session runs or afterwar
 
 VTT and SRT cues hold at most 2 lines of 42 characters (settings `captions.maxLines` / `maxCharsPerLine`), break between sentences where they can, and stay on screen 5/6 s to 7 s. Captions an admin hid are left out.
 
+## Automatic recovery
+
+A running session recovers on its own when part of the pipeline fails (SES-5). The state stays `live` throughout. `status.recovering` says what is restarting (`provider` or `source`), the attempt, the bound and the next retry, and `status.restarts` counts the restarts of the current run.
+
+- **Provider stream**: if the speech-recognition stream ends while audio is still coming (a crash, or Gemini giving up on its own reconnects), the session opens a new one. The wait between attempts starts at 0.5 s and doubles up to 10 s, with 20 % jitter. Audio that arrives while no stream is open is dropped. Segment IDs of the new stream get the restart number (`r0-1-…`), so they never overwrite earlier captions.
+- **Audio source**: a source whose stream ends with an error (an SRT or http(s) input dropping) is started again with the same backoff. Its new audio continues the session clock after the wall time that was lost. Local files aren't restarted, because they would play again from the beginning: the session goes to `error` with `source.failed`, as before.
+- **Capture station**: when the browser's `/ws/ingest` connection drops and comes back, nothing restarts. The ingest source stays open, and the session stays live and waits for audio.
+- **Gaps**: every stretch of audio that never reached the provider (a restart, or a capture reconnect) is logged as an `audio.gap` admin event with its length. The next captions carry `gapBeforeMs` on every track, so viewers and the dashboard can mark the gap. It's live only: the caption store doesn't keep it.
+- **Giving up**: 5 failed attempts in a row (a restart that fails to start, or a stream or source that crashes again within 30 s of its restart) end the run in `error` with `provider.failed` or `source.failed`. A stream or source that ran longer than 30 s before failing starts counting from 1 again.
+
+The admin log shows `provider.restarting` / `source.restarting` (warn) for each attempt and `provider.restarted` / `source.restarted` (info) when it worked. Local sidecars also retry within a stream: see [How the local provider uses whisper-server](#how-the-local-provider-uses-whisper-server) and [Gemma translation](#gemma-translation).
+
 ## Gemini provider
 
-A session with `provider: gemini` transcribes with the [Gemini Live API](https://ai.google.dev/gemini-api/docs/live). It needs a Google API key (Google AI Studio) in the `google_api_key` secret: paste it in Settings, or export `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) before starting the server. The key and the model are read when a session starts, so changing them only affects the next start. Without a key the start fails with `provider.unavailable`.
+A session with `provider: gemini` transcribes with the [Gemini Live API](https://ai.google.dev/gemini-api/docs/live). It needs a Google API key (Google AI Studio) in the `google_api_key` secret: paste it in Settings, or export `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) before starting the server. The key and the model are read when a session starts, so changing them only affects the next start. Without a key the start fails with `provider.unavailable`. A valid key also makes Gemini the default provider ([default-provider rule](#default-provider-rule)).
 
 - **Model**: settings `providers.gemini.liveModel`, default `gemini-3.5-transcribe-live`, Gemini's [streaming transcription model](https://ai.google.dev/gemini-api/docs/live-api/live-transcribe). The setup asks for text responses and input transcription in `SMART` mode, which drops filler words and false starts. The provider is built for this model; conversational Live models such as the 2.5 native-audio ones, now limited to past users, aren't supported.
 - **Captions**: audio goes out as 16 kHz mono PCM in 100 ms chunks, and the server's voice activity detection splits the speech into utterances. Each utterance is one caption: the server's interim transcription replaces its text while the speaker talks, and the server's final transcription, sent when the speaker pauses, is its final. A final with several sentences becomes one caption per sentence. As a safety net, an interim becomes final 1 s after the end of a turn with no final, after 5 s without updates, or when the audio ends. A server final that arrives after such a flush is dropped rather than shown twice. Live transcription has no timestamps, so caption times are estimates on the session clock: a caption ends where the audio was when its text last changed.
@@ -126,7 +158,7 @@ A session with `provider: gemini` transcribes with the [Gemini Live API](https:/
 - **Drops**: a connection that drops unexpectedly is reopened with backoff (0.5 s doubling to 10 s, 8 tries). Meanwhile up to 15 s of audio is kept and sent on reconnect; anything older is logged as an audio gap (`gemini live reconnected; audio was lost`, with the session-clock range). Each drop also shows as a `provider.error` on the session. A drop during a rotation switches straight to the already-open next connection, with no error.
 - **Usage**: the seconds of audio sent go to `usage` as audio, and the text tokens the API reports as output tokens. Audio isn't counted as input tokens.
 
-`go test -tags gemini -run 'Integration|Live' -v ./internal/provider/gemini/` with `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency, then translates a caption each way (`GEMINI_LIVE_MODEL` and `GEMINI_TRANSLATION_MODEL` override the models). Without the tag or the key it's skipped, so CI never calls Google.
+`go test -tags gemini -run 'Integration|Live' -v ./internal/provider/gemini/` with `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency, translates a caption each way and checks the key validator with the real key and a made-up one (`GEMINI_LIVE_MODEL` and `GEMINI_TRANSLATION_MODEL` override the models). Without the tag or the key it's skipped, so CI never calls Google.
 
 Measured on 2026-09-24 from Buenos Aires with the ~10 s fixtures:
 
@@ -148,6 +180,62 @@ Each recording has `offsetSec`, where it starts on the session clock: a session 
 
 Recordings older than `settings.recording.retentionDays` (default 30, counted from when they ended; `0` keeps them forever) are deleted at startup and then hourly. Deleting a session keeps its recordings.
 
+## Logs and metrics
+
+Every HTTP request is logged once it finishes, as `http request` with `method`, `path` (never the query string, which can carry an ingest token), `route` (the matched pattern, such as `/api/sessions/{sessionId}`), `status`, `bytes`, `duration_ms`, `remote` and, on session routes, `session`. A WebSocket is logged when it closes, with `websocket=true`. API and WebSocket calls log at `info` and server errors at `warn`; `/healthz`, `/metrics` and the web app's files log at `debug` (`--log-level debug` or `task dev:server`). `--log-format json` (`LIVESUBS_LOG_FORMAT=json`) gives one JSON object per line for a log collector.
+
+`--metrics` (`LIVESUBS_METRICS=true`) serves Prometheus metrics at `GET /metrics`. It's off by default (404) and, when on, admin-only like the admin API: send the `LIVESUBS_ADMIN_TOKEN` bearer token (or be logged in).
+
+```sh
+curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/metrics
+```
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: livesubs
+    metrics_path: /metrics
+    authorization: { credentials_file: /etc/prometheus/livesubs-token }
+    static_configs: [{ targets: ['livesubs.lan:8080'] }]
+```
+
+| Metric | Type | Labels | What |
+|---|---|---|---|
+| `livesubs_sessions` | gauge | `state` | Sessions by runtime state (`idle`, `starting`, `live`, `paused`, `stopping`, `error`) |
+| `livesubs_session_viewers` | gauge | `session` | Caption viewers of each running or watched session |
+| `livesubs_ws_clients` | gauge | `endpoint` | Open WebSockets on `/ws/captions`, `/ws/ingest` and `/ws/admin` |
+| `livesubs_caption_latency_seconds` | histogram | `provider`, `track` | Latency of final captions, as in [Latency and cost](#latency-and-cost) |
+| `livesubs_session_errors_total` | counter | `provider`, `code` | Errors reported by running sessions: `provider.error`, `provider.unavailable`, `translation.failed`, `source.*` or a provider's own code |
+| `livesubs_recordings_bytes`, `livesubs_recordings`, `livesubs_recordings_free_bytes` | gauge | | Recordings on disk: bytes, count and free space, as in `/api/recordings/usage` |
+| `livesubs_http_requests_total` | counter | `route`, `method`, `code` | HTTP requests (WebSocket upgrades answer `101`) |
+| `livesubs_http_request_duration_seconds` | histogram | `route` | HTTP request duration, WebSockets excluded |
+
+Counters and histograms start at zero when the server starts. The gauges are read from the running services at each scrape.
+
+## Stream closed captions (YouTube)
+
+A session can send the final captions of one track to a YouTube live stream as closed captions that viewers switch on in the player (CC-1). It works the same whether the stream comes from OBS or vMix, because the captions go straight to YouTube over HTTP, not through the video.
+
+1. In YouTube Live Control Room, open the stream's settings → Closed captions, pick **POST captions to URL** and copy the ingestion URL. Set a broadcast delay of 30 to 60 s, so captions arrive before the video they belong to.
+2. Save the URL for the session: `PUT /api/sessions/main/stream-captions/youtube-url` with `{"value":"http://upload.youtube.com/closedcaption?cid=…"}`, or export `LIVESUBS_SECRET_SESSION_MAIN_YOUTUBE_URL` before starting the server. It's a secret (keychain or encrypted file): the API only ever shows its last 4 characters, and it's masked in logs. `DELETE` on the same path removes it; deleting the session removes it too.
+3. In the session, set `streamCaptions`: `enabled: true`, `track` (a target language or `source`, default `en`; YouTube takes one track) and `maxCharsPerLine` (default 32).
+4. `POST /api/sessions/main/stream-captions/test` (optional `{"text":"…"}`) sends a caption right away, running or not, and answers with the delivery result. It answers 422 `streamcc.no_url` when no URL is saved.
+
+While the session runs, each final caption of the track is wrapped into lines of `maxCharsPerLine`, two lines per cue, and sent as one POST: a UTC timestamp line (`YYYY-MM-DDTHH:MM:SS.mmm`) before each cue, lines joined with `<br>`, and an increasing `seq` added to the URL. The timestamp is when the words were spoken, estimated from the caption's latency and duration, and moved onto YouTube's clock using the time YouTube sends back with each answer (`clockOffsetMs`, local minus YouTube). Corrections of a caption already sent aren't sent again.
+
+Failed POSTs (network errors, HTTP 5xx, 408, 429) are retried with the same `seq`, with backoff from 0.5 s doubling to 10 s. Other 4xx answers (`streamcc.rejected`) aren't retried. Up to 64 captions wait in a queue per session; when it's full the oldest is dropped. A caption whose speech ended more than 60 s ago is dropped instead of being sent late, so after an outage the stream doesn't replay old lines; the dashboard gets a `streamcc.dropped` log with the count. When the session stops, what's queued gets up to 10 s to go out.
+
+The configuration and the URL are read when the session starts; a URL saved or removed while it runs takes effect at the next caption. `streamCaptions` in the session status (and on `/ws/admin`, as `sessionStatus` and `streamCaptionStatus` events) shows `state` (`disabled`, `idle`, `ok`, `retrying`, `error`), `lastSeq`, `lastSentAt`, `clockOffsetMs` and the last `error`.
+
+### OBS (`SendStreamCaption`)
+
+With `target: obs_websocket` the captions go to OBS instead, through obs-websocket v5 (`SendStreamCaption`), and OBS encodes them as CEA-608 into its stream (YouTube and Twitch show them; Vimeo doesn't). Use it when the stream comes from OBS and the platform has no caption ingestion URL.
+
+- Turn on OBS's websocket server (Tools → WebSocket Server Settings). Its address is the setting `obs.websocketUrl` (default `ws://127.0.0.1:4455`); if it asks for a password, save it as the `obs_websocket_password` secret (Settings, or `LIVESUBS_SECRET_OBS_WEBSOCKET_PASSWORD`).
+- Lines are at most 32 characters (the 608 limit, whatever `maxCharsPerLine` says), two per caption. Each caption stays up for the time its words took, at least 1.5 s and at most 4 s, before the next replaces it.
+- The connection opens with the first caption. If OBS closes or restarts, the caption is retried with the same backoff as YouTube and the connection is reopened; the lines of a caption already shown aren't sent again. A wrong password shows `streamcc.obs_auth_failed`, and OBS refuses captions while it isn't streaming (`streamcc.obs_rejected`).
+- `POST …/stream-captions/test` sends the test caption to OBS. `lastSeq` counts the captions sent; there's no clock offset.
+
 ## Local AI provider
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.
@@ -157,7 +245,7 @@ The local provider needs two sidecars: **whisper-server** (whisper.cpp) for spee
 | whisper-server | `8178` | `ggml-large-v3-turbo` (multilingual; smaller: `medium`, `small`) |
 | Ollama | `11434` | `gemma3:4b` (smaller: `gemma3:1b`) |
 
-`task models:pull` downloads the whisper model into `./models` (checked against Hugging Face's SHA-256) and pulls Gemma through Ollama. Override with `WHISPER_MODEL=small` or `GEMMA_MODEL=gemma3:1b`. English-only whisper models (`*.en`) are refused, because Spanish needs a multilingual model.
+`task models:pull` downloads the whisper model into `./models` (checked against Hugging Face's SHA-256) and pulls Gemma through Ollama. Override with `WHISPER_MODEL=small` or `GEMMA_MODEL=gemma3:1b`. English-only whisper models (`*.en`) are refused, because Spanish needs a multilingual model. The server can also download them itself (see [Model downloads](#model-downloads)).
 
 ### macOS (Apple Silicon): native, with Metal
 
@@ -184,7 +272,7 @@ task dev:ai:down
 
 ### Gemma translation
 
-The local translator (`internal/provider/local/gemma`) talks to Ollama's `/api/chat` with streaming, using `providers.local.ollamaUrl` and `providers.local.gemmaModel` from the settings (read at call time). When a session starts it loads the model with an empty chat, and every request sends `keep_alive: 30m`, so the first caption doesn't wait for a model load and a pause doesn't unload it. It runs at most 2 requests at once per model and sends `think: false`, so thinking models such as Gemma 4 answer straight away. Measure it on your machine with:
+The local translator (`internal/provider/local/gemma`) talks to Ollama's `/api/chat` with streaming, using `providers.local.ollamaUrl` and `providers.local.gemmaModel` from the settings (read at call time). When a session starts it loads the model with an empty chat, and every request sends `keep_alive: 30m`, so the first caption doesn't wait for a model load and a pause doesn't unload it. It runs at most 2 requests at once per model and sends `think: false`, so thinking models such as Gemma 4 answer straight away. A request that fails before any output (Ollama unreachable, or an HTTP 5xx while it restarts or reloads the model) is retried twice, after about 250 ms and 500 ms, within the 15 s translation timeout. A caption that still fails is missing from that track (`translation.failed`), and the next ones are translated as usual. Measure it on your machine with:
 
 ```sh
 GEMMA_MODEL=gemma3:4b go test -tags ollama -run TestLiveLatency -v ./internal/provider/local/gemma/
@@ -200,8 +288,9 @@ whisper-server transcribes files, not streams, so the provider (`internal/provid
 
 - While someone speaks, the utterance so far is sent to `POST /inference` (WAV, `response_format=verbose_json`) after every 1 s of new audio, for **interim** text. When the server falls behind, interims are skipped; finals never are.
 - A 600 ms pause, or 12 s without one, commits the utterance as **final** under the same segment ID. At 12 s the cut lands on the quietest moment of the last 3 s.
+- If whisper-server stops answering mid-session (a restart, or 503 while it reloads its model), the stream keeps going. A final is retried with backoff, 300 ms doubling to 5 s, up to 6 times (about 15 s), and later audio waits its turn. Failed interims are skipped. If the final still fails, the interim text shown so far becomes final and the session shows a `provider.error`.
 - Silence and short clicks never reach the server. Text that whisper invents on noise is dropped: `[Música]`, `[BLANK_AUDIO]`, "Thanks for watching", "Subtítulos realizados por la comunidad de Amara.org", and phrases looping three or more times.
-- With source language `auto`, the provider keeps the likelier of `en` and `es` from `language_probabilities` for each utterance. If whisper picked a third language, the utterance is transcribed again in that choice. A pinned source language skips detection. Very short utterances ("OK", "sí") can be misdetected, and smoothing across segments is P2-05. Glossary terms go in whisper's `prompt`.
+- With source language `auto`, the provider keeps the likelier of `en` and `es` from `language_probabilities` for each utterance. If whisper picked a third language, the utterance is transcribed again in that choice. A pinned source language skips detection. Very short utterances ("OK", "sí") can be misdetected; the session keeps its language until four words in the other one (see Translation above). Glossary terms go in whisper's `prompt`.
 
 Final captions arrive about 600 ms (the pause) plus one inference after the speaker stops. Check against a running server (the build tag keeps it out of CI):
 
@@ -219,6 +308,30 @@ On an Apple M5 Pro (Metal), fed in real time:
 
 The fixtures are about 8 s of synthetic speech each. Measure WER on the real talks (`task audio:fetch`) before relying on these numbers for an event.
 
+### Hardware check and benchmark
+
+At startup the server logs a hardware check, and `GET /api/system/hardware` (admin) returns it for the setup wizard: OS, CPU, RAM, GPUs, whether whisper-server, Ollama and ffmpeg answer, and the recommended models (`internal/hwcheck`). GPUs are Metal on Apple Silicon, CUDA from `nvidia-smi` and Vulkan from `vulkaninfo --summary`. Missing tools just leave their part empty. The recommendation comes from a table in `internal/hwcheck/recommend.go`:
+
+| Hardware | whisper | Gemma | Real time likely |
+|---|---|---|---|
+| GPU with 8 GB or more for models (a discrete GPU's own memory, or half the RAM on Apple Silicon and integrated GPUs) | `large-v3-turbo` | `gemma3:4b` | yes |
+| GPU with 4 GB or more | `large-v3-turbo` | `gemma3:1b` | yes |
+| smaller GPU, or CPU with 8+ cores and 16 GB RAM | `small` | `gemma3:1b` | yes |
+| anything else | `small` | `gemma3:1b` | no |
+
+`POST /api/system/benchmark` (admin) runs a bundled 37.6 s clip (the EN and ES fixtures, alternating) through the configured local provider: whisper-server transcribes it, then Gemma translates every final into the other language. The real-time factor is the processing time divided by the clip length. Model loading isn't counted. The audio goes in as fast as whisper takes it, so the benchmark measures finals only. A live session also transcribes interims, so the result counts as `ok` only up to 0.8. Above that, the dashboard should suggest smaller models or a Google API key. The last result is kept in `<data dir>/benchmark.json` and replaces the table's "real time likely" guess. One benchmark runs at a time (409 `benchmark.running`). If whisper-server or Ollama is down, the answer is 422 `benchmark.runtime_unavailable`.
+
+`GET /healthz` lists `database`, `ffmpeg`, `whisper` and `ollama` under `checks`. It reports `degraded` only when the database or ffmpeg fails, since the sidecars matter only to local-provider sessions. `GET /api/system/info` sets `features.srtIngest` when `ffmpeg -protocols` lists `srt` as an input (ffmpeg built with libsrt; Homebrew's default build has no libsrt). Other code can reuse the same probe through `ffmpeg.Probe` or the caching `ffmpeg.Prober`.
+
+On an Apple M5 Pro (48 GB, Metal) with whisper.cpp 1.9.4 (`large-v3-turbo`) and Ollama 0.34.2 (`gemma3:4b`), four runs gave a real-time factor of 0.14 (about 3.4 s of speech recognition and 1.8 s of translation for the 37.6 s clip).
+
+### Model downloads
+
+`GET /api/models` (admin) lists the catalog (`internal/models/catalog.go`): whisper `large-v3-turbo`, `medium` and `small` (multilingual GGML files from Hugging Face, each with its size and SHA-256), and `gemma3:4b` and `gemma3:1b` through Ollama. `recommended` follows the hardware check. `POST /api/models/{id}/download` starts the download in the background and answers 202. Progress goes out as `modelProgress` events on `/ws/admin`, at most one per percent or per second, and `GET /api/models` shows it too.
+
+- **whisper**: the file goes to `<models dir>/ggml-<name>.bin.part` and is renamed to `ggml-<name>.bin` once its SHA-256 matches. An interrupted download resumes with an HTTP `Range` request, both on the automatic retries (3 attempts) and on the next `POST`. A checksum mismatch deletes the file (`model.checksum_mismatch`). The models directory is `./models` by default (`--models-dir` / `LIVESUBS_MODELS_DIR`). That is the directory `task models:pull` fills and `compose.dev.yaml` mounts into whisper-server. whisper-server loads its model at launch, so restart it with `--model <models dir>/ggml-<name>.bin` and set `providers.local.whisperModel` to match.
+- **Gemma**: the server asks Ollama at `providers.local.ollamaUrl` to pull the tag (`POST /api/pull`). Ollama resumes partial layers and checks their digests itself. Without Ollama the `POST` answers 409 `model.ollama_unreachable`.
+
 ## Test audio
 
 - **Committed fixtures**: `testdata/audio/fixtures/{en,es}.wav`, about 8 s each, 16 kHz mono s16le. They're synthetic (macOS text-to-speech, `scripts/make-fixtures.sh`) so CI can use them without third-party rights. whisper `tiny` transcribes both and detects the right language.
@@ -229,6 +342,26 @@ The fixtures are about 8 s of synthetic speech each. Measure WER on the real tal
 `task demo:file SESSION=main FILE=testdata/audio/en.m4a` plays a file into a session in real time, as if someone were speaking (`LOOP=true` repeats it, `PORT=18080` or `URL=…` picks the server). It calls `POST /api/sessions/{id}/sources/file` with the admin bearer token, so export the same `LIVESUBS_ADMIN_TOKEN` in the server's environment and in your shell. The session must be idle; `DELETE` on the same URL stops it.
 
 The server decodes the file with ffmpeg (`--ffmpeg` / `LIVESUBS_FFMPEG` if it isn't in `PATH`). Only files under the data directory and `./testdata`, or `http(s)` URLs, are accepted; relative paths are resolved from the server's working directory.
+
+## SRT ingest
+
+A session can take its audio from an SRT sender (vMix, OBS, a hardware encoder) instead of browser capture (AUD-5). Start it with `POST /api/sessions/{id}/start` and `{"source":"srt"}`: the server opens an ffmpeg SRT listener and the session goes live, waiting for a sender. The sender pushes MPEG-TS with any audio codec ffmpeg decodes (AAC, MP2, Opus, AC-3; video is ignored) to the session's `urls.srtIngest`, e.g. `srt://192.168.1.20:9000?streamid=main`. When the sender disconnects the listener reopens, so the session stays live and the next connection continues it (`audio.lastGapMs` shows the gap). Stop the session to close the listener.
+
+- **One UDP port per session.** ffmpeg's listener takes one caller and can't route by `streamid`, so each session gets its own port, counting up from `settings.srt.port` (default 9000) in the order sessions are listed or started, at most 100. A session keeps its port until the server restarts or the session is deleted. `streamid=<session>` is in the URL but not checked. Open the UDP ports on the event LAN's firewall (9000–9009 covers ten SRT sessions).
+- **Latency** is `settings.srt.latencyMs` (default 200 ms). Senders usually negotiate the larger of theirs and ours.
+- **Passphrase**: store `srt_passphrase` (10–79 characters) with `PUT /api/secrets/srt_passphrase`, and set the same passphrase on the sender. Without it only unencrypted senders are accepted. A sender with the wrong passphrase is refused and logged as `srt caller rejected`; the passphrase itself is passed to ffmpeg as an option and never logged (it is visible to local users in the process list, like any command-line argument).
+- **Status**: `SessionStatus.srt` has `connected` and `bitrateKbps` (the received audio stream, measured from a stream copy of it). ffmpeg doesn't expose libsrt's RTT and packet-loss counters, so those fields stay empty.
+- **libsrt**: ffmpeg must be built with it. Check with `ffmpeg -hide_banner -protocols | grep -w srt`. Most Linux packages (Debian/Ubuntu `apt install ffmpeg`) have it; Homebrew's default `ffmpeg` formula doesn't, so on macOS use the `homebrew-ffmpeg/ffmpeg` tap (`brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-srt`) or Docker. Without libsrt, `srtIngest` is absent and starting with SRT answers `source.srt_unavailable`.
+
+Try it with ffmpeg as the sender (add `&passphrase=…`, URL-encoded, if one is set):
+
+```sh
+ffmpeg -re -i testdata/audio/fixtures/en.wav -c:a aac -f mpegts 'srt://127.0.0.1:9000?streamid=main'
+```
+
+**OBS**: Settings → Stream → Service *Custom…*, Server `srt://<server-ip>:9000?streamid=main` (append `&passphrase=…` if one is set; `&latency=200000` sets the sender's latency in microseconds), Stream Key empty. OBS sends MPEG-TS over SRT by itself, and its default AAC audio works. Start the session, then Start Streaming. **vMix**: add an SRT output in *Caller* mode to the same host and port, with the same passphrase and latency.
+
+The SRT tests (`internal/audio/ffmpeg/srt_e2e_test.go`, `internal/api/handlers/srt_test.go`) push the fixture through a real connection and skip without libsrt. To run them on a Mac without it, use Docker: `docker run --rm -v "$PWD":/src -w /src golang:1.26-trixie sh -c 'apt-get update -qq && apt-get install -y -qq ffmpeg >/dev/null && go test -run SRT ./internal/audio/ffmpeg/ ./internal/api/handlers/'`.
 
 ## Troubleshooting
 

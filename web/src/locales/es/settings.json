@@ -112,6 +112,16 @@
         "title": "Contraseña de OBS WebSocket",
         "intro": "Solo hace falta para mandar subtítulos a la pista de subtítulos propia de OBS.",
         "field": "Nueva contraseña"
+      },
+      "srt_passphrase": {
+        "title": "Frase de contraseña SRT",
+        "intro": "Cifra el audio que llega por SRT desde OBS, vMix o un codificador. Usá de 10 a 79 caracteres.",
+        "field": "Nueva frase de contraseña"
+      },
+      "youtube_caption_url": {
+        "title": "URL de subtítulos de YouTube",
+        "intro": "La URL de ingesta de YouTube Live Control Room. Cada sesión tiene la suya; se configura en la sesión.",
+        "field": "Nueva URL de subtítulos"
       }
     },
     "fieldHelp": "Se guarda cifrada en esta computadora. No se puede volver a ver, solo reemplazar.",

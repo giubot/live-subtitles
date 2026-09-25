@@ -146,6 +146,56 @@
         "title": "The whisper model only understands English",
         "why": "Local speech recognition uses {{model}}, an English-only (.en) model that can't transcribe Spanish.",
         "fix": "Start whisper-server with a multilingual model such as large-v3-turbo, and set its name in the local provider settings."
+      },
+      "no_api_key": {
+        "title": "Gemini needs a Google API key",
+        "why": "No Google API key is saved, so new sessions use the local provider.",
+        "fix": "Add a key in Settings to use Gemini, or keep running everything on this computer."
+      },
+      "key_unverified": {
+        "title": "The Google API key couldn’t be checked",
+        "why": "The server couldn’t reach Google, so it doesn’t know whether the key works. New sessions use the local provider until it can check.",
+        "fix": "Check the internet connection, then check the key again in Settings."
+      },
+      "whisper_unreachable": {
+        "title": "whisper-server isn’t answering",
+        "why": "Local speech recognition needs whisper-server running at the address in the local provider settings.",
+        "fix": "Start whisper-server (see docs/dev.md) or fix its address in Settings."
+      },
+      "ollama_unreachable": {
+        "title": "Ollama isn’t answering",
+        "why": "Local translation needs Ollama running at the address in the local provider settings.",
+        "fix": "Start Ollama (see docs/dev.md) or fix its address in Settings."
+      },
+      "fallback_key_invalid": {
+        "title": "New sessions use the local provider",
+        "why": "Google rejected the saved API key, so sessions set to the default provider no longer use Gemini.",
+        "fix": "Save a valid key in Settings, or pick a provider for each session."
+      },
+      "fallback_key_removed": {
+        "title": "New sessions use the local provider",
+        "why": "The Google API key was removed, so sessions set to the default provider no longer use Gemini.",
+        "fix": "Save a key in Settings to use Gemini again."
+      },
+      "fallback_key_unverified": {
+        "title": "New sessions use the local provider",
+        "why": "The Google API key couldn’t be checked because Google is unreachable, so sessions set to the default provider don’t use Gemini for now.",
+        "fix": "Check the internet connection. The server checks the key again on its own."
+      },
+      "restarting": {
+        "title": "Restarting the AI provider",
+        "why": "{{provider}} stopped transcribing unexpectedly. The session stays live and tries again in {{retryInMs}} ms (attempt {{attempt}} of {{maxAttempts}}).",
+        "fix": "Nothing to do yet. If it keeps failing, check that {{provider}} is reachable."
+      },
+      "restarted": {
+        "title": "The AI provider is back",
+        "why": "{{provider}} restarted on attempt {{attempt}}. The audio in between has no captions, and the gap is marked.",
+        "fix": "Nothing to do."
+      },
+      "failed": {
+        "title": "The AI provider stopped working",
+        "why": "{{provider}} kept failing and didn't recover after {{attempts}} restarts, so the session stopped.",
+        "fix": "Check that {{provider}} is reachable (its sidecar, the network or the API key), then start the session again or switch provider."
       }
     },
     "auth": {
@@ -231,6 +281,36 @@
         "title": "No test file is playing",
         "why": "This session isn't fed by a file right now.",
         "fix": "Nothing to stop. To stop browser capture, stop the session."
+      },
+      "srt_unavailable": {
+        "title": "SRT ingest isn't available",
+        "why": "The server's ffmpeg was built without libsrt, so it can't receive SRT streams.",
+        "fix": "Install an ffmpeg built with libsrt (most Linux packages and the Docker image have one; Homebrew’s default ffmpeg doesn’t), or use browser capture."
+      },
+      "srt_disabled": {
+        "title": "SRT ingest is turned off",
+        "why": "SRT is disabled in the settings.",
+        "fix": "Turn SRT on in Settings, or use browser capture."
+      },
+      "srt_port_busy": {
+        "title": "The SRT port is in use",
+        "why": "UDP port {{port}} is already taken by another program, or there are no SRT ports left.",
+        "fix": "Close the program using that port, or change the first SRT port in Settings."
+      },
+      "srt_passphrase_invalid": {
+        "title": "The SRT passphrase isn't valid",
+        "why": "SRT passphrases must be {{min}} to {{max}} characters long.",
+        "fix": "Set a new SRT passphrase in Settings, or remove it to receive without encryption."
+      },
+      "restarting": {
+        "title": "Reconnecting the audio source",
+        "why": "The {{source}} input failed. The session stays live and tries again in {{retryInMs}} ms (attempt {{attempt}} of {{maxAttempts}}).",
+        "fix": "Nothing to do yet. If it keeps failing, check the audio input."
+      },
+      "restarted": {
+        "title": "The audio source is back",
+        "why": "The {{source}} input restarted on attempt {{attempt}}. The audio in between is missing, and the gap is marked.",
+        "fix": "Nothing to do."
       }
     },
     "capture": {
@@ -295,6 +375,11 @@
         "title": "The server doesn’t know this key",
         "why": "The app and the server are probably different versions.",
         "fix": "Reload the page. If it keeps happening, update the server."
+      },
+      "validation_unsupported": {
+        "title": "This key can’t be checked",
+        "why": "The server has no way to test this secret against its service.",
+        "fix": "Save it and try it where it’s used."
       }
     },
     "recording": {
@@ -302,6 +387,205 @@
         "title": "Recording not found",
         "why": "It may have been deleted by an admin or by the automatic clean-up of old recordings, or the link has a typo.",
         "fix": "Pick the recording from the session's list of recordings."
+      }
+    },
+    "settings": {
+      "invalid": {
+        "title": "Some settings aren't valid",
+        "why": "The server didn't save anything because several fields have problems.",
+        "fix": "Correct the highlighted fields, then save again."
+      },
+      "invalid_language": {
+        "title": "That language isn't supported",
+        "why": "A default language isn't in the language list, or it can't be the spoken language (only English, Spanish or automatic detection can).",
+        "fix": "Pick the languages from the list, then save again."
+      },
+      "invalid_url": {
+        "title": "That address isn't valid",
+        "why": "It needs to be a full address with its scheme and host, such as http://127.0.0.1:8178 (or ws://127.0.0.1:4455 for OBS), without a query or credentials.",
+        "fix": "Correct the address, then save again."
+      },
+      "out_of_range": {
+        "title": "A number is out of range",
+        "why": "One of the numbers is outside the values the server accepts.",
+        "fix": "Use a value within the range shown under the field, then save again."
+      },
+      "too_long": {
+        "title": "A value is too long",
+        "why": "Model names, the interface name and the glossary are limited to 200 characters.",
+        "fix": "Shorten the value, then save again."
+      }
+    },
+    "overlay": {
+      "not_found": {
+        "title": "We can't find that overlay preset",
+        "why": "It may have been deleted, or the link has a typo.",
+        "fix": "Pick a preset from the overlay presets page, or use a built-in one such as classic."
+      },
+      "builtin_read_only": {
+        "title": "Built-in presets can't be changed",
+        "why": "Classic box, Outline only and Lower third are part of the app, so they can't be edited or deleted.",
+        "fix": "Duplicate the preset and edit the copy."
+      },
+      "invalid": {
+        "title": "The preset isn't valid",
+        "why": "The server didn't save it because several fields have problems.",
+        "fix": "Correct the highlighted fields, then save again."
+      },
+      "invalid_name": {
+        "title": "The preset needs a name",
+        "why": "A preset name has 1 to 80 characters.",
+        "fix": "Type a name, then save again."
+      },
+      "invalid_color": {
+        "title": "That colour isn't valid",
+        "why": "Colours are CSS colours such as #FFFFFF or rgba(0,0,0,0.5), or transparent for the background.",
+        "fix": "Correct the colour, then save again."
+      },
+      "out_of_range": {
+        "title": "A size is out of range",
+        "why": "One of the sizes or times is outside the values the overlay accepts.",
+        "fix": "Use a value within the range shown under the field, then save again."
+      }
+    },
+    "glossary": {
+      "not_found": {
+        "title": "Glossary not found",
+        "why": "It may have been deleted, maybe from another admin tab.",
+        "fix": "Reload the glossary list and pick it again."
+      },
+      "invalid": {
+        "title": "The glossary has several problems",
+        "why": "More than one field needs fixing before it can be saved.",
+        "fix": "Fix the highlighted fields, then save again."
+      },
+      "name_required": {
+        "title": "The glossary needs a name",
+        "why": "The name is how you pick the glossary in a session.",
+        "fix": "Give it a name, such as the event or the track."
+      },
+      "term_required": {
+        "title": "A row has no term",
+        "why": "Each row needs the term as it is spoken or written in the talk; translations alone can't be matched.",
+        "fix": "Write the term, or remove the row."
+      },
+      "term_duplicate": {
+        "title": "A term is listed twice",
+        "why": "Each term can appear only once (upper and lower case count as the same), so the models get one preferred translation.",
+        "fix": "Merge the two rows into one."
+      },
+      "language_invalid": {
+        "title": "A translation column isn't a language code",
+        "why": "Translation columns are named by language code, like es, en or pt-BR.",
+        "fix": "Rename the column to a language code."
+      },
+      "too_large": {
+        "title": "The glossary is too long",
+        "why": "A glossary holds up to 1000 terms, entries of up to 200 characters and a name of up to 120, so it fits in the models' prompts.",
+        "fix": "Shorten the long entries, or split the glossary by talk or track."
+      }
+    },
+    "audio": {
+      "gap": {
+        "title": "Some audio was lost",
+        "why": "{{gapMs}} ms of audio at {{atSec}} s never reached the provider, because it restarted or the capture station reconnected. Those words have no captions.",
+        "fix": "Nothing to do if it's rare. If it happens often, check the capture station's network and the provider."
+      }
+    },
+    "streamcc": {
+      "no_url": {
+        "title": "No caption ingestion URL",
+        "why": "This session has stream captions on, but YouTube's caption ingestion URL isn't saved, so there's nowhere to send them.",
+        "fix": "In YouTube Live Control Room, open Stream settings → Closed captions → \"POST captions to URL\", copy the URL and paste it in the session's stream captions."
+      },
+      "url_invalid": {
+        "title": "That isn't a caption ingestion URL",
+        "why": "The ingestion URL must be a full http:// or https:// address.",
+        "fix": "Copy the whole URL from YouTube Live Control Room (it starts with http://upload.youtube.com/closedcaption) and paste it again."
+      },
+      "unreachable": {
+        "title": "Can't reach YouTube to send captions",
+        "why": "The caption POST got no answer: this server may be offline or YouTube may be unreachable from its network.",
+        "fix": "Check the server's internet connection. Captions are retried automatically; lines older than about a minute are skipped."
+      },
+      "server_error": {
+        "title": "YouTube is not accepting captions right now",
+        "why": "YouTube answered with a temporary error (HTTP {{status}}).",
+        "fix": "Nothing to do yet: captions are retried automatically. If it lasts, check the stream in YouTube Live Control Room."
+      },
+      "rejected": {
+        "title": "YouTube rejected the caption",
+        "why": "YouTube refused the caption (HTTP {{status}}). The ingestion URL may be old, belong to another stream, or the stream may not be live.",
+        "fix": "Make sure the stream is live and \"POST captions to URL\" is selected, then copy the current ingestion URL again and send a test caption."
+      },
+      "dropped": {
+        "title": "Some captions were skipped",
+        "why": "{{count}} captions couldn't be sent in time and were too old to show on the stream.",
+        "fix": "Check the connection to YouTube. New captions are sent as soon as it recovers."
+      },
+      "obs_unreachable": {
+        "title": "Can't reach OBS",
+        "why": "The server couldn't connect to OBS's websocket to send captions: OBS may be closed or restarting, or the websocket server may be off.",
+        "fix": "Open OBS, turn on Tools → WebSocket Server Settings → Enable WebSocket server, and check the websocket URL in Settings. Captions are retried automatically."
+      },
+      "obs_auth_failed": {
+        "title": "OBS rejected the password",
+        "why": "OBS's websocket server asks for a password, and the saved OBS websocket password is missing or wrong.",
+        "fix": "Copy the password from OBS (Tools → WebSocket Server Settings → Show Connect Info) and save it in Settings as the OBS websocket password."
+      },
+      "obs_rejected": {
+        "title": "OBS didn't take the caption",
+        "why": "OBS refused the caption ({{comment}}). Captions only go out while OBS is streaming.",
+        "fix": "Start the stream in OBS, then send a test caption."
+      }
+    },
+    "benchmark": {
+      "running": {
+        "title": "A benchmark is already running",
+        "why": "Only one benchmark runs at a time, so the numbers aren't skewed.",
+        "fix": "Wait for it to finish; its result shows up here."
+      },
+      "runtime_unavailable": {
+        "title": "The local AI can't run the benchmark",
+        "why": "{{runtime}} isn't running or the server can't reach it.",
+        "fix": "Start whisper-server and Ollama, then run the benchmark again."
+      },
+      "failed": {
+        "title": "The benchmark failed",
+        "why": "The local AI failed while transcribing or translating the test clip.",
+        "fix": "Check that whisper-server and Ollama are running with the chosen models, then try again."
+      },
+      "no_speech": {
+        "title": "The benchmark got no text",
+        "why": "whisper-server answered but transcribed nothing from the test clip.",
+        "fix": "Check that whisper-server runs a multilingual model (for example large-v3-turbo), then try again."
+      }
+    },
+    "model": {
+      "not_found": {
+        "title": "Unknown model",
+        "why": "{{model}} isn't in this server's model list.",
+        "fix": "Pick a model from the list."
+      },
+      "ollama_unreachable": {
+        "title": "Ollama isn't reachable",
+        "why": "Ollama downloads and runs the Gemma models, and the server can't reach it.",
+        "fix": "Start Ollama (or check its address in Settings), then try again."
+      },
+      "download_failed": {
+        "title": "The download failed",
+        "why": "The connection to the model server failed, or it refused the request.",
+        "fix": "Check the internet connection and try again: the download resumes where it stopped."
+      },
+      "checksum_mismatch": {
+        "title": "The downloaded model is damaged",
+        "why": "The file for {{model}} doesn't match its published checksum, so it was deleted.",
+        "fix": "Download it again."
+      },
+      "pull_failed": {
+        "title": "Ollama couldn't download the model",
+        "why": "Ollama reported an error while pulling {{model}}.",
+        "fix": "Check Ollama's log and the internet connection, then try again."
       }
     }
   }

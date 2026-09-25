@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/backoff"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/translate"
 )
@@ -36,6 +37,12 @@ const (
 	// WarmTimeout bounds the model load at session start.
 	WarmTimeout = 3 * time.Minute
 )
+
+// DefaultRetries: a caption is retried twice, within the translation timeout.
+const DefaultRetries = 2
+
+// DefaultRetryBackoff is 250 ms doubling to 2 s, with 20 % jitter.
+var DefaultRetryBackoff = backoff.Policy{Base: 250 * time.Millisecond, Max: 2 * time.Second, Jitter: 0.2}
 
 // configTTL is how long resolved settings are reused.
 const configTTL = 30 * time.Second
@@ -59,6 +66,13 @@ type Translator struct {
 	HTTPClient *http.Client
 	// Now defaults to time.Now.
 	Now func() time.Time
+	// Retries is how many times a request that failed before any output
+	// (Ollama unreachable, or an HTTP 5xx while it restarts or loads the
+	// model) is sent again, after RetryBackoff (default DefaultRetries;
+	// negative: none). The caller's context still bounds the whole call.
+	Retries int
+	// RetryBackoff defaults to DefaultRetryBackoff.
+	RetryBackoff backoff.Policy
 
 	mu      sync.Mutex
 	sems    map[string]chan struct{} // per URL + model
@@ -104,11 +118,11 @@ func (t *Translator) TranslateStream(ctx context.Context, req domain.TranslateRe
 		Think:     new(bool), // false: Gemma 4 and other thinking models answer directly
 		Options:   &chatOptions{Temperature: 0.2, NumPredict: 256},
 	}
-	resp, err := t.post(ctx, url, body)
+	resp, err := t.postRetrying(ctx, url, body)
 	if err != nil {
 		return domain.TranslateResult{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var text strings.Builder
 	sc := bufio.NewScanner(resp.Body)
@@ -163,9 +177,36 @@ func (t *Translator) Warm(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
+}
+
+// transientError is a failure worth retrying: Ollama unreachable or
+// answering 5xx.
+type transientError struct{ error }
+
+func (e transientError) Unwrap() error { return e.error }
+
+// postRetrying is post, retrying transient failures with backoff.
+func (t *Translator) postRetrying(ctx context.Context, url string, body chatRequest) (*http.Response, error) {
+	retries, pol := t.Retries, t.RetryBackoff
+	if retries == 0 {
+		retries = DefaultRetries
+	}
+	if pol.Base <= 0 {
+		pol = DefaultRetryBackoff
+	}
+	for attempt := 1; ; attempt++ {
+		resp, err := t.post(ctx, url, body)
+		var te transientError
+		if err == nil || !errors.As(err, &te) || attempt > retries {
+			return resp, err
+		}
+		if backoff.Wait(ctx, pol.Delay(attempt)) != nil {
+			return nil, err
+		}
+	}
 }
 
 // post sends a chat request and checks the status.
@@ -188,10 +229,10 @@ func (t *Translator) post(ctx context.Context, url string, body chatRequest) (*h
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, fmt.Errorf("ollama unreachable at %s: %w", url, err)
+		return nil, transientError{fmt.Errorf("ollama unreachable at %s: %w", url, err)}
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var e struct {
 			Error string `json:"error"`
 		}
@@ -199,7 +240,11 @@ func (t *Translator) post(ctx context.Context, url string, body chatRequest) (*h
 		if json.Unmarshal(raw, &e) != nil || e.Error == "" {
 			e.Error = strings.TrimSpace(string(raw))
 		}
-		return nil, fmt.Errorf("ollama: %s (HTTP %d, model %s)", e.Error, resp.StatusCode, body.Model)
+		err := fmt.Errorf("ollama: %s (HTTP %d, model %s)", e.Error, resp.StatusCode, body.Model)
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return nil, transientError{err}
+		}
+		return nil, err
 	}
 	return resp, nil
 }

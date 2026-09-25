@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,20 +28,25 @@ import (
 	"github.com/iencodev/live-subtitles/internal/api/handlers"
 	"github.com/iencodev/live-subtitles/internal/audio/ffmpeg"
 	"github.com/iencodev/live-subtitles/internal/audio/ingest"
+	"github.com/iencodev/live-subtitles/internal/audio/srt"
 	"github.com/iencodev/live-subtitles/internal/auth"
 	"github.com/iencodev/live-subtitles/internal/bus"
 	"github.com/iencodev/live-subtitles/internal/config"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/hwcheck"
 	"github.com/iencodev/live-subtitles/internal/metrics"
+	"github.com/iencodev/live-subtitles/internal/models"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
 	"github.com/iencodev/live-subtitles/internal/provider/gemini"
 	"github.com/iencodev/live-subtitles/internal/provider/local/gemma"
 	"github.com/iencodev/live-subtitles/internal/provider/local/whisper"
 	"github.com/iencodev/live-subtitles/internal/provider/mock"
+	"github.com/iencodev/live-subtitles/internal/provider/selector"
 	"github.com/iencodev/live-subtitles/internal/recording"
 	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/internal/session"
 	"github.com/iencodev/live-subtitles/internal/store"
+	"github.com/iencodev/live-subtitles/internal/streamcc"
 	"github.com/iencodev/live-subtitles/internal/tlsutil"
 )
 
@@ -65,7 +71,12 @@ type App struct {
 	manager *session.Manager
 	tls     *tlsutil.Manager // HTTPS certificate; mode disabled when off
 	rec     *recording.Recorder
+	cc      *streamcc.Service
+	models  *models.Manager
 }
+
+// Version is the build version, set by cmd/livesubs from its ldflags.
+var Version = "dev"
 
 // New opens the data directory and wires services and routes. dist is the
 // built web app; red, which may be nil, learns secret values so the log
@@ -117,14 +128,27 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.Network = a.network
 	srv.Secrets = sec
 	srv.Sessions, srv.Captions, srv.Settings = st, st, st
+	srv.OverlayPresets = st
+	srv.Glossaries = st
 	srv.Auth = auth.New(st, auth.Options{AdminToken: cfg.AdminToken})
 	srv.TLS = a.tls
+	srv.Build = buildInfo()
 
 	// Realtime: browser audio in (/ws/ingest), sessions, captions out
 	// (/ws/captions) and admin events (/ws/admin).
 	captionBus := bus.New()
 	// The Gemini key and model are read at each session start (AI-11).
 	geminiKey := googleAPIKey(sec)
+	// Default-provider rule (AI-11): Gemini with a valid Google API key,
+	// local otherwise; mock only when a session names it.
+	rule := selector.New(selector.Options{
+		APIKey:    optionalKey(geminiKey),
+		Validator: gemini.KeyValidator{},
+		Local:     selector.LocalProbe{Settings: st.Settings}.Probe,
+		Publish:   func(ev api.AdminEvent) { a.manager.Events().Publish(ev) },
+		Logger:    log,
+	})
+	srv.Providers = rule
 	a.hub = ingest.NewHub(srv.Auth.VerifyIngestToken, ingest.Options{Logger: log})
 	// Recordings live in <data>/recordings/<session>/ (REC-1, REC-5).
 	a.rec = recording.New(recording.Options{Dir: filepath.Join(cfg.DataDir, "recordings"), Store: st,
@@ -134,12 +158,29 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	}
 	a.rec.StartRetention()
 	srv.Recordings = a.rec
+	// Stream closed captions (P3-16) see the captions the manager publishes.
+	a.cc = streamcc.New(streamcc.Options{Secrets: sec, Settings: st, Redactor: red, Logger: log})
+	srv.StreamCaptions = a.cc
+	// Metrics (P3-13): gauges read the manager and recorder at scrape time.
+	var mt *metrics.App
+	var observer session.Observer
+	if cfg.Metrics {
+		mt = metrics.NewApp(metrics.Sources{Sessions: func(ctx context.Context) ([]api.SessionStatus, error) {
+			return a.manager.Snapshot(ctx)
+		}, Recordings: a.rec.Usage})
+		observer = mt
+	}
+	mux.Handle("GET "+MetricsPath, metricsHandler(mt, srv.Auth, log))
+	localASR := &whisper.Provider{Settings: st.Settings, Logger: log}
+	localTranslator := &gemma.Translator{Settings: st.Settings}
 	a.manager = session.New(session.Options{
-		Sessions: st,
-		Captions: st,
-		Settings: st,
-		Bus:      captionBus,
-		// Until the default-provider rule (P2-07), `default` resolves to mock.
+		Sessions:        st,
+		Captions:        st,
+		Settings:        st,
+		Bus:             a.cc.Tap(captionBus),
+		DefaultProvider: rule.DefaultProvider,
+		// The session's glossary goes to the ASR and the translators (AI-7).
+		Glossaries: st,
 		Providers: map[domain.ProviderKind]session.Provider{
 			api.ProviderKindMock: {ASR: &mock.ASR{Latency: mockLatency}, Translator: &mock.Translator{}},
 			api.ProviderKindGemini: {
@@ -147,21 +188,39 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 				Translator: &gemini.Translator{APIKey: geminiKey, Settings: st.Settings},
 			},
 			// Local: whisper-server ASR + Gemma via Ollama.
-			api.ProviderKindLocal: {
-				ASR:        &whisper.Provider{Settings: st.Settings, Logger: log},
-				Translator: &gemma.Translator{Settings: st.Settings},
-			},
+			api.ProviderKindLocal: {ASR: localASR, Translator: localTranslator},
 		},
-		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
-		IngestStatus:  a.hub.Status,
-		ReleaseIngest: a.hub.Remove,
-		Pricing:       &metrics.Pricing{GeminiASR: cfg.GeminiASRPrices, GeminiTranslation: cfg.GeminiTranslationPrices},
-		Recorder:      a.rec,
-		Logger:        log,
+		IngestSource:   func(id string) domain.AudioSource { return a.hub.Source(id) },
+		IngestStatus:   a.hub.Status,
+		ReleaseIngest:  a.hub.Remove,
+		Pricing:        &metrics.Pricing{GeminiASR: cfg.GeminiASRPrices, GeminiTranslation: cfg.GeminiTranslationPrices},
+		Recorder:       a.rec,
+		Observer:       observer,
+		StreamCaptions: a.cc,
+		Logger:         log,
 	})
+	a.cc.Bind(a.manager.Events().Publish, a.manager.StatusOf)
 	srv.Manager = a.manager
+	rule.Warm(ctx)
+	// Hardware self-check and benchmark (AI-12), model downloads (AI-13).
+	hw := hwcheck.New(hwcheck.Options{Settings: st.Settings, FFmpeg: &ffmpeg.Prober{Binary: cfg.FFmpeg},
+		ASR: localASR, Translator: localTranslator, DataDir: cfg.DataDir, Logger: log})
+	srv.Hardware = hw
+	go logHardware(context.WithoutCancel(ctx), hw, log)
+	a.models = models.New(models.Options{Dir: cfg.ModelsDir, Settings: st.Settings, Logger: log,
+		Recommended: func(ctx context.Context) (string, string) {
+			r := hw.Recommendation(ctx)
+			return r.WhisperModel, r.GemmaModel
+		},
+		Publish: func(m api.LocalModel) {
+			a.manager.Events().Publish(api.AdminEvent{Type: api.AdminEventTypeModelProgress, At: time.Now(), Model: &m})
+		},
+	})
+	srv.Models = a.models
 	// Test sources may read files from the data directory and ./testdata.
 	srv.Files = &ffmpeg.Files{Binary: cfg.FFmpeg, Roots: []string{cfg.DataDir, "testdata"}}
+	// SRT ingest (AUD-5): one ffmpeg listener per session, from settings.srt.port up.
+	srv.SRT = srt.New(srt.Options{Binary: cfg.FFmpeg, Settings: st, Secrets: sec, Redact: red.Add, Logger: log})
 	srv.CaptionsWS = bus.NewCaptionsHandler(captionBus, log, bus.WithSessionLookup(func(ctx context.Context, id string) error {
 		_, err := st.GetSession(ctx, id)
 		return err
@@ -169,8 +228,38 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.IngestWS = a.hub.ServeIngest
 	srv.AdminWS = a.manager.AdminHandler(log)
 
-	a.handler = srv.Handler(mux, log)
+	a.handler = observe(srv.Handler(mux, log), log, mt)
 	return a, nil
+}
+
+// logHardware runs the hardware self-check at startup (AI-12).
+func logHardware(ctx context.Context, hw *hwcheck.Checker, log *slog.Logger) {
+	r := hw.Report(ctx)
+	gpus := make([]string, 0, len(r.Gpus))
+	for _, g := range r.Gpus {
+		gpus = append(gpus, fmt.Sprintf("%s (%s)", g.Name, g.Backend))
+	}
+	log.Info("hardware check", "cpu", r.Cpu.Model, "cores", r.Cpu.Cores, "memory_gib", r.MemoryBytes>>30,
+		"gpus", strings.Join(gpus, ", "), "whisper_server", r.Runtimes.Whisper.Reachable, "ollama", r.Runtimes.Ollama.Reachable,
+		"ffmpeg", r.Runtimes.Ffmpeg.Reachable, "recommended_whisper", r.Recommendation.WhisperModel,
+		"recommended_gemma", r.Recommendation.GemmaModel, "local_realtime_likely", r.Recommendation.LocalRealtimeLikely)
+}
+
+// buildInfo is the version, the VCS commit Go stamped into the binary,
+// and the mode: dev for an unversioned build, edge otherwise.
+func buildInfo() handlers.BuildInfo {
+	b := handlers.BuildInfo{Version: Version, Mode: api.Edge}
+	if Version == "dev" {
+		b.Mode = api.Dev
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range info.Settings {
+			if s.Key == "vcs.revision" && len(s.Value) >= 7 {
+				b.Commit = s.Value[:7]
+			}
+		}
+	}
+	return b
 }
 
 // googleAPIKey reads the Google API key (Gemini) from the secret store
@@ -185,9 +274,22 @@ func googleAPIKey(sec domain.SecretStore) func(ctx context.Context) (string, err
 	}
 }
 
+// optionalKey turns a missing key into "" for the default-provider rule.
+func optionalKey(key func(context.Context) (string, error)) func(context.Context) (string, error) {
+	return func(ctx context.Context) (string, error) {
+		v, err := key(ctx)
+		if errors.Is(err, gemini.ErrNoAPIKey) {
+			return "", nil
+		}
+		return v, err
+	}
+}
+
 // Close stops running sessions and releases the data directory.
 func (a *App) Close() error {
+	a.models.Close()
 	a.manager.Close()
+	a.cc.Close()
 	a.rec.Close()
 	a.hub.Close()
 	return a.store.Close()
@@ -202,11 +304,24 @@ func (a *App) network() api.NetworkInfo {
 			a.log.Warn("list network interfaces", "err", err)
 		}
 	}
-	return netinfo.Info(ifs, netinfo.Options{
+	opts := netinfo.Options{
 		HTTPPort:      int(a.port.Load()),
 		HTTPSPort:     a.tls.HTTPSPort(),
 		PublicBaseURL: a.cfg.PublicBaseURL,
-	})
+	}
+	// Settings › Network, read on every call so a save applies at once;
+	// its public URL overrides --public-base-url.
+	if st, err := a.store.Settings(context.Background()); err == nil {
+		if p := st.Network.PublicBaseUrl; p != nil && *p != "" {
+			opts.PublicBaseURL = *p
+		}
+		if p := st.Network.PreferredInterface; p != nil {
+			opts.PreferredInterface = *p
+		}
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		a.log.Warn("read network settings", "err", err)
+	}
+	return netinfo.Info(ifs, opts)
 }
 
 // loopbackOnly reports a listen address the LAN can't reach (127.0.0.1, ::1, localhost).

@@ -4,6 +4,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/domain"
@@ -43,9 +44,37 @@ func (s *Store) UpdateGlossary(ctx context.Context, g domain.Glossary) error {
 	return s.execOne(ctx, `UPDATE glossaries SET name = ?, data = ? WHERE id = ?`, g.Name, data, g.Id)
 }
 
-// DeleteGlossary removes the glossary with id.
+// SeedGlossaryID is the glossary of common tech terms that migration 0003
+// creates with the database.
+const SeedGlossaryID = "tech-terms"
+
+// DeleteGlossary removes the glossary with id and, in the same
+// transaction, detaches it from the sessions (bumping their updatedAt) and
+// from settings.defaultGlossaryId.
 func (s *Store) DeleteGlossary(ctx context.Context, id string) error {
-	return s.execOne(ctx, `DELETE FROM glossaries WHERE id = ?`, id)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `DELETE FROM glossaries WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	if err := requireRow(res, domain.ErrNotFound); err != nil {
+		return err
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := tx.ExecContext(ctx, `UPDATE sessions
+		SET data = json_set(json_remove(data, '$.glossaryId'), '$.updatedAt', ?)
+		WHERE json_extract(data, '$.glossaryId') = ?`, now, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE settings SET data = json_remove(data, '$.defaultGlossaryId')
+		WHERE json_extract(data, '$.defaultGlossaryId') = ?`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // CreateOverlayPreset inserts p.

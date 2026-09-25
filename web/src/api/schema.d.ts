@@ -626,7 +626,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Check the stored secret against its service (e.g. Gemini API key) (SEC-5) */
+        /**
+         * Check the stored secret against its service (e.g. Gemini API key) (SEC-5)
+         * @description Results are cached per key value and a repeated check within a few seconds returns the previous result. 404 `secret.not_found` when the secret isn't set; 422 `secret.validation_unsupported` for a secret that has no check.
+         */
         post: operations["validateSecret"];
         delete?: never;
         options?: never;
@@ -680,7 +683,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public, the overlay page loads its preset without auth */
+        /**
+         * Public, the overlay page loads its preset without auth
+         * @description The built-in presets from docs/design.md (`classic`, `outline`,
+         *     `lower-third`, marked `builtIn`) come first, then the saved ones,
+         *     by name. Built-ins can't be updated or deleted.
+         */
         get: operations["listOverlayPresets"];
         put?: never;
         /** Create overlay preset */
@@ -926,10 +934,10 @@ export interface components {
         /** @enum {string} */
         SubtitleFormat: "vtt" | "srt" | "txt" | "json";
         /**
-         * @description Known secret names; extended as providers are added
+         * @description Known secret names; extended as providers are added. `srt_passphrase` encrypts SRT ingest (10–79 characters). `youtube_caption_url` is per session: it is managed through /api/sessions/{sessionId}/stream-captions/youtube-url and is not listed by /api/secrets.
          * @enum {string}
          */
-        SecretName: "google_api_key" | "obs_websocket_password";
+        SecretName: "google_api_key" | "obs_websocket_password" | "srt_passphrase" | "youtube_caption_url";
         /**
          * Format: date-time
          * @example 2026-09-25T13:30:00Z
@@ -1026,8 +1034,20 @@ export interface components {
             realTimeFactor: number;
             asrMs: number;
             translationMs: number;
+            /** @description realTimeFactor is at most maxRealTimeFactor: the local provider keeps up */
             ok: boolean;
             ranAt: components["schemas"]["Timestamp"];
+            /** @description Duration of the benchmark clip */
+            audioMs?: number;
+            /**
+             * @description Highest realTimeFactor that counts as ok
+             * @example 0.8
+             */
+            maxRealTimeFactor?: number;
+            /** @example large-v3-turbo */
+            whisperModel?: string;
+            /** @example gemma3:4b */
+            gemmaModel?: string;
         };
         SetupStatus: {
             completed: boolean;
@@ -1094,7 +1114,10 @@ export interface components {
             capture: string;
             /** @example http://192.168.1.20:8080/replay/main-stage */
             replay: string;
-            /** @example srt://192.168.1.20:9000?streamid=main-stage */
+            /**
+             * @description Where an encoder pushes MPEG-TS over SRT; absent when ffmpeg lacks libsrt or SRT is disabled
+             * @example srt://192.168.1.20:9000?streamid=main-stage
+             */
             srtIngest?: string | null;
         };
         StageStyle: {
@@ -1110,6 +1133,7 @@ export interface components {
             /** @default 3 */
             lines: number;
         };
+        /** @description `source: browser` (the default) waits for /ws/ingest; `source: srt` opens the session's SRT listener (SessionUrls.srtIngest) */
         SessionStartRequest: {
             source?: components["schemas"]["AudioSourceKind"];
         };
@@ -1159,6 +1183,20 @@ export interface components {
             recordingId?: string | null;
             srt?: components["schemas"]["SrtStats"];
             streamCaptions?: components["schemas"]["StreamCaptionStatus"];
+            recovering?: components["schemas"]["RecoveryStatus"];
+            /** @description Automatic restarts of the provider stream or the audio source in this run (SES-5) */
+            restarts?: number;
+            error?: components["schemas"]["Error"];
+        };
+        /** @description Present while the session restarts a crashed provider stream or a failed audio source (SES-5). The session stays `live`; after `maxAttempts` failed restarts in a row it goes to `error`. */
+        RecoveryStatus: {
+            /** @enum {string} */
+            component: "provider" | "source";
+            /** @description Restart attempt in progress (the first is 1) */
+            attempt: number;
+            maxAttempts: number;
+            since: components["schemas"]["Timestamp"];
+            retryAt?: components["schemas"]["Timestamp"];
             error?: components["schemas"]["Error"];
         };
         AudioStatus: {
@@ -1251,6 +1289,11 @@ export interface components {
             sourceLang: components["schemas"]["LanguageCode"];
             /** @example 1720 */
             latencyMs?: number;
+            /**
+             * @description Audio lost just before this caption, because the provider or the audio source restarted or the capture station reconnected (SES-5). Set on the first captions after the gap, on every track; live only, not kept in the caption store.
+             * @example 2400
+             */
+            gapBeforeMs?: number;
             /** @default false */
             edited: boolean;
             /** @default false */
@@ -1386,10 +1429,14 @@ export interface components {
                 /** @default ws://127.0.0.1:4455 */
                 websocketUrl: string;
             };
+            /** @description SRT ingest (AUD-5); the passphrase is stored as the `srt_passphrase` secret */
             srt?: {
                 /** @default true */
                 enabled: boolean;
-                /** @default 9000 */
+                /**
+                 * @description First UDP port: each session that uses SRT gets its own listener port from here up (see SessionUrls.srtIngest)
+                 * @default 9000
+                 */
                 port: number;
                 /** @default 200 */
                 latencyMs: number;
@@ -1398,7 +1445,10 @@ export interface components {
         };
         ProvidersResponse: {
             defaultProvider: components["schemas"]["ProviderKind"];
-            /** @enum {string} */
+            /**
+             * @description Omitted when a Google API key is set but couldn't be checked yet (Google unreachable); the gemini entry's `reasonCode` then says why.
+             * @enum {string}
+             */
             defaultReason?: "google_api_key_valid" | "no_google_api_key" | "google_api_key_invalid";
             providers: components["schemas"]["ProviderInfo"][];
         };
@@ -1503,6 +1553,8 @@ export interface components {
         };
         OverlayPreset: components["schemas"]["OverlayPresetInput"] & {
             id: string;
+            /** @description A built-in preset from docs/design.md, which can't be changed */
+            readonly builtIn?: boolean;
         };
         NetworkInfo: {
             hostname?: string;
@@ -1744,6 +1796,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listLanguages: {
@@ -2217,6 +2270,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     deleteYoutubeCaptionUrl: {
@@ -2240,6 +2294,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     sendTestStreamCaption: {
@@ -2653,6 +2708,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listGlossaries: {
@@ -2873,6 +2929,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     deleteOverlayPreset: {
@@ -2895,6 +2952,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getNetworkInfo: {

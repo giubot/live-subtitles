@@ -303,8 +303,9 @@ func (crashingASR) Start(ctx context.Context, _ domain.ASRConfig) (chan<- domain
 	return in, out, nil
 }
 
+// A provider that crashes at every start is restarted, then given up on.
 func TestProviderCrash(t *testing.T) {
-	e := newEnv(t, Options{Providers: map[domain.ProviderKind]Provider{
+	e := newEnv(t, Options{Restart: fastRestart(2), Providers: map[domain.ProviderKind]Provider{
 		api.ProviderKindMock: {ASR: crashingASR{}, Translator: &mock.Translator{}},
 	}}, sess("main", "es"))
 	if _, err := e.m.Start(t.Context(), "main", &fake.Source{Realtime: true}); err != nil {
@@ -312,7 +313,7 @@ func TestProviderCrash(t *testing.T) {
 	}
 	waitState(t, e.m, "main", api.SessionStateError)
 	st, _ := e.m.Status(t.Context(), "main")
-	if st.Error == nil || st.Error.Code != CodeProviderError {
+	if st.Error == nil || st.Error.Code != CodeProviderFailed {
 		t.Errorf("status %+v", st)
 	}
 }

@@ -112,6 +112,16 @@
         "title": "OBS WebSocket password",
         "intro": "Only needed to send captions to OBS’s own caption track.",
         "field": "New password"
+      },
+      "srt_passphrase": {
+        "title": "SRT passphrase",
+        "intro": "Encrypts audio sent over SRT from OBS, vMix or an encoder. Use 10 to 79 characters.",
+        "field": "New passphrase"
+      },
+      "youtube_caption_url": {
+        "title": "YouTube caption URL",
+        "intro": "The ingestion URL from YouTube Live Control Room. Each session has its own; set it in the session.",
+        "field": "New caption URL"
       }
     },
     "fieldHelp": "Stored encrypted on this computer. It can’t be shown again, only replaced.",
