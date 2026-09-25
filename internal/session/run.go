@@ -51,6 +51,7 @@ type run struct {
 	st        api.SessionState
 	startedAt time.Time
 	detected  domain.LanguageCode
+	pending   langVote  // evidence for switching detected (language.go)
 	err       api.Error // last error, shown in the status
 	fatal     bool      // err ended the run
 	// Usage reported during this run, by speech recognition and by the
@@ -200,7 +201,7 @@ func (r *run) consume(out <-chan domain.ASREvent, fan *translate.Fanout) {
 		if text == "" {
 			continue
 		}
-		lang := r.sourceLang(ev.Lang, ev.Final)
+		lang := r.sourceLang(ev.Lang, ev.Final, text)
 		c := api.Caption{
 			SessionId:  r.id,
 			Lang:       domain.SourceTrack,
@@ -256,32 +257,6 @@ func (r *run) publish(c api.Caption) {
 			r.m.log.Error("store caption", "session", r.id, "track", c.Lang, "segment", c.SegmentId, "err", err)
 		}
 	}
-}
-
-// sourceLang is the caption's source language: the pinned one, else the
-// provider's detection, else the last detected language. A final with a
-// new language updates the detected language (AI-10; P2-05 adds hysteresis).
-func (r *run) sourceLang(detected domain.LanguageCode, final bool) domain.LanguageCode {
-	pinned := r.sess.SourceLanguage
-	r.mu.Lock()
-	lang := detected
-	switch {
-	case pinned == api.En || pinned == api.Es:
-		lang = domain.LanguageCode(pinned)
-	case lang == "" && r.detected != "":
-		lang = r.detected
-	case lang == "":
-		lang = "en"
-	}
-	changed := final && lang != r.detected
-	if changed {
-		r.detected = lang
-	}
-	r.mu.Unlock()
-	if changed {
-		r.m.changed(r)
-	}
-	return lang
 }
 
 // latencyMs is how long after the end of its audio (end, on the session
