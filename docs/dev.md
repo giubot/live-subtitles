@@ -1,6 +1,8 @@
 # Development guide
 
-How to run Live Subtitles from source. The [plan](plan.md) covers the architecture and the task board.
+How to run Live Subtitles from source. The [plan](plan.md) covers the architecture and the task board. For operating an event, start with the [user manual](manual/README.md).
+
+[Source setup](#from-source) · [Commands](#everyday-commands) · [Credentials](#credentials-and-models) · [Configuration](#configuration) · [Application routes](#application-routes)
 
 ## Requirements
 
@@ -8,6 +10,25 @@ How to run Live Subtitles from source. The [plan](plan.md) covers the architectu
 - `ffmpeg` (file/URL/SRT sources, recording; `brew install ffmpeg`)
 - For the local AI provider: whisper.cpp and Ollama (below)
 - For the test clips: `yt-dlp` (`brew install yt-dlp`)
+
+## From source
+
+Requirements: Go 1.26+, Node 22+ with pnpm (`corepack enable` picks the pinned version from `web/package.json`), Python 3, [Task](https://taskfile.dev) (`brew install go-task`, or see its install page), and ffmpeg.
+
+```sh
+git clone https://github.com/giubot/live-subtitles.git
+cd live-subtitles
+corepack enable
+task dev      # installs the web dependencies, then the Go server (:8080) + Vite (:5173)
+```
+
+Open http://localhost:5173/setup. To try captions without any AI set up, create a session with the **mock** provider: it produces a scripted talk from any sound, or silence.
+
+```sh
+task build    # web app + single binary in bin/livesubs
+task check    # everything CI runs
+task          # list every command
+```
 
 ## Everyday commands
 
@@ -425,3 +446,70 @@ The SRT tests (`internal/audio/ffmpeg/srt_e2e_test.go`, `internal/api/handlers/s
 ## Troubleshooting
 
 - **`localhost:8080` answers with another app's 404.** Another process is listening on `127.0.0.1:8080`, and the Go server binds `*:8080` alongside it without an error. Check with `lsof -nP -iTCP:8080 -sTCP:LISTEN`, then stop it or use `task dev PORT=18080`.
+
+## Credentials and models
+
+| What | Needed for | How to set it |
+|---|---|---|
+| Admin PIN | The admin pages | Chosen in `/setup` on first run |
+| `LIVESUBS_ADMIN_TOKEN` (optional, 16+ characters) | Scripts and Prometheus: `Authorization: Bearer …` on the admin API and `/metrics` | Environment only |
+| Google API key ([Google AI Studio](https://aistudio.google.com/apikey)) | The Gemini provider | Admin → Providers, or `GEMINI_API_KEY` / `GOOGLE_API_KEY` in the environment |
+| `LIVESUBS_MASTER_KEY` | Saving keys in the UI where there is no OS keychain (Docker, headless Linux) | Environment only |
+| YouTube caption ingestion URL | YouTube closed captions | Per session, in the session's stream captions |
+| OBS websocket password | OBS closed captions (`SendStreamCaption`) | Admin → Providers |
+| SRT passphrase (optional, 10–79 characters) | Encrypted SRT ingest | Admin → Settings, `PUT /api/secrets/srt_passphrase`, or `LIVESUBS_SECRET_SRT_PASSPHRASE` |
+
+Secrets saved in the UI go to the OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service) or, without one, to `<data dir>/secrets.enc`, encrypted with `LIVESUBS_MASTER_KEY`. A secret set by an environment variable can't be changed from the UI. Every secret also has a generic variable, `LIVESUBS_SECRET_<NAME>` (for example `LIVESUBS_SECRET_OBS_WEBSOCKET_PASSWORD`, or `LIVESUBS_SECRET_SESSION_MAIN_YOUTUBE_URL` for session `main`).
+
+**Local models** (only for the local provider): whisper.cpp's `whisper-server` on port 8178 with a multilingual model (default `large-v3-turbo`; `medium` or `small` on weaker hardware; never an English-only `.en` model), and Ollama on port 11434 with Gemma (default `gemma3:4b`, or `gemma3:1b`). Download them from the setup wizard, or with `task models:pull` from a source checkout. The hardware check recommends sizes and a benchmark measures whether your machine keeps up in real time. Gemma's weights are downloaded under Google's terms and are not part of this repository. Setup per OS: [`dev.md` § Local AI provider](#local-ai-provider).
+
+## Configuration
+
+Process settings come from flags or `LIVESUBS_*` variables (a flag wins over its variable, which wins over the default; `livesubs -h` lists them). Everything else (languages, providers, models and their URLs, SRT, recording, overlay presets, public URL) is in Admin → Settings and applies without a restart.
+
+| Flag | Variable | Default | What |
+|---|---|---|---|
+| `--addr` | `LIVESUBS_ADDR` | `0.0.0.0:8080` | HTTP listen address |
+| `--https-addr` | `LIVESUBS_HTTPS_ADDR` | the `--addr` host on `:8443` | HTTPS listen address |
+| `--tls` | `LIVESUBS_TLS` | `auto` | `auto`, `local-ca`, `provided`, `acme` or `disabled` ([HTTPS](#https)) |
+| `--tls-cert`, `--tls-key` | `LIVESUBS_TLS_CERT`, `LIVESUBS_TLS_KEY` | | Your own certificate (PEM with chain) and key |
+| `--acme-email` | `LIVESUBS_ACME_EMAIL` | | Contact address for Let's Encrypt |
+| `--public-base-url` | `LIVESUBS_PUBLIC_BASE_URL` | LAN address | Base of generated links and QR codes, e.g. `https://subs.example.com`; an `https://` public domain turns on Let's Encrypt in `auto` |
+| `--data-dir` | `LIVESUBS_DATA_DIR` | `./data` | SQLite database, recordings, certificates, encrypted secrets |
+| `--models-dir` | `LIVESUBS_MODELS_DIR` | `./models` | whisper models, shared with whisper-server |
+| `--ffmpeg` | `LIVESUBS_FFMPEG` | `ffmpeg` | ffmpeg executable |
+| `--no-keychain` | `LIVESUBS_NO_KEYCHAIN` | `false` | Never use the OS keychain; secrets go to the encrypted file only |
+| `--metrics` | `LIVESUBS_METRICS` | `false` | Serve Prometheus metrics at `/metrics` (admin only) |
+| `--log-format` | `LIVESUBS_LOG_FORMAT` | `text` | `text` or `json` |
+| `--log-level` | `LIVESUBS_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
+| `--gemini-asr-audio-usd-per-min` | `LIVESUBS_GEMINI_ASR_AUDIO_USD_PER_MIN` | `0.005` | Price estimate for the cost shown per session ([Latency and cost](#latency-and-cost)) |
+| `--gemini-asr-output-usd-per-mtok` | `LIVESUBS_GEMINI_ASR_OUTPUT_USD_PER_MTOK` | `21` | 〃 |
+| `--gemini-translation-input-usd-per-mtok` | `LIVESUBS_GEMINI_TRANSLATION_INPUT_USD_PER_MTOK` | `0.3` | 〃 |
+| `--gemini-translation-output-usd-per-mtok` | `LIVESUBS_GEMINI_TRANSLATION_OUTPUT_USD_PER_MTOK` | `2.5` | 〃 |
+| `--version` | | | Print the version and exit |
+
+Environment only: `LIVESUBS_ADMIN_TOKEN`, `LIVESUBS_MASTER_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` and `LIVESUBS_SECRET_<NAME>` (see [Credentials](#credentials-and-models)).
+
+Ports: **8080/tcp** (HTTP: audience, stage, overlay, API, WebSockets), **8443/tcp** (HTTPS: remote capture and admin), and **9000 and up/udp** (SRT, one port per session). The audience only needs 8080.
+
+## Application routes
+
+`<session>` is the session's address (slug), such as `main-stage`. The admin's **Links** dialog has every link for a session, with a QR code.
+
+| URL | Who | What |
+|---|---|---|
+| `/setup` | Operator, first run | Admin PIN, hardware check, models, Google key, first session |
+| `/admin` | Operator (PIN) | Dashboard: sessions, level, latency, viewers, errors; also `/admin/settings`, `/admin/providers`, `/admin/glossaries`, `/admin/overlays`, `/admin/recordings`, `/admin/tls` |
+| `/capture/<session>?token=…` | The computer with the audio input | Sends audio to the session. Needs `http://localhost` or HTTPS for the microphone |
+| `/s` and `/s/<session>` | Audience (QR code) | All sessions, and one session's live captions (`?lang=es`, or `source` for the original) |
+| `/stage/<session>` | Projector | Big captions, never themed (`?preset=yellow-on-black&lines=2&dual=1&lang=en&lang2=source&qr=0`) |
+| `/overlay/<session>` | OBS / vMix | Transparent overlay (`?lang=es&preset=classic`, see the [OBS / vMix guide](manual/obs-vmix-guide.md)) |
+| `/replay/<session>` | Anyone, after the talk | Recorded audio with the synced transcript and downloads |
+
+Any page takes `?ui=es`, `?ui=en` or `?ui=pt` to set the interface language. Operations endpoints: `/healthz` (public), `/metrics` (admin, with `--metrics`) and the REST API under `/api` ([`api/openapi.yaml`](../api/openapi.yaml)).
+
+## Favicons
+
+`web/public/favicon.svg` is the font-independent CC badge, using the existing light-theme `accent` and `accentInk` colours from `web/src/theme/palette.ts`, as in the design reference's wordmark. It stays cobalt in both themes so it remains recognizable in browser tabs. `web/index.html` also links a 16/32/48 px ICO fallback and a 180 px Apple touch icon. Vite copies these files to `web/dist`, where the Go binary embeds them with the app.
+
+When changing the badge, update the SVG and regenerate both raster versions from the same geometry and palette. Check the 16 px version for legibility and preview it on light and dark backgrounds. The README uses the SVG directly.

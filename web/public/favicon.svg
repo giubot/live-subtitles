@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- SPDX-License-Identifier: Apache-2.0 -->
+  <!-- Existing light-theme accent and accentInk from web/src/theme/palette.ts. -->
+  <rect width="64" height="64" rx="10" fill="#076be3" />
+  <g fill="#f8fafd">
+    <path d="M27 21H13V43H27V37H19V27H27Z" />
+    <path d="M51 21H37V43H51V37H43V27H51Z" />
+  </g>
+</svg>

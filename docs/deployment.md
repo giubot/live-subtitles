@@ -1,6 +1,6 @@
 # Deployment
 
-How to run Live Subtitles outside development: a release binary, or Docker, in one of the [deployment modes](#deployment-modes) (dev, edge, cloud). For running from source, see [dev.md](dev.md); for the event day, the [runbook](runbook.md); for how many rooms and viewers one node handles, the hardware per edge node and the Gemini cost per hour, [scaling.md](scaling.md).
+How to run Live Subtitles outside development: a release binary, or Docker, in one of the [deployment modes](#deployment-modes) (dev, edge, cloud). For running from source, see [dev.md](dev.md); for the event day, the [runbook](manual/runbook.md); for how many rooms and viewers one node handles, the hardware per edge node and the Gemini cost per hour, [scaling.md](scaling.md).
 
 ## Ports
 
@@ -95,13 +95,13 @@ LIVESUBS_ADMIN_TOKEN=$(openssl rand -hex 24) task dev   # also allow scripts and
 
 ### Edge (one instance per room)
 
-The event default: each room has its own mini PC with its own server, sessions, recordings and certificate. One room going down doesn't affect the others, and with the local provider a room keeps working when the venue's internet goes away (with Gemini it needs the uplink). Adding a room means adding a mini PC; nothing is shared. Setup, autostart, kiosk and the pre-show checklist are in the [runbook](runbook.md).
+The event default: each room has its own mini PC with its own server, sessions, recordings and certificate. One room going down doesn't affect the others, and with the local provider a room keeps working when the venue's internet goes away (with Gemini it needs the uplink). Adding a room means adding a mini PC; nothing is shared. Setup, autostart, kiosk and the pre-show checklist are in the [runbook](manual/runbook.md).
 
-- **Capture** runs on the same mini PC at `http://localhost:8080/capture/<session>?token=…`: `localhost` is a secure context, so the microphone works without HTTPS. Or vMix/OBS push the program audio over [SRT](obs-vmix-guide.md#srt-audio-from-obs-or-vmix).
+- **Capture** runs on the same mini PC at `http://localhost:8080/capture/<session>?token=…`: `localhost` is a secure context, so the microphone works without HTTPS. Or vMix/OBS push the program audio over [SRT](manual/obs-vmix-guide.md#srt-audio-from-obs-or-vmix).
 - **Audience** phones use plain HTTP on the LAN (`http://<lan-ip>:8080/s/<session>`, TLS-3), so they never see a certificate warning. Give the mini PC a fixed IP, or set a local DNS name as the public URL.
 - **HTTPS** (`:8443`, local CA) is for remote capture stations and admin laptops, which install the CA once from Admin → TLS.
 
-Example (`/etc/livesubs.env` for the systemd unit in the [runbook](runbook.md#server-autostart)):
+Example (`/etc/livesubs.env` for the systemd unit in the [runbook](manual/runbook.md#server-autostart)):
 
 ```sh
 LIVESUBS_DATA_DIR=/var/lib/livesubs

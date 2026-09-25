@@ -1,5 +1,7 @@
 # OBS / vMix / YouTube guide
 
+[← User manual](README.md) · [Live Subtitles](../../README.md)
+
 How to put Live Subtitles into a produced stream:
 
 1. **Burn captions into the picture** with the transparent overlay, in [OBS](#obs-browser-source) or [vMix](#vmix-web-browser-input).
@@ -52,7 +54,7 @@ Invalid values are ignored and the preset's value is used. Colours in a URL need
    - **Custom CSS**: empty, or OBS's default, which only makes the background transparent.
    - Leave *Shutdown source when not visible* and *Refresh browser when scene becomes active* off, so the captions keep their connection across scene changes.
 3. Put the source **above** the video source in the list, so it's drawn on top. Don't add a chroma key: the page is already transparent.
-4. Speak into the room (or play a file into the session, see [dev.md](dev.md#feeding-a-file-to-a-session)) and check that the captions show and fade after the pause.
+4. Speak into the room (or play a file into the session, see [dev.md](../dev.md#feeding-a-file-to-a-session)) and check that the captions show and fade after the pause.
 
 If the overlay stops updating after a network change, right-click the source → **Refresh**.
 
@@ -89,7 +91,7 @@ Instead of the mini PC's line-in, the production can send the mixed program audi
 
 ### On the server
 
-- ffmpeg must be built with libsrt: `ffmpeg -hide_banner -protocols | grep -w srt`. The Docker image and most Linux packages have it; Homebrew's default ffmpeg doesn't (see [dev.md § SRT ingest](dev.md#srt-ingest)).
+- ffmpeg must be built with libsrt: `ffmpeg -hide_banner -protocols | grep -w srt`. The Docker image and most Linux packages have it; Homebrew's default ffmpeg doesn't (see [dev.md § SRT ingest](../dev.md#srt-ingest)).
 - SRT is on by default (Admin → Settings → SRT: first UDP port, default 9000, and latency, default 200 ms).
 - Each session that uses SRT gets **its own UDP port**, counting up from the first port (9000, 9001, …). Open those UDP ports in the firewall; 9000–9009 covers ten sessions.
 - In the session dialog (Admin → Sessions → edit), set **Audio input** to *SRT from an encoder (OBS, vMix…)*. The session's links then show **SRT input for the encoder**, the address to paste into OBS or vMix (for example `srt://192.168.1.20:9000?streamid=main-stage`). Start the session: it goes live and waits for the sender. The choice is kept per session in that browser.
