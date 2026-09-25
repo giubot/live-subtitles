@@ -151,7 +151,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	a.rec.StartRetention()
 	srv.Recordings = a.rec
 	// Stream closed captions (P3-16) see the captions the manager publishes.
-	a.cc = streamcc.New(streamcc.Options{Secrets: sec, Redactor: red, Logger: log})
+	a.cc = streamcc.New(streamcc.Options{Secrets: sec, Settings: st, Redactor: red, Logger: log})
 	srv.StreamCaptions = a.cc
 	// Metrics (P3-13): gauges read the manager and recorder at scrape time.
 	var mt *metrics.App

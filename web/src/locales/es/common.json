@@ -522,6 +522,21 @@
         "title": "Se saltearon algunos subtítulos",
         "why": "{{count}} subtítulos no se pudieron mandar a tiempo y eran demasiado viejos para mostrarlos en la transmisión.",
         "fix": "Revisá la conexión con YouTube. Los subtítulos nuevos se mandan apenas se recupere."
+      },
+      "obs_unreachable": {
+        "title": "No se puede llegar a OBS",
+        "why": "El servidor no se pudo conectar al websocket de OBS para mandar subtítulos: puede que OBS esté cerrado o reiniciándose, o que el servidor websocket esté apagado.",
+        "fix": "Abrí OBS, activá Herramientas → Configuración del servidor WebSocket → Habilitar servidor WebSocket y revisá la URL del websocket en Configuración. Los subtítulos se reintentan solos."
+      },
+      "obs_auth_failed": {
+        "title": "OBS rechazó la contraseña",
+        "why": "El servidor websocket de OBS pide contraseña, y la contraseña guardada del websocket de OBS falta o no es la correcta.",
+        "fix": "Copiá la contraseña de OBS (Herramientas → Configuración del servidor WebSocket → Mostrar información de conexión) y guardala en Configuración como contraseña del websocket de OBS."
+      },
+      "obs_rejected": {
+        "title": "OBS no aceptó el subtítulo",
+        "why": "OBS rechazó el subtítulo ({{comment}}). Los subtítulos solo salen mientras OBS está transmitiendo.",
+        "fix": "Empezá la transmisión en OBS y después mandá un subtítulo de prueba."
       }
     }
   }

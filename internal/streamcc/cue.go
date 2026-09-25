@@ -33,6 +33,9 @@ type item struct {
 	// end is when the speech ended (local wall clock); the item is stale
 	// once it is older than the sink's MaxAge.
 	end time.Time
+	// done counts the cues already shown, for targets that send cue by
+	// cue (OBS), so a retry doesn't repeat them.
+	done int
 }
 
 // wrap splits text into lines of at most width characters (runes),

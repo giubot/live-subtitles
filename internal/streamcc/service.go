@@ -26,6 +26,10 @@ const (
 	CodeServerError = "streamcc.server_error"
 	CodeRejected    = "streamcc.rejected"
 	CodeDropped     = "streamcc.dropped"
+
+	CodeOBSUnreachable = "streamcc.obs_unreachable"
+	CodeOBSAuthFailed  = "streamcc.obs_auth_failed"
+	CodeOBSRejected    = "streamcc.obs_rejected"
 )
 
 // Errors returned by Service methods.
@@ -51,6 +55,9 @@ const (
 // Options configure a Service. Secrets is required.
 type Options struct {
 	Secrets domain.SecretStore
+	// Settings gives obs.websocketUrl for the OBS target; nil uses
+	// DefaultOBSURL.
+	Settings domain.SettingsStore
 	// Redactor learns the ingestion URLs the service reads, so logs mask
 	// them even outside the secret store's own reads; nil is fine.
 	Redactor *secrets.Redactor
@@ -70,6 +77,9 @@ type Options struct {
 	DrainTimeout time.Duration
 	// MinBackoff and MaxBackoff bound the retry delay after a failed POST.
 	MinBackoff, MaxBackoff time.Duration
+	// OBSMinGap and OBSMaxGap bound how long one OBS caption stays up
+	// (defaults DefaultOBSMinGap, DefaultOBSMaxGap).
+	OBSMinGap, OBSMaxGap time.Duration
 }
 
 // Service sends the final captions of one chosen track per running session
@@ -82,6 +92,7 @@ type Options struct {
 type Service struct {
 	opts Options
 	log  *slog.Logger
+	obs  *obs // the OBS target, shared: one OBS streams at a time
 
 	mu       sync.Mutex
 	sessions map[string]*sessionState
@@ -127,7 +138,13 @@ func New(opts Options) *Service {
 	if opts.MaxBackoff < opts.MinBackoff {
 		opts.MaxBackoff = max(DefaultMaxBackoff, opts.MinBackoff)
 	}
-	return &Service{opts: opts, log: opts.Logger, sessions: map[string]*sessionState{}, live: map[*sink]struct{}{}}
+	if opts.OBSMinGap <= 0 {
+		opts.OBSMinGap = DefaultOBSMinGap
+	}
+	if opts.OBSMaxGap < opts.OBSMinGap {
+		opts.OBSMaxGap = max(DefaultOBSMaxGap, opts.OBSMinGap)
+	}
+	return &Service{opts: opts, log: opts.Logger, obs: newOBS(opts), sessions: map[string]*sessionState{}, live: map[*sink]struct{}{}}
 }
 
 // Bind connects the admin event stream: status changes are published as
@@ -203,14 +220,14 @@ func (s *Service) RunStarted(sess domain.Session) {
 	if cfg.Track != nil && *cfg.Track != "" {
 		track = *cfg.Track
 	}
-	maxChars := DefaultMaxChars
-	if cfg.MaxCharsPerLine != nil && *cfg.MaxCharsPerLine > 0 {
-		maxChars = *cfg.MaxCharsPerLine
-	}
+	maxChars := lineLength(cfg, target)
 
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
-	url := s.readURL(ctx, sess.Id)
-	cancel()
+	url := ""
+	if target == api.YoutubeHttp {
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+		url = s.readURL(ctx, sess.Id)
+		cancel()
+	}
 
 	s.mu.Lock()
 	st := s.state(sess.Id)
@@ -227,7 +244,7 @@ func (s *Service) RunStarted(sess domain.Session) {
 
 	state := api.StreamCaptionStatusStateIdle
 	var e *api.Error
-	if url == "" {
+	if url == "" && target == api.YoutubeHttp {
 		state, e = api.StreamCaptionStatusStateError, &api.Error{Code: CodeNoURL, Message: "no caption ingestion URL is set"}
 	}
 	s.setStatus(sess.Id, func(st *api.StreamCaptionStatus) {
@@ -241,6 +258,19 @@ func (s *Service) RunStarted(sess domain.Session) {
 		delete(s.live, sk)
 		s.mu.Unlock()
 	}()
+}
+
+// lineLength is the session's line length for target: OBS encodes CEA-608,
+// whose lines hold 32 characters at most.
+func lineLength(cfg api.StreamCaptionsConfig, target api.StreamCaptionTarget) int {
+	n := DefaultMaxChars
+	if cfg.MaxCharsPerLine != nil && *cfg.MaxCharsPerLine > 0 {
+		n = *cfg.MaxCharsPerLine
+	}
+	if target == api.ObsWebsocket {
+		n = min(n, OBSMaxChars)
+	}
+	return n
 }
 
 // RunEnded stops the session's sink after it sends what's queued (up to
@@ -446,31 +476,36 @@ func (s *Service) Forget(ctx context.Context, sessionID string) {
 // enabled, and returns the resulting status. ErrNoURL when there's no
 // ingestion URL; a failed delivery is reported in the status.
 func (s *Service) SendTest(ctx context.Context, sess domain.Session, text string) (api.StreamCaptionStatus, error) {
+	cfg := api.StreamCaptionsConfig{}
+	if sess.StreamCaptions != nil {
+		cfg = *sess.StreamCaptions
+	}
 	target := api.YoutubeHttp
-	maxChars := DefaultMaxChars
-	if cfg := sess.StreamCaptions; cfg != nil {
-		if cfg.Target != nil && cfg.Target.Valid() {
-			target = *cfg.Target
-		}
-		if cfg.MaxCharsPerLine != nil && *cfg.MaxCharsPerLine > 0 {
-			maxChars = *cfg.MaxCharsPerLine
-		}
+	if cfg.Target != nil && cfg.Target.Valid() {
+		target = *cfg.Target
 	}
 	if strings.TrimSpace(text) == "" {
 		text = DefaultTestText
 	}
-	url := s.readURL(ctx, sess.Id)
-	if url == "" {
-		return api.StreamCaptionStatus{}, ErrNoURL
+	url := ""
+	if target == api.YoutubeHttp {
+		if url = s.readURL(ctx, sess.Id); url == "" {
+			return api.StreamCaptionStatus{}, ErrNoURL
+		}
 	}
 	s.mu.Lock()
 	st := s.state(sess.Id)
 	s.mu.Unlock()
 
 	now := s.opts.Clock.Now()
-	it := item{segment: "test", cues: cues(text, maxChars, now, now), end: now}
+	it := item{segment: "test", cues: cues(text, lineLength(cfg, target), now, now), end: now}
 	seq := st.seq.Add(1)
-	err := st.yt.post(ctx, url, seq, it)
+	var err error
+	if target == api.ObsWebsocket {
+		err = s.obs.send(ctx, &it)
+	} else {
+		err = st.yt.post(ctx, url, seq, it)
+	}
 	s.recordDelivery(sess.Id, target, seq, err, false)
 	return *s.Status(sess.Id), nil
 }
@@ -523,4 +558,5 @@ func (s *Service) Close() {
 		sk.close(0)
 	}
 	s.wg.Wait()
+	s.obs.close()
 }

@@ -522,6 +522,21 @@
         "title": "Some captions were skipped",
         "why": "{{count}} captions couldn't be sent in time and were too old to show on the stream.",
         "fix": "Check the connection to YouTube. New captions are sent as soon as it recovers."
+      },
+      "obs_unreachable": {
+        "title": "Can't reach OBS",
+        "why": "The server couldn't connect to OBS's websocket to send captions: OBS may be closed or restarting, or the websocket server may be off.",
+        "fix": "Open OBS, turn on Tools → WebSocket Server Settings → Enable WebSocket server, and check the websocket URL in Settings. Captions are retried automatically."
+      },
+      "obs_auth_failed": {
+        "title": "OBS rejected the password",
+        "why": "OBS's websocket server asks for a password, and the saved OBS websocket password is missing or wrong.",
+        "fix": "Copy the password from OBS (Tools → WebSocket Server Settings → Show Connect Info) and save it in Settings as the OBS websocket password."
+      },
+      "obs_rejected": {
+        "title": "OBS didn't take the caption",
+        "why": "OBS refused the caption ({{comment}}). Captions only go out while OBS is streaming.",
+        "fix": "Start the stream in OBS, then send a test caption."
       }
     }
   }

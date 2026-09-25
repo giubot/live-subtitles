@@ -227,6 +227,15 @@ Failed POSTs (network errors, HTTP 5xx, 408, 429) are retried with the same `seq
 
 The configuration and the URL are read when the session starts; a URL saved or removed while it runs takes effect at the next caption. `streamCaptions` in the session status (and on `/ws/admin`, as `sessionStatus` and `streamCaptionStatus` events) shows `state` (`disabled`, `idle`, `ok`, `retrying`, `error`), `lastSeq`, `lastSentAt`, `clockOffsetMs` and the last `error`.
 
+### OBS (`SendStreamCaption`)
+
+With `target: obs_websocket` the captions go to OBS instead, through obs-websocket v5 (`SendStreamCaption`), and OBS encodes them as CEA-608 into its stream (YouTube and Twitch show them; Vimeo doesn't). Use it when the stream comes from OBS and the platform has no caption ingestion URL.
+
+- Turn on OBS's websocket server (Tools → WebSocket Server Settings). Its address is the setting `obs.websocketUrl` (default `ws://127.0.0.1:4455`); if it asks for a password, save it as the `obs_websocket_password` secret (Settings, or `LIVESUBS_SECRET_OBS_WEBSOCKET_PASSWORD`).
+- Lines are at most 32 characters (the 608 limit, whatever `maxCharsPerLine` says), two per caption. Each caption stays up for the time its words took, at least 1.5 s and at most 4 s, before the next replaces it.
+- The connection opens with the first caption. If OBS closes or restarts, the caption is retried with the same backoff as YouTube and the connection is reopened; the lines of a caption already shown aren't sent again. A wrong password shows `streamcc.obs_auth_failed`, and OBS refuses captions while it isn't streaming (`streamcc.obs_rejected`).
+- `POST …/stream-captions/test` sends the test caption to OBS. `lastSeq` counts the captions sent; there's no clock offset.
+
 ## Local AI provider
 
 The local provider needs two sidecars: **whisper-server** (whisper.cpp) for speech recognition and **Ollama** running Gemma for translation.

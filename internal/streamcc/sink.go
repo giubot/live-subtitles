@@ -149,7 +149,7 @@ func (k *sink) stale(it item) bool {
 
 // deliver sends it, retrying with backoff while the failure may pass and
 // the item isn't stale. Retries reuse the seq, so YouTube can tell a
-// repeat from a new caption.
+// repeat from a new caption. (For OBS, seq only counts captions.)
 func (k *sink) deliver(it item) {
 	backoff := k.s.opts.MinBackoff
 	var seq int64
@@ -160,18 +160,10 @@ func (k *sink) deliver(it item) {
 			k.mu.Unlock()
 			return
 		}
-		url := k.currentURL()
-		if url == "" {
-			k.s.setStatus(k.id, func(st *api.StreamCaptionStatus) {
-				st.State = api.StreamCaptionStatusStateError
-				st.Error = &api.Error{Code: CodeNoURL, Message: "no caption ingestion URL is set"}
-			})
-			return
-		}
 		if seq == 0 {
 			seq = k.st.seq.Add(1)
 		}
-		err := k.st.yt.post(k.ctx, url, seq, it)
+		err := k.send(seq, &it)
 		if k.ctx.Err() != nil {
 			return // aborted: the run's drain is over
 		}
@@ -192,6 +184,18 @@ func (k *sink) deliver(it item) {
 		}
 		backoff = min(backoff*2, k.s.opts.MaxBackoff)
 	}
+}
+
+// send delivers it once to the sink's target.
+func (k *sink) send(seq int64, it *item) error {
+	if k.target == api.ObsWebsocket {
+		return k.s.obs.send(k.ctx, it)
+	}
+	url := k.currentURL()
+	if url == "" {
+		return &deliveryError{code: CodeNoURL, message: "no caption ingestion URL is set"}
+	}
+	return k.st.yt.post(k.ctx, url, seq, *it)
 }
 
 // reportDropped tells admins how many captions were skipped since the
