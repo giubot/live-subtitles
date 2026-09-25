@@ -680,7 +680,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public, the overlay page loads its preset without auth */
+        /**
+         * Public, the overlay page loads its preset without auth
+         * @description The built-in presets from docs/design.md (`classic`, `outline`,
+         *     `lower-third`, marked `builtIn`) come first, then the saved ones,
+         *     by name. Built-ins can't be updated or deleted.
+         */
         get: operations["listOverlayPresets"];
         put?: never;
         /** Create overlay preset */
@@ -1503,6 +1508,8 @@ export interface components {
         };
         OverlayPreset: components["schemas"]["OverlayPresetInput"] & {
             id: string;
+            /** @description A built-in preset from docs/design.md, which can't be changed */
+            readonly builtIn?: boolean;
         };
         NetworkInfo: {
             hostname?: string;
@@ -2873,6 +2880,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     deleteOverlayPreset: {
@@ -2895,6 +2903,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getNetworkInfo: {

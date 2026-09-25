@@ -852,6 +852,10 @@ paths:
       operationId: listOverlayPresets
       security: []
       summary: Public, the overlay page loads its preset without auth
+      description: |
+        The built-in presets from docs/design.md (`classic`, `outline`,
+        `lower-third`, marked `builtIn`) come first, then the saved ones,
+        by name. Built-ins can't be updated or deleted.
       responses:
         "200":
           description: OK
@@ -914,6 +918,8 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        # A built-in preset (overlay.builtin_read_only).
+        "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [overlays]
       operationId: deleteOverlayPreset
@@ -922,6 +928,8 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        # A built-in preset (overlay.builtin_read_only).
+        "409": { $ref: "#/components/responses/Conflict" }
 
   # ───────────────────────────── network ─────────────────────────────
   /api/network:
@@ -1795,6 +1803,10 @@ components:
           required: [id]
           properties:
             id: { type: string }
+            builtIn:
+              type: boolean
+              readOnly: true
+              description: A built-in preset from docs/design.md, which can't be changed
 
     # ── network ──
     NetworkInfo:
