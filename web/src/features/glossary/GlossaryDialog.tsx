@@ -14,9 +14,10 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
+import { useLanguages } from '../../api/languages'
 import { toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { nativeLanguageName } from '../../components/languageNames'
@@ -55,6 +56,8 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
   const [paste, setPaste] = useState('')
   const [imported, setImported] = useState<{ added: number; updated: number }>()
   const [newLang, setNewLang] = useState('')
+  const catalog = useLanguages()
+  const suggestionsId = useId()
   const refresh = () => queryClient.invalidateQueries({ queryKey: listKey })
 
   const create = api.useMutation('post', '/api/glossaries', {
@@ -169,6 +172,7 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
                 slotProps={{
                   inputLabel: { shrink: true },
                   htmlInput: {
+                    list: suggestionsId,
                     maxLength: 12,
                     spellCheck: false,
                     sx: { fontFamily: 'var(--font-mono)' },
@@ -176,6 +180,15 @@ export function GlossaryDialog({ glossary, onClose }: GlossaryDialogProps) {
                 }}
                 sx={{ inlineSize: '9rem' }}
               />
+              <datalist id={suggestionsId}>
+                {catalog.targets
+                  .filter((l) => !v.languages.includes(l))
+                  .map((l) => (
+                    <option key={l} value={l}>
+                      {catalog.byCode.get(l)?.nativeName ?? nativeLanguageName(l)}
+                    </option>
+                  ))}
+              </datalist>
               <Button
                 variant="outlined"
                 color="secondary"

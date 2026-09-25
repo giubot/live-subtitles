@@ -5,9 +5,6 @@ export type Settings = Schemas['Settings']
 export type SourceLanguage = Schemas['SourceLanguage']
 export type Bitrate = Settings['recording']['bitrateKbps']
 
-export const sourceLanguages: SourceLanguage[] = ['auto', 'en', 'es']
-/** Caption languages offered by default; settings may already hold others. */
-export const commonLanguages = ['es', 'en', 'pt', 'fr', 'de', 'it']
 export const bitrates: Bitrate[] = [32, 48, 64]
 
 /** The Settings form, flat. Numbers stay strings while typing. */

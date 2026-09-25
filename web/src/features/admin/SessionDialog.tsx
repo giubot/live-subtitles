@@ -18,16 +18,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
+import { useLanguages } from '../../api/languages'
 import { toApiError } from '../../components/apiError'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { nativeLanguageName } from '../../components/languageNames'
 import { StreamCaptionsFields } from './StreamCaptionsFields'
 import {
-  commonLanguages,
   newSessionValues,
   providers,
   slugify,
-  sourceLanguages,
   toBody,
   validate,
   valuesFrom,
@@ -115,7 +114,12 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
     }
   }
 
-  const languages = [...new Set([...commonLanguages, ...v.targetLanguages])]
+  const catalog = useLanguages()
+  const languages = [...new Set([...catalog.targets, ...v.targetLanguages])]
+  const sourceLanguages = catalog.sources.includes(v.sourceLanguage)
+    ? catalog.sources
+    : [...catalog.sources, v.sourceLanguage]
+  const languageName = (l: string) => catalog.byCode.get(l)?.nativeName ?? nativeLanguageName(l)
   const toggleLanguage = (lang: string, on: boolean) =>
     set(
       'targetLanguages',
@@ -201,7 +205,7 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
             >
               {sourceLanguages.map((l) => (
                 <option key={l} value={l}>
-                  {t(`form.source.${l}`)}
+                  {t(`form.source.${l}`, { defaultValue: languageName(l) })}
                 </option>
               ))}
             </TextField>
@@ -232,7 +236,7 @@ export function SessionDialog({ session, onClose, onCreated }: SessionDialogProp
                       onChange={(e) => toggleLanguage(l, e.target.checked)}
                     />
                   }
-                  label={<span lang={l}>{nativeLanguageName(l)}</span>}
+                  label={<span lang={l}>{languageName(l)}</span>}
                 />
               ))}
             </FormGroup>
