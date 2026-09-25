@@ -134,6 +134,11 @@ func TestSegmenterLanguage(t *testing.T) {
 			ev, _ := s.interim(u, "the cloud and the edge", "fr-FR", time.Second)
 			return ev
 		}, "en"},
+		{"a short first sentence takes the utterance's language", "", func(s *segmenter, u *utterance) domain.ASREvent {
+			// From the real API: no language code, and the first sentence
+			// alone has no common Spanish word.
+			return s.final(u, "Bienvenidos a todos. Hoy vamos a hablar de observabilidad y de cómo se combinan las métricas.", "", time.Second)[0]
+		}, "es"},
 		{"pinned", "en", func(s *segmenter, u *utterance) domain.ASREvent {
 			return s.final(u, "la nube y el borde", "es", time.Second)[0]
 		}, "en"},

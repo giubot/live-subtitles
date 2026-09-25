@@ -125,7 +125,12 @@ A session with `provider: gemini` transcribes with the [Gemini Live API](https:/
 - **Drops**: a connection that drops unexpectedly is reopened with backoff (0.5 s doubling to 10 s, 8 tries). Meanwhile up to 15 s of audio is kept and sent on reconnect; anything older is logged as an audio gap (`gemini live reconnected; audio was lost`, with the session-clock range). Each drop also shows as a `provider.error` on the session. A drop during a rotation switches straight to the already-open next connection, with no error.
 - **Usage**: the seconds of audio sent go to `usage` as audio, and the text tokens the API reports as output tokens. Audio isn't counted as input tokens.
 
-`go test -tags gemini -run Integration -v ./internal/provider/gemini/` with `GEMINI_API_KEY` set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency (`GEMINI_LIVE_MODEL` overrides the model). Without the tag or the key it's skipped, so CI never calls Google.
+`go test -tags gemini -run 'Integration|Live' -v ./internal/provider/gemini/` with `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency, then translates a caption each way (`GEMINI_LIVE_MODEL` and `GEMINI_TRANSLATION_MODEL` override the models). Without the tag or the key it's skipped, so CI never calls Google.
+
+Measured on 2026-09-24 from Buenos Aires with the ~10 s fixtures:
+
+- **Transcription** (`gemini-3.5-transcribe-live`, `auto`): both fixtures transcribed without errors and in the right language. The first interim came about 0.9–1.5 s after the audio started, and interims then kept pace with the audio. A final arrives about 1.3–1.5 s after the speaker pauses. A continuous 10 s utterance is one final at the end, split into sentences. The API reported no token counts, so the cost estimate comes from audio minutes only.
+- **Translation** (`gemini-3.5-flash-lite`): about 0.7–0.8 s per caption, es→en and en→es.
 
 ## Recordings
 

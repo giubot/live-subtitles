@@ -17,13 +17,16 @@ import (
 
 // TestTranslatorLive calls the real Gemini API:
 //
-//	GOOGLE_API_KEY=… go test -tags gemini -run TestTranslatorLive ./internal/provider/gemini/
+//	GEMINI_API_KEY=… go test -tags gemini -run TestTranslatorLive ./internal/provider/gemini/
 //
 // GEMINI_TRANSLATION_MODEL overrides the model.
 func TestTranslatorLive(t *testing.T) {
-	key := os.Getenv("GOOGLE_API_KEY")
+	key := os.Getenv("GEMINI_API_KEY")
 	if key == "" {
-		t.Skip("GOOGLE_API_KEY is not set")
+		key = os.Getenv("GOOGLE_API_KEY")
+	}
+	if key == "" {
+		t.Skip("set GEMINI_API_KEY or GOOGLE_API_KEY")
 	}
 	tr := &Translator{
 		APIKey: func(context.Context) (string, error) { return key, nil },
