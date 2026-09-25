@@ -52,11 +52,12 @@ func TestObserver(t *testing.T) {
 			wantLatencies: []string{"mock/source", "mock/es"},
 		},
 		{
+			// Each crash is reported; after the restarts give up, so is that.
 			name:       "provider crash",
 			asr:        crashingASR{},
 			src:        &fake.Source{Realtime: true},
 			endState:   api.SessionStateError,
-			wantErrors: []string{"mock/" + CodeProviderError},
+			wantErrors: []string{"mock/" + CodeProviderError, "mock/" + CodeProviderFailed},
 		},
 		{
 			name:       "provider refuses its config",
@@ -75,7 +76,7 @@ func TestObserver(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			o := &fakeObserver{latencies: map[string]int{}}
-			e := newEnv(t, Options{Observer: o, Providers: map[domain.ProviderKind]Provider{
+			e := newEnv(t, Options{Observer: o, Restart: fastRestart(2), Providers: map[domain.ProviderKind]Provider{
 				api.ProviderKindMock: {ASR: c.asr, Translator: &mock.Translator{}},
 			}}, sess("main", "es"))
 			_, _ = e.m.Start(t.Context(), "main", c.src)
