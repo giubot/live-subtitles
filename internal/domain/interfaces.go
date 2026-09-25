@@ -147,6 +147,22 @@ type CaptionStore interface {
 	ListCaptions(ctx context.Context, q CaptionQuery) (items []CaptionEvent, next string, err error)
 }
 
+// CaptionEdit is an operator correction of a stored final caption
+// (ADM-4). Nil fields keep their value.
+type CaptionEdit struct {
+	Text   *string
+	Hidden *bool
+}
+
+// CaptionEditor corrects stored final captions (ADM-4).
+type CaptionEditor interface {
+	// EditCaption applies e to the final caption (session, track, segment),
+	// sets its Edited flag and returns the result; ErrNotFound if there is
+	// no such caption. Later SaveCaption calls for the segment keep the
+	// operator's text and hidden flag.
+	EditCaption(ctx context.Context, sessionID, track, segmentID string, e CaptionEdit) (CaptionEvent, error)
+}
+
 // SecretSource tells where a secret value was found.
 type SecretSource string
 
