@@ -92,6 +92,11 @@ func (s *segmenter) final(u *utterance, text, code string, now time.Duration) []
 	if l := normalizeLang(code); l != "" {
 		u.code = l
 	}
+	if u.code == "" {
+		// Without an API code, judge the whole utterance: one of its
+		// sentences alone ("Bienvenidos a todos.") may have no common word.
+		u.code = guessLanguage(text)
+	}
 	end = max(end, u.start)
 
 	var evs []domain.ASREvent
