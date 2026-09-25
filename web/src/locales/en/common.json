@@ -196,6 +196,31 @@
         "title": "The AI provider stopped working",
         "why": "{{provider}} kept failing and didn't recover after {{attempts}} restarts, so the session stopped.",
         "fix": "Check that {{provider}} is reachable (its sidecar, the network or the API key), then start the session again or switch provider."
+      },
+      "quota_exhausted": {
+        "title": "{{provider}} ran out of quota",
+        "why": "Google refused the request because the API key is over its quota or rate limit, so {{provider}} stopped transcribing or translating.",
+        "fix": "Check the quota in Google AI Studio or wait for it to reset. With provider fallback on in Settings, running sessions switch to the local provider."
+      },
+      "auth_failed": {
+        "title": "Google rejected the API key",
+        "why": "The key was revoked, restricted or replaced while the session ran, so {{provider}} can’t be used.",
+        "fix": "Save a valid key in Settings. With provider fallback on, running sessions switch to the local provider."
+      },
+      "errors_repeated": {
+        "title": "The AI provider kept failing",
+        "why": "The provider reported error after error in a short time.",
+        "fix": "Check the provider’s status (its sidecar, the network or the API key)."
+      },
+      "restarts_failed": {
+        "title": "The AI provider couldn’t be restarted",
+        "why": "The provider stream crashed and the restarts failed one after another.",
+        "fix": "Check that the provider is reachable (its sidecar, the network or the API key)."
+      },
+      "fallback": {
+        "title": "The session switched to {{to}}",
+        "why": "{{from}} kept failing, so the session moved to {{to}} without stopping. The captions go on in the same tracks; the audio lost in the switch is marked as a gap.",
+        "fix": "Fix {{from}} when you can. The session stays on {{to}} until you stop and start it again. Turn off provider fallback in Settings to prevent switches."
       }
     },
     "auth": {
@@ -387,6 +412,13 @@
         "title": "Recording not found",
         "why": "It may have been deleted by an admin or by the automatic clean-up of old recordings, or the link has a typo.",
         "fix": "Pick the recording from the session's list of recordings."
+      }
+    },
+    "caption": {
+      "not_found": {
+        "title": "Caption line not found",
+        "why": "The line isn't stored for that language yet, which happens with text still being recognized, or the session's captions were removed.",
+        "fix": "Wait until the line is final and try again, or reload the captions."
       }
     },
     "settings": {

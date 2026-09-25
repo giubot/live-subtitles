@@ -4,8 +4,10 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -19,7 +21,9 @@ const (
 )
 
 // SaveCaption upserts c by (session, track, segment). The session must exist
-// (domain.ErrNotFound otherwise).
+// (domain.ErrNotFound otherwise). An unedited c doesn't overwrite the text
+// and hidden flag of a caption an operator edited (ADM-4), so a provider's
+// late re-final keeps the correction.
 func (s *Store) SaveCaption(ctx context.Context, c domain.CaptionEvent) error {
 	var latency any
 	if c.LatencyMs != nil {
@@ -31,11 +35,53 @@ func (s *Store) SaveCaption(ctx context.Context, c domain.CaptionEvent) error {
 		(session_id, track, segment_id, start_sec, end_sec, text, source_lang, final, edited, hidden, latency_ms)
 		SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE id = ?)
 		ON CONFLICT (session_id, track, segment_id) DO UPDATE SET
-			start_sec = excluded.start_sec, end_sec = excluded.end_sec, text = excluded.text,
-			source_lang = excluded.source_lang, final = excluded.final, edited = excluded.edited,
-			hidden = excluded.hidden, latency_ms = excluded.latency_ms`,
+			start_sec = excluded.start_sec, end_sec = excluded.end_sec,
+			text = CASE WHEN captions.edited AND NOT excluded.edited THEN captions.text ELSE excluded.text END,
+			hidden = CASE WHEN captions.edited AND NOT excluded.edited THEN captions.hidden ELSE excluded.hidden END,
+			edited = captions.edited OR excluded.edited,
+			source_lang = excluded.source_lang, final = excluded.final, latency_ms = excluded.latency_ms`,
 		c.SessionId, c.Lang, c.SegmentId, float64(c.Start), float64(c.End), c.Text, c.SourceLang,
 		c.Final, isTrue(c.Edited), isTrue(c.Hidden), latency, c.SessionId)
+}
+
+// EditCaption implements domain.CaptionEditor.
+func (s *Store) EditCaption(ctx context.Context, sessionID, track, segmentID string, e domain.CaptionEdit) (domain.CaptionEvent, error) {
+	var text, hidden any
+	if e.Text != nil {
+		text = *e.Text
+	}
+	if e.Hidden != nil {
+		hidden = *e.Hidden
+	}
+	row := s.db.QueryRowContext(ctx, `UPDATE captions SET text = COALESCE(?, text), hidden = COALESCE(?, hidden), edited = 1
+		WHERE session_id = ? AND track = ? AND segment_id = ? AND final
+		RETURNING `+captionColumns, text, hidden, sessionID, track, segmentID)
+	c, _, err := scanCaption(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return c, domain.ErrNotFound
+	}
+	return c, err
+}
+
+const captionColumns = `session_id, track, segment_id, start_sec, end_sec, text,
+	source_lang, final, edited, hidden, latency_ms`
+
+// scanCaption reads a row of captionColumns. It also returns the stored
+// start, since the float32 in the caption doesn't round-trip to it.
+func scanCaption(row interface{ Scan(dest ...any) error }) (domain.CaptionEvent, float64, error) {
+	var (
+		c              domain.CaptionEvent
+		start, end     float64
+		edited, hidden bool
+		latency        *int
+	)
+	if err := row.Scan(&c.SessionId, &c.Lang, &c.SegmentId, &start, &end, &c.Text,
+		&c.SourceLang, &c.Final, &edited, &hidden, &latency); err != nil {
+		return c, 0, err
+	}
+	c.Start, c.End, c.LatencyMs = float32(start), float32(end), latency
+	c.Edited, c.Hidden = truePtr(edited), truePtr(hidden)
+	return c, start, nil
 }
 
 // captionCursor is the position after the last caption of a page, in
@@ -95,8 +141,7 @@ func (s *Store) ListCaptions(ctx context.Context, q domain.CaptionQuery) ([]doma
 	// One extra row tells whether there is a next page.
 	args = append(args, limit+1)
 
-	rows, err := s.db.QueryContext(ctx, `SELECT session_id, track, segment_id, start_sec, end_sec, text,
-		source_lang, final, edited, hidden, latency_ms FROM captions WHERE `+where.String()+`
+	rows, err := s.db.QueryContext(ctx, `SELECT `+captionColumns+` FROM captions WHERE `+where.String()+`
 		ORDER BY start_sec, track, segment_id LIMIT ?`, args...)
 	if err != nil {
 		return nil, "", err
@@ -109,18 +154,10 @@ func (s *Store) ListCaptions(ctx context.Context, q domain.CaptionQuery) ([]doma
 		if len(items) == limit {
 			return items, last.encode(), nil
 		}
-		var (
-			c              domain.CaptionEvent
-			start, end     float64
-			edited, hidden bool
-			latency        *int
-		)
-		if err := rows.Scan(&c.SessionId, &c.Lang, &c.SegmentId, &start, &end, &c.Text,
-			&c.SourceLang, &c.Final, &edited, &hidden, &latency); err != nil {
+		c, start, err := scanCaption(rows)
+		if err != nil {
 			return nil, "", err
 		}
-		c.Start, c.End, c.LatencyMs = float32(start), float32(end), latency
-		c.Edited, c.Hidden = truePtr(edited), truePtr(hidden)
 		items = append(items, c)
 		last = captionCursor{Start: start, Track: c.Lang, Segment: c.SegmentId}
 	}

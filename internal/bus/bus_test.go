@@ -19,6 +19,18 @@ func capt(track, seg, text string, final bool, start float32) domain.BusMessage 
 	}}
 }
 
+// edit marks m as an admin correction (ADM-4), hidden or not.
+func edit(m domain.BusMessage, hidden bool) domain.BusMessage {
+	c := *m.Caption
+	yes := true
+	c.Edited = &yes
+	if hidden {
+		c.Hidden = &yes
+	}
+	m.Caption = &c
+	return m
+}
+
 // summary renders captions as "seg:text" (interims as "seg:text~").
 func summary(cs []domain.CaptionEvent) []string {
 	out := make([]string, 0, len(cs))
@@ -123,6 +135,41 @@ func TestHistory(t *testing.T) {
 			want: []string{"s1:Uno!", "s2:Dos."},
 		},
 		{
+			name: "admin edit replaces in place",
+			publish: []domain.BusMessage{
+				capt("es", "s1", "Uno.", true, 0),
+				capt("es", "s2", "Dos.", true, 1),
+				edit(capt("es", "s1", "Uno corregido.", true, 0), false),
+			},
+			tracks: []string{"es"}, n: 50,
+			want: []string{"s1:Uno corregido.", "s2:Dos."},
+		},
+		{
+			name: "re-final after an edit is dropped, a second edit is not",
+			publish: []domain.BusMessage{
+				edit(capt("es", "s1", "Uno corregido.", true, 0), false),
+				capt("es", "s1", "Uno!", true, 0),
+				capt("es", "s2", "Dos.", true, 1),
+				edit(capt("es", "s2", "Dos corregido.", true, 1), false),
+				edit(capt("es", "s2", "Dos otra vez.", true, 1), false),
+			},
+			tracks: []string{"es"}, n: 50,
+			want: []string{"s1:Uno corregido.", "s2:Dos otra vez."},
+		},
+		{
+			name: "hidden finals are left out, unhiding brings them back",
+			publish: []domain.BusMessage{
+				capt("es", "s1", "Uno.", true, 0),
+				capt("es", "s2", "Dos.", true, 1),
+				capt("es", "s3", "Tres.", true, 2),
+				edit(capt("es", "s2", "Dos.", true, 1), true),
+				edit(capt("es", "s3", "Tres.", true, 2), true),
+				edit(capt("es", "s3", "Tres.", true, 2), false),
+			},
+			tracks: []string{"es"}, n: 50,
+			want: []string{"s1:Uno.", "s3:Tres."},
+		},
+		{
 			name: "ring keeps the last size finals",
 			size: 3,
 			publish: []domain.BusMessage{
@@ -184,6 +231,51 @@ func TestHistory(t *testing.T) {
 				t.Errorf("history = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestEditPropagates(t *testing.T) {
+	b := New()
+	b.Publish("main", capt("es", "s1", "Uno.", true, 0))
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	es := b.Subscribe(ctx, "main", []string{"es"})
+	en := b.Subscribe(ctx, "main", []string{"en"})
+	historyOf(t, es)
+	historyOf(t, en)
+
+	for _, tt := range []struct {
+		name       string
+		msg        domain.BusMessage
+		wantText   string
+		wantHidden bool
+	}{
+		{"edit", edit(capt("es", "s1", "Uno corregido.", true, 0), false), "Uno corregido.", false},
+		{"hide", edit(capt("es", "s1", "Uno corregido.", true, 0), true), "Uno corregido.", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			b.Publish("main", tt.msg)
+			m := recvNext(t, es)
+			c := m.Caption
+			if m.Type != api.CaptionsServerMessageTypeCaption || c == nil || c.SegmentId != "s1" || c.Text != tt.wantText ||
+				!isTrue(c.Edited) || isTrue(c.Hidden) != tt.wantHidden {
+				t.Fatalf("got %+v", m)
+			}
+		})
+	}
+	// A late provider re-final doesn't reach viewers; the next caption does.
+	b.Publish("main", capt("es", "s1", "Uno!", true, 0))
+	b.Publish("main", capt("es", "s2", "Dos.", true, 1))
+	if m := recvNext(t, es); m.Caption == nil || m.Caption.SegmentId != "s2" {
+		t.Errorf("after re-final got %+v, want s2", m)
+	}
+	// Other tracks' subscribers get nothing.
+	select {
+	case m := <-en:
+		if m.Type == api.CaptionsServerMessageTypeCaption {
+			t.Errorf("en subscriber got %+v", m)
+		}
+	default:
 	}
 }
 

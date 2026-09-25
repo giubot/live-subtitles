@@ -4,7 +4,9 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -28,7 +30,8 @@ type run struct {
 	id   string
 	sess domain.Session
 
-	// Set by launch before start.
+	// Set by launch before start; a fallback (fallback.go) changes them
+	// under mu while the run is live.
 	provider   domain.ProviderKind
 	asr        domain.ASRProvider
 	translator domain.Translator
@@ -80,6 +83,14 @@ type run struct {
 	losing       bool          // frames are being lost (no ASR stream)
 	lostFrom     time.Duration // since this session clock time
 	gaps         []gap         // not yet reported by a caption
+
+	// Provider fallback (fallback.go).
+	kick      chan struct{}         // wakes a provider restart that waits, after a fallback
+	fb        *api.ProviderFallback // the last switch
+	fbBusy    bool                  // a fallback is being decided
+	fbErrs    []time.Time           // recent provider errors, for FallbackPolicy.Errors
+	fbProbed  time.Time             // when the other provider was last found unavailable
+	lastFinal time.Duration         // session clock at the end of the last source final
 }
 
 func newRun(m *Manager, sess domain.Session) *run {
@@ -90,6 +101,7 @@ func newRun(m *Manager, sess domain.Session) *run {
 		ctx: ctx, cancel: cancel, srcCtx: srcCtx, stopSource: stopSource,
 		done:    make(chan struct{}),
 		ended:   make(chan struct{}),
+		kick:    make(chan struct{}, 1),
 		st:      api.SessionStateStarting,
 		latency: map[string]*metrics.Latency{},
 	}
@@ -108,9 +120,16 @@ func (r *run) start(ctx context.Context) error {
 	r.glossary = r.m.glossary(ctx, r.sess)
 	asr, err := r.openASR()
 	if err != nil {
+		// The provider doesn't start: the other one may (AI-8).
+		cause := r.providerStartError(err)
+		if r.fallback(fallbackReason(cause, CodeProviderUnavailable), cause) {
+			asr, err = r.openASR()
+		}
+	}
+	if err != nil {
 		r.fail(r.providerStartError(err))
 		r.abort()
-		return fmt.Errorf("%w: provider %s: %v", ErrUnavailable, r.provider, err)
+		return fmt.Errorf("%w: provider %s: %v", ErrUnavailable, r.kind(), err)
 	}
 	r.mu.Lock()
 	r.prefix = fmt.Sprintf("r%d-", r.offset/time.Second)
@@ -239,8 +258,15 @@ func (r *run) consume(asr *asrStream, fan *translate.Fanout) {
 func (r *run) events(asr *asrStream, fan *translate.Fanout) {
 	for ev := range asr.out {
 		if ev.Err != nil {
-			r.providerError(ev.Err)
+			if r.providerError(ev.Err) {
+				return // the run fell back; consume opens the other provider
+			}
 			continue
+		}
+		if ev.Final {
+			r.mu.Lock()
+			r.lastFinal = max(r.lastFinal, ev.End)
+			r.mu.Unlock()
 		}
 		r.addUsage(ev.Usage)
 		text := ev.Text
@@ -287,7 +313,7 @@ func (r *run) publish(c api.Caption) {
 		l.Add(*c.LatencyMs)
 		r.mu.Unlock()
 		if o := r.m.opts.Observer; o != nil {
-			o.CaptionLatency(r.provider, c.Lang, *c.LatencyMs)
+			o.CaptionLatency(r.kind(), c.Lang, *c.LatencyMs)
 		}
 	}
 	if st := r.m.opts.Captions; st != nil {
@@ -314,13 +340,30 @@ func (r *run) latencyMs(end time.Duration) *int {
 	return &ms
 }
 
-func (r *run) providerError(err error) {
+// providerError records an error the ASR stream reported, with the
+// provider's own code when it gives one, and reports whether the run fell
+// back to the other provider because of it.
+func (r *run) providerError(err error) bool {
 	r.mu.Lock()
-	r.err = api.Error{Code: CodeProviderError, Message: err.Error(), Params: &map[string]any{"provider": r.provider}}
+	kind := r.provider
+	e := api.Error{Code: CodeProviderError, Message: err.Error(), Params: &map[string]any{"provider": kind}}
+	if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
+		e.Code = coded.Code
+		maps.Copy(*e.Params, coded.Params)
+	}
+	r.err = e
 	r.mu.Unlock()
 	r.observeError(CodeProviderError)
-	r.m.log.Warn("provider error", "session", r.id, "provider", r.provider, "err", err)
-	r.m.logEvent(api.AdminEventLogLevelWarn, CodeProviderError, r.id, map[string]any{"provider": r.provider})
+	r.m.log.Warn("provider error", "session", r.id, "provider", kind, "code", e.Code, "err", err)
+	r.m.logEvent(api.AdminEventLogLevelWarn, CodeProviderError, r.id, map[string]any{"provider": kind})
+	return r.countFailure(e)
+}
+
+// kind is the provider the run is on now.
+func (r *run) kind() domain.ProviderKind {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.provider
 }
 
 func (r *run) addUsage(u domain.Usage) {
@@ -351,7 +394,7 @@ func (r *run) failFatal(e api.Error) {
 
 func (r *run) observeError(code string) {
 	if o := r.m.opts.Observer; o != nil {
-		o.SessionError(r.provider, code)
+		o.SessionError(r.kind(), code)
 	}
 }
 
@@ -467,6 +510,10 @@ func (r *run) status() api.SessionStatus {
 	if r.restarts > 0 {
 		n := r.restarts
 		st.Restarts = &n
+	}
+	if r.fb != nil {
+		fb := *r.fb
+		st.Fallback = &fb
 	}
 	return st
 }

@@ -73,25 +73,33 @@ type asrStream struct {
 	closed  bool          // in was closed; guarded by run.mu
 	started time.Time
 	prefix  string // of its segment IDs, unique within the session
+	// kind is the provider it runs on; after a fallback (fallback.go) the
+	// run is on another one and this stream is replaced.
+	kind domain.ProviderKind
+	// from is the session clock when it was attached.
+	from time.Duration
 }
 
 // openASR starts an ASR stream with its own context, so a crashed one can
 // be torn down without touching the run.
 func (r *run) openASR() (*asrStream, error) {
 	ctx, cancel := context.WithCancel(r.ctx)
-	in, out, err := r.asr.Start(ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage, Glossary: r.glossary})
+	r.mu.Lock()
+	kind, asr := r.provider, r.asr
+	r.mu.Unlock()
+	in, out, err := asr.Start(ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage, Glossary: r.glossary})
 	if err != nil {
 		cancel()
 		return nil, err
 	}
-	return &asrStream{in: in, out: out, cancel: cancel, down: make(chan struct{}), started: r.m.opts.Clock.Now()}, nil
+	return &asrStream{in: in, out: out, cancel: cancel, down: make(chan struct{}), started: r.m.opts.Clock.Now(), kind: kind}, nil
 }
 
 // providerStartError is the status error of a failed ASR Start: the
 // provider's own code when it gives one, else provider.unavailable.
 func (r *run) providerStartError(err error) api.Error {
 	e := api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
-		Params: &map[string]any{"provider": r.provider}}
+		Params: &map[string]any{"provider": r.kind()}}
 	if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
 		e.Code = coded.Code
 		maps.Copy(*e.Params, coded.Params)
@@ -100,10 +108,17 @@ func (r *run) providerStartError(err error) api.Error {
 }
 
 // attach makes st the stream feed sends to. If the source has ended
-// already, its input is closed right away so it flushes and ends.
+// already, its input is closed right away so it flushes and ends. A
+// stream opened on the provider the run fell back from meanwhile is
+// cancelled instead, so consume replaces it.
 func (r *run) attach(st *asrStream) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if st.kind != r.provider {
+		st.cancel()
+		return
+	}
+	st.from = max(r.end, r.offset)
 	r.link = st
 	if r.sourceEnded {
 		close(st.in)
@@ -230,12 +245,15 @@ func (r *run) setRecovering(rs *api.RecoveryStatus) {
 	r.mu.Unlock()
 }
 
-// wait sleeps d before a restart; false if the run stops or ends first.
-func (r *run) wait(d time.Duration, ended <-chan struct{}) bool {
+// wait sleeps d before a restart, or until wake; false if the run stops
+// or ends first.
+func (r *run) wait(d time.Duration, ended, wake <-chan struct{}) bool {
 	t := time.NewTimer(d)
 	defer t.Stop()
 	select {
 	case <-t.C:
+		return true
+	case <-wake:
 		return true
 	case <-r.srcCtx.Done():
 	case <-ended:
@@ -303,45 +321,78 @@ func (r *run) crashed() bool {
 
 // restartProvider replaces a crashed ASR stream, with backoff, and returns
 // the new one; nil when the run stops meanwhile or the attempts run out
-// (then the run fails with provider.failed).
+// (then the run fails with provider.failed). A stream that ended because
+// the run fell back to the other provider (fallback.go) is replaced at
+// once by one on the new provider; a restart loop that keeps failing may
+// itself fall back.
 func (r *run) restartProvider(prev *asrStream) *asrStream {
 	now := r.m.opts.Clock.Now()
-	params := map[string]any{"provider": r.provider}
-	rc := &recovery{component: api.RecoveryComponentProvider, code: CodeProviderRestarting, params: params, since: now,
-		cause: api.Error{Code: CodeProviderError, Message: "the provider stream ended unexpectedly", Params: &map[string]any{"provider": r.provider}}}
-	r.fail(rc.cause)
-	r.m.log.Warn("provider stream crashed; restarting", "session", r.id, "provider", r.provider, "ran", now.Sub(prev.started))
-	r.mu.Lock()
-	if now.Sub(prev.started) >= r.m.opts.Restart.HealthyAfter {
-		r.provAttempts = 0
+	kind := prev.kind // the provider the loop restarts
+	rc := &recovery{component: api.RecoveryComponentProvider, code: CodeProviderRestarting,
+		params: map[string]any{"provider": kind}, since: now,
+		cause: api.Error{Code: CodeProviderError, Message: "the provider stream ended unexpectedly", Params: &map[string]any{"provider": kind}}}
+	if r.kind() == kind {
+		r.fail(rc.cause)
+		r.m.log.Warn("provider stream crashed; restarting", "session", r.id, "provider", kind, "ran", now.Sub(prev.started))
+		r.mu.Lock()
+		if now.Sub(prev.started) >= r.m.opts.Restart.HealthyAfter {
+			r.provAttempts = 0
+		}
+		r.mu.Unlock()
 	}
-	r.mu.Unlock()
 	for {
+		if cur := r.kind(); cur != kind {
+			// The run fell back: open the new provider right away.
+			kind = cur
+			rc.params = map[string]any{"provider": kind}
+			rc.since = r.m.opts.Clock.Now()
+			st, err := r.openASR()
+			if err == nil {
+				r.mu.Lock()
+				switches := 0
+				if r.fb != nil {
+					switches = r.fb.Switches
+				}
+				r.mu.Unlock()
+				st.prefix = fmt.Sprintf("%sf%d-", r.prefix, switches)
+				r.m.log.Info("provider stream switched", "session", r.id, "provider", kind)
+				r.attach(st)
+				return st
+			}
+			rc.cause = r.providerStartError(err)
+			r.fail(rc.cause)
+			r.m.log.Warn("provider fallback stream failed to start; restarting", "session", r.id, "provider", kind, "err", err)
+		} else if r.wantFallback(rc.cause) && r.fallback(fallbackReason(rc.cause, CodeRestartsFailed), rc.cause) {
+			continue
+		}
 		attempt, delay, ok := r.next(rc, &r.provAttempts)
 		if !ok {
 			n := attempt - 1
 			r.failFatal(api.Error{Code: CodeProviderFailed,
 				Message: fmt.Sprintf("the provider stream failed %d restarts in a row: %s", n, rc.cause.Message),
-				Params:  &map[string]any{"provider": r.provider, "attempts": n}})
-			r.m.log.Error("provider stream gave up", "session", r.id, "provider", r.provider, "attempts", n)
-			r.m.logEvent(api.AdminEventLogLevelError, CodeProviderFailed, r.id, map[string]any{"provider": r.provider, "attempts": n})
+				Params:  &map[string]any{"provider": kind, "attempts": n}})
+			r.m.log.Error("provider stream gave up", "session", r.id, "provider", kind, "attempts", n)
+			r.m.logEvent(api.AdminEventLogLevelError, CodeProviderFailed, r.id, map[string]any{"provider": kind, "attempts": n})
 			return nil
 		}
-		if !r.wait(delay, r.ended) {
+		if !r.wait(delay, r.ended, r.kick) {
 			r.setRecovering(nil)
 			return nil
+		}
+		if r.kind() != kind {
+			continue // woken by a fallback
 		}
 		st, err := r.openASR()
 		if err != nil {
 			rc.cause = r.providerStartError(err)
 			r.fail(rc.cause)
-			r.m.log.Warn("provider restart failed", "session", r.id, "provider", r.provider, "attempt", attempt, "err", err)
+			r.m.log.Warn("provider restart failed", "session", r.id, "provider", kind, "attempt", attempt, "err", err)
 			continue
 		}
-		n := r.restarted(CodeProviderRestarted, params, attempt)
+		n := r.restarted(CodeProviderRestarted, rc.params, attempt)
 		// Providers number segments from 1 again: keep their IDs unique.
 		st.prefix = fmt.Sprintf("%s%d-", r.prefix, n)
-		r.m.log.Info("provider stream restarted", "session", r.id, "provider", r.provider, "attempt", attempt)
+		r.m.log.Info("provider stream restarted", "session", r.id, "provider", kind, "attempt", attempt)
 		r.attach(st)
 		return st
 	}
@@ -384,7 +435,7 @@ func (r *run) restartSource(cause error) <-chan domain.AudioFrame {
 			failed(attempt - 1)
 			return nil
 		}
-		if !r.wait(delay, nil) {
+		if !r.wait(delay, nil, nil) {
 			r.setRecovering(nil)
 			return nil
 		}

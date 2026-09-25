@@ -196,6 +196,31 @@
         "title": "El proveedor de IA dejó de funcionar",
         "why": "{{provider}} siguió fallando y no se recuperó después de {{attempts}} reinicios, así que la sesión se detuvo.",
         "fix": "Revisá que {{provider}} esté accesible (su servicio local, la red o la clave de API) y volvé a iniciar la sesión, o cambiá de proveedor."
+      },
+      "quota_exhausted": {
+        "title": "{{provider}} se quedó sin cuota",
+        "why": "Google rechazó el pedido porque la clave de API superó su cuota o su límite de uso, así que {{provider}} dejó de transcribir o traducir.",
+        "fix": "Revisá la cuota en Google AI Studio o esperá a que se renueve. Con el cambio automático de proveedor activado en Configuración, las sesiones en curso pasan al proveedor local."
+      },
+      "auth_failed": {
+        "title": "Google rechazó la clave de API",
+        "why": "La clave se revocó, se restringió o se reemplazó mientras la sesión corría, así que no se puede usar {{provider}}.",
+        "fix": "Guardá una clave válida en Configuración. Con el cambio automático de proveedor activado, las sesiones en curso pasan al proveedor local."
+      },
+      "errors_repeated": {
+        "title": "El proveedor de IA siguió fallando",
+        "why": "El proveedor informó un error tras otro en poco tiempo.",
+        "fix": "Revisá el estado del proveedor (su servicio auxiliar, la red o la clave de API)."
+      },
+      "restarts_failed": {
+        "title": "No se pudo reiniciar el proveedor de IA",
+        "why": "El flujo del proveedor se cortó y los reinicios fallaron uno tras otro.",
+        "fix": "Revisá que el proveedor esté accesible (su servicio auxiliar, la red o la clave de API)."
+      },
+      "fallback": {
+        "title": "La sesión pasó a {{to}}",
+        "why": "{{from}} siguió fallando, así que la sesión pasó a {{to}} sin detenerse. Los subtítulos siguen en las mismas pistas; el audio perdido en el cambio queda marcado como un corte.",
+        "fix": "Arreglá {{from}} cuando puedas. La sesión sigue con {{to}} hasta que la detengas y la vuelvas a iniciar. Desactivá el cambio automático de proveedor en Configuración para evitarlo."
       }
     },
     "auth": {
@@ -387,6 +412,13 @@
         "title": "No encontramos la grabación",
         "why": "Puede que la haya borrado un administrador o la limpieza automática de grabaciones viejas, o que el enlace tenga un error.",
         "fix": "Elegí la grabación desde la lista de grabaciones de la sesión."
+      }
+    },
+    "caption": {
+      "not_found": {
+        "title": "No encontramos esa línea de subtítulos",
+        "why": "La línea todavía no está guardada para ese idioma, algo que pasa con el texto que se sigue reconociendo, o se borraron los subtítulos de la sesión.",
+        "fix": "Esperá a que la línea quede final y probá de nuevo, o recargá los subtítulos."
       }
     },
     "settings": {

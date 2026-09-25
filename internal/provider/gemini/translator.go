@@ -72,7 +72,7 @@ func (t *Translator) Translate(ctx context.Context, req domain.TranslateRequest)
 	contents, cfg := translatorRequest(req, model)
 	resp, err := models.GenerateContent(ctx, model, contents, cfg)
 	if err != nil {
-		return domain.TranslateResult{}, fmt.Errorf("gemini translate: %w", err)
+		return domain.TranslateResult{}, coded(fmt.Errorf("gemini translate: %w", err))
 	}
 	return translatorResult(req, translatorText(resp), resp.UsageMetadata)
 }
@@ -89,7 +89,7 @@ func (t *Translator) TranslateStream(ctx context.Context, req domain.TranslateRe
 	var usage *genai.GenerateContentResponseUsageMetadata
 	for resp, err := range models.GenerateContentStream(ctx, model, contents, cfg) {
 		if err != nil {
-			return domain.TranslateResult{}, fmt.Errorf("gemini translate: %w", err)
+			return domain.TranslateResult{}, coded(fmt.Errorf("gemini translate: %w", err))
 		}
 		if resp == nil {
 			continue

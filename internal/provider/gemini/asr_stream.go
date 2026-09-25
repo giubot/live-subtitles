@@ -470,7 +470,7 @@ func (s *stream) lost(c *conn, err error) {
 		return
 	}
 	s.log.Warn("gemini live connection lost; reconnecting", "err", err)
-	s.emit(domain.ASREvent{Err: fmt.Errorf("gemini: live connection lost, reconnecting: %w", err)})
+	s.emit(domain.ASREvent{Err: coded(fmt.Errorf("gemini: live connection lost, reconnecting: %w", err))})
 	s.downSince = s.o.now()
 	s.retries = 0 // failed rotation dials don't count against reconnecting
 	if s.ended && !s.dialing {
@@ -510,7 +510,7 @@ func (s *stream) dialed(d dialResult) {
 		s.log.Warn("gemini live connect failed", "attempt", s.retries, "rotation", s.cur != nil, "err", d.err)
 		if s.cur == nil {
 			if s.retries > s.o.MaxRetries {
-				s.emit(domain.ASREvent{Err: fmt.Errorf("gemini: giving up after %d failed reconnects: %w", s.retries, d.err)})
+				s.emit(domain.ASREvent{Err: coded(fmt.Errorf("gemini: giving up after %d failed reconnects: %w", s.retries, d.err))})
 				s.finish()
 				return
 			}

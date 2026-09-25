@@ -35,6 +35,12 @@ type Server struct {
 	Sessions domain.SessionStore
 	Captions domain.CaptionStore
 	Settings domain.SettingsStore
+	// CaptionEdits corrects stored captions (ADM-4); nil: patchCaption
+	// answers 501.
+	CaptionEdits domain.CaptionEditor
+	// CaptionBus gets the corrected captions for live viewers; nil: a
+	// correction only reaches exports and replay.
+	CaptionBus domain.CaptionBus
 	// OverlayPresets stores saved overlay presets; nil: only the built-ins
 	// are listed and the write operations answer 501.
 	OverlayPresets OverlayPresets

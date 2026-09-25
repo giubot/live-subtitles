@@ -17,7 +17,7 @@ import (
 func (r *run) newFanout(ctx context.Context) *translate.Fanout {
 	return translate.New(r.ctx, translate.Options{
 		SessionID:        r.id,
-		Translator:       r.translator,
+		Translator:       runTranslator{r},
 		Targets:          r.sess.TargetLanguages,
 		ContextSentences: r.m.contextSentences(ctx),
 		Glossary:         r.glossary,
@@ -29,8 +29,13 @@ func (r *run) newFanout(ctx context.Context) *translate.Fanout {
 		},
 		Usage: r.addTranslationUsage,
 		Failed: func(lang domain.LanguageCode, _ api.Caption, err error) {
-			r.fail(api.Error{Code: CodeTranslationFailed, Message: err.Error(), Params: &map[string]any{"lang": lang}})
+			e := api.Error{Code: CodeTranslationFailed, Message: err.Error(), Params: &map[string]any{"lang": lang}}
+			r.fail(e)
 			r.m.logEvent(api.AdminEventLogLevelWarn, CodeTranslationFailed, r.id, map[string]any{"lang": lang})
+			if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
+				e.Code = coded.Code // a quota or key failure falls back at once
+			}
+			r.countFailure(e)
 		},
 	})
 }

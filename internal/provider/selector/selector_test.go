@@ -464,3 +464,38 @@ func equal(a, b []string) bool {
 	}
 	return true
 }
+
+// Available says where a running session may fall back to (AI-8).
+func TestAvailable(t *testing.T) {
+	const good, bad, offline = "AIzaGoodKey0001", "AIzaBadKey0002", "AIzaOfflineKey3"
+	verdicts := map[string]bool{good: true, bad: false}
+	tests := []struct {
+		name     string
+		key      string
+		kind     domain.ProviderKind
+		want     bool
+		wantCode string
+	}{
+		{"gemini with a valid key", good, api.ProviderKindGemini, true, ""},
+		{"gemini with a rejected key", bad, api.ProviderKindGemini, false, CodeKeyInvalid},
+		{"gemini with an unverifiable key", offline, api.ProviderKindGemini, false, CodeKeyUnverified},
+		{"gemini without a key", "", api.ProviderKindGemini, false, CodeNoAPIKey},
+		{"local with its sidecars down", good, api.ProviderKindLocal, false, CodeWhisperUnreachable},
+		{"never mock", good, api.ProviderKindMock, false, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFixture(t, tt.key, verdicts)
+			ok, code := f.Available(t.Context(), tt.kind)
+			if ok != tt.want || code != tt.wantCode {
+				t.Errorf("Available(%s) = %v, %q; want %v, %q", tt.kind, ok, code, tt.want, tt.wantCode)
+			}
+			f.waitIdle(t)
+		})
+	}
+	f := newFixture(t, good, verdicts)
+	f.opts.Local = nil
+	if ok, _ := f.Available(t.Context(), api.ProviderKindLocal); !ok {
+		t.Error("local without a probe is unavailable")
+	}
+}

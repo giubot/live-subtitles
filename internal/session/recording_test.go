@@ -127,3 +127,67 @@ func TestStatusRecordingID(t *testing.T) {
 		t.Errorf("idle status still has recording %q", *st.RecordingId)
 	}
 }
+
+// listingRecorder also lists the session's recordings, as
+// recording.Recorder does.
+type listingRecorder struct {
+	fakeRecorder
+	recs []domain.Recording
+}
+
+func (r *listingRecorder) List(_ context.Context, sessionID string) ([]domain.Recording, error) {
+	var out []domain.Recording
+	for _, rec := range r.recs {
+		if rec.SessionId == sessionID {
+			out = append(out, rec)
+		}
+	}
+	return out, nil
+}
+
+// After a server restart the session clock continues past the session's
+// recordings too, not only its captions: audio often runs on after the last
+// caption (silence, applause, a crash mid-sentence), and a run that started
+// inside an earlier recording's window would show its captions in that
+// recording's replay.
+func TestClockOriginAfterRestartSkipsRecordings(t *testing.T) {
+	f := func(v float32) *float32 { return &v }
+	tests := []struct {
+		name string
+		recs []domain.Recording
+		want time.Duration
+	}{
+		{"no recordings: after the last caption", nil, 6 * time.Second},
+		{"a recording that ends after the last caption", []domain.Recording{
+			{Id: "rec-1", SessionId: "main", OffsetSec: f(0), DurationSec: f(59.4)},
+		}, 61 * time.Second},
+		{"the latest of several", []domain.Recording{
+			{Id: "rec-2", SessionId: "main", OffsetSec: f(70), DurationSec: f(10.2)},
+			{Id: "rec-1", SessionId: "main", OffsetSec: f(0), DurationSec: f(59.4)},
+		}, 82 * time.Second},
+		{"a recording within the captions", []domain.Recording{
+			{Id: "rec-1", SessionId: "main", OffsetSec: f(1), DurationSec: f(2)},
+		}, 6 * time.Second},
+		{"another session's recording", []domain.Recording{
+			{Id: "rec-1", SessionId: "side", OffsetSec: f(0), DurationSec: f(500)},
+		}, 6 * time.Second},
+		{"a recording without a duration yet", []domain.Recording{
+			{Id: "rec-1", SessionId: "main", OffsetSec: f(30)},
+		}, 31 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := newEnv(t, Options{}, sess("main", "es"))
+			if err := e.store.SaveCaption(t.Context(), domain.CaptionEvent{SessionId: "main", SegmentId: "r0-s-1",
+				Lang: domain.SourceTrack, Final: true, Start: 1, End: 4.5, Text: "hola"}); err != nil {
+				t.Fatal(err)
+			}
+			m := New(Options{Sessions: e.store, Captions: e.store, Bus: e.bus, Recorder: &listingRecorder{recs: tt.recs},
+				IngestSource: func(string) domain.AudioSource { return &fake.Source{} }})
+			defer m.Close()
+			if got := m.clockOrigin(t.Context(), "main"); got != tt.want {
+				t.Errorf("clock origin %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

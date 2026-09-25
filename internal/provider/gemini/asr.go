@@ -104,7 +104,7 @@ func (a *ASR) Start(ctx context.Context, cfg domain.ASRConfig) (chan<- domain.Au
 
 	conn, err := dialCtx(ctx, opts.dial, dc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("gemini: connect to the Live API (model %s): %w", model, err)
+		return nil, nil, coded(fmt.Errorf("gemini: connect to the Live API (model %s): %w", model, err))
 	}
 	s := newStream(ctx, opts, cfg, dc)
 	s.log.Info("gemini live connected", "model", model, "source_language", cfg.SourceLanguage, "vocabulary", len(dc.Vocabulary))

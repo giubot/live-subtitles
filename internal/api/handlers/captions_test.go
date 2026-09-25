@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,11 +16,18 @@ import (
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/bus"
 	"github.com/iencodev/live-subtitles/internal/domain"
 	"github.com/iencodev/live-subtitles/internal/store"
 )
 
 func captionsServer(t *testing.T) (http.Handler, *store.Store) {
+	t.Helper()
+	return captionsServerWithBus(t, nil)
+}
+
+// captionsServerWithBus is captionsServer with corrections published on b.
+func captionsServerWithBus(t *testing.T, b domain.CaptionBus) (http.Handler, *store.Store) {
 	t.Helper()
 	ctx := t.Context()
 	st, err := store.Open(ctx, filepath.Join(t.TempDir(), "live.db"))
@@ -47,7 +55,7 @@ func captionsServer(t *testing.T) (http.Handler, *store.Store) {
 		t.Fatal(err)
 	}
 	s := New()
-	s.Sessions, s.Captions, s.Settings = st, st, st
+	s.Sessions, s.Captions, s.Settings, s.CaptionEdits, s.CaptionBus = st, st, st, st, b
 	return s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler)), st
 }
 
@@ -191,5 +199,117 @@ func TestListCaptions(t *testing.T) {
 		if res.StatusCode != tt.wantStatus || !strings.Contains(body, tt.wantBody) {
 			t.Errorf("%s: %d %s, want %d %s", tt.path, res.StatusCode, body, tt.wantStatus, tt.wantBody)
 		}
+	}
+}
+
+func patch(t *testing.T, h http.Handler, path, body string) (*http.Response, string) {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PATCH", path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	h.ServeHTTP(rec, req)
+	res := rec.Result()
+	b, _ := io.ReadAll(res.Body)
+	return res, string(b)
+}
+
+// captionsOnly passes on the next caption message of ch, skipping the
+// others (such as viewers counts), without blocking the caller.
+func captionsOnly(ch <-chan domain.BusMessage) <-chan domain.BusMessage {
+	out := make(chan domain.BusMessage, 1)
+	for {
+		select {
+		case m := <-ch:
+			if m.Type == api.CaptionsServerMessageTypeCaption {
+				out <- m
+				return out
+			}
+		default:
+			return out
+		}
+	}
+}
+
+func TestPatchCaption(t *testing.T) {
+	b := bus.New()
+	h, _ := captionsServerWithBus(t, b)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	live := b.Subscribe(ctx, "main", []string{"es"})
+	if m := <-live; m.Type != api.CaptionsServerMessageTypeHistory {
+		t.Fatalf("first message %+v", m)
+	}
+
+	// The cases run in order against the same session.
+	tests := []struct {
+		name, path, body string
+		wantStatus       int
+		wantBody         string
+		// wantLive is the text of the broadcast caption; empty: none.
+		wantLive       string
+		wantLiveHidden bool
+	}{
+		{"edit text", "/api/sessions/main/captions/s-1?lang=es", `{"text":"  Hola a todas.  "}`, 200,
+			`"edited":true`, "Hola a todas.", false},
+		{"hide", "/api/sessions/main/captions/s-3?lang=es", `{"hidden":true}`, 200,
+			`"hidden":true`, "Hoy hablamos de <observabilidad> & métricas.", true},
+		{"unhide", "/api/sessions/main/captions/s-2?lang=es", `{"hidden":false}`, 200,
+			`"text":"Esto está oculto."`, "Esto está oculto.", false},
+		{"other track", "/api/sessions/main/captions/s-1?lang=en", `{"text":"Hello all."}`, 200,
+			`"lang":"en"`, "", false},
+		{"missing session", "/api/sessions/nope/captions/s-1?lang=es", `{"text":"x"}`, 404,
+			`"code":"session.not_found"`, "", false},
+		{"missing segment", "/api/sessions/main/captions/s-9?lang=es", `{"text":"x"}`, 404,
+			`"code":"caption.not_found"`, "", false},
+		{"missing track", "/api/sessions/main/captions/s-1?lang=fr", `{"text":"x"}`, 404,
+			`"code":"caption.not_found"`, "", false},
+		{"empty patch", "/api/sessions/main/captions/s-1?lang=es", `{}`, 400, `"code":"request.invalid"`, "", false},
+		{"blank text", "/api/sessions/main/captions/s-1?lang=es", `{"text":" "}`, 400, `"code":"request.invalid"`, "", false},
+		{"no lang", "/api/sessions/main/captions/s-1", `{"text":"x"}`, 400, `"code":"request.invalid"`, "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, body := patch(t, h, tt.path, tt.body)
+			if res.StatusCode != tt.wantStatus || !strings.Contains(body, tt.wantBody) {
+				t.Fatalf("%d %s, want %d %s", res.StatusCode, body, tt.wantStatus, tt.wantBody)
+			}
+			select {
+			case m := <-captionsOnly(live):
+				c := m.Caption
+				if tt.wantLive == "" || c == nil || c.Text != tt.wantLive || c.Edited == nil || !*c.Edited ||
+					(c.Hidden != nil && *c.Hidden) != tt.wantLiveHidden {
+					t.Errorf("broadcast %+v, want text %q hidden %v", m, tt.wantLive, tt.wantLiveHidden)
+				}
+			case <-time.After(50 * time.Millisecond):
+				if tt.wantLive != "" {
+					t.Errorf("no broadcast, want %q", tt.wantLive)
+				}
+			}
+		})
+	}
+
+	// Exports and replay show the corrections and leave out hidden lines;
+	// so does the history a new viewer gets.
+	_, vtt := get(t, h, "/api/public/sessions/main/subtitles?lang=es&format=vtt")
+	for _, want := range []string{"Hola a todas.", "Esto está oculto."} {
+		if !strings.Contains(vtt, want) {
+			t.Errorf("vtt lacks %q:\n%s", want, vtt)
+		}
+	}
+	if strings.Contains(vtt, "observabilidad") || strings.Contains(vtt, "Hola a todos.") {
+		t.Errorf("vtt shows a hidden or uncorrected line:\n%s", vtt)
+	}
+	_, list := get(t, h, "/api/public/sessions/main/captions?lang=en")
+	if !strings.Contains(list, `"text":"Hello all."`) {
+		t.Errorf("captions %s", list)
+	}
+}
+
+func TestPatchCaptionNeedsEditor(t *testing.T) {
+	s := New()
+	h := s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
+	res, body := patch(t, h, "/api/sessions/main/captions/s-1?lang=es", `{"text":"x"}`)
+	if res.StatusCode != 501 {
+		t.Errorf("%d %s, want 501", res.StatusCode, body)
 	}
 }
