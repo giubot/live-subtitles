@@ -182,6 +182,16 @@ export const themeOptions: ThemeOptions = {
     MuiDialog: {
       styleOverrides: { paper: { borderRadius: 'var(--radius-card)' } },
     },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: {
+          // MUI drops the top padding after a DialogTitle, and the content
+          // scrolls (overflow: auto), so a first outlined field's floating
+          // label, which sits half above the field, was clipped in half.
+          '.MuiDialogTitle-root + &': { paddingTop: 'var(--space-sm)' },
+        },
+      },
+    },
     MuiAppBar: {
       defaultProps: { elevation: 0, color: 'inherit', position: 'sticky' },
       styleOverrides: {
