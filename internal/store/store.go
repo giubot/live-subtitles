@@ -86,6 +86,12 @@ func migrations() ([]migration, error) {
 		ms = append(ms, migration{version: v, name: e.Name()})
 	}
 	sort.Slice(ms, func(i, j int) bool { return ms[i].version < ms[j].version })
+	// Two branches adding the same number would silently skip one of them.
+	for i := 1; i < len(ms); i++ {
+		if ms[i].version == ms[i-1].version {
+			return nil, fmt.Errorf("store: migrations %q and %q share version %d", ms[i-1].name, ms[i].name, ms[i].version)
+		}
+	}
 	return ms, nil
 }
 

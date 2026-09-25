@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -382,6 +383,11 @@ func (c crud[T]) run(t *testing.T, a, b, aChanged, missing T, idA, idB string) {
 
 func TestGlossaries(t *testing.T) {
 	s := openTest(t)
+	// The seed glossary would sit in the listing; the CRUD contract runs
+	// on an otherwise empty table.
+	if err := s.DeleteGlossary(t.Context(), SeedGlossaryID); err != nil {
+		t.Fatal(err)
+	}
 	a := domain.Glossary{Id: "g1", Name: "Alpha", UpdatedAt: t0, DoNotTranslate: []string{"Kubernetes"},
 		Terms: []api.GlossaryTerm{{Term: "clúster", Note: ptr("infra"), Translations: &map[string]string{"en": "cluster"}}}}
 	b := domain.Glossary{Id: "g0", Name: "Beta", UpdatedAt: t0, DoNotTranslate: []string{}, Terms: []api.GlossaryTerm{}}
@@ -418,5 +424,102 @@ func TestRecordings(t *testing.T) {
 	got, err := s.ListRecordings(ctx, "other")
 	if err != nil || len(got) != 1 || got[0].Id != "r2" {
 		t.Errorf("ListRecordings(other) = %+v, %v", got, err)
+	}
+}
+
+func TestSeedGlossary(t *testing.T) {
+	ctx := t.Context()
+	path := filepath.Join(t.TempDir(), "live.db")
+	s, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := s.GetGlossary(ctx, SeedGlossaryID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Id != SeedGlossaryID || g.Name == "" || g.UpdatedAt.IsZero() {
+		t.Errorf("seed = %+v", g)
+	}
+	has := func(lang string) bool {
+		for _, term := range g.Terms {
+			if term.Translations != nil && (*term.Translations)[lang] != "" {
+				return true
+			}
+		}
+		return false
+	}
+	if len(g.Terms) < 10 || !has("es") || !has("en") || !slices.Contains(g.DoNotTranslate, "Kubernetes") {
+		t.Errorf("seed lacks EN and ES terms or do-not-translate entries: %+v", g)
+	}
+	// A deleted seed stays deleted: the migration ran once.
+	if err := s.DeleteGlossary(ctx, SeedGlossaryID); err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	s, err = Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	if _, err := s.GetGlossary(ctx, SeedGlossaryID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("seed after delete and reopen: err = %v", err)
+	}
+}
+
+func TestDeleteGlossaryDetaches(t *testing.T) {
+	ctx := t.Context()
+	s := openTest(t)
+	past := t0.AddDate(-5, 0, 0) // before the wall clock the delete stamps
+	g := domain.Glossary{Id: "g1", Name: "Talks", UpdatedAt: t0, Terms: []api.GlossaryTerm{}, DoNotTranslate: []string{}}
+	if err := s.CreateGlossary(ctx, g); err != nil {
+		t.Fatal(err)
+	}
+	for id, glossary := range map[string]*string{"uses": ptr("g1"), "other": ptr(SeedGlossaryID), "none": nil} {
+		sess := session(id, past)
+		sess.GlossaryId = glossary
+		if err := s.CreateSession(ctx, sess); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.PutSettings(ctx, api.Settings{DefaultGlossaryId: ptr("g1"), DefaultTargetLanguages: []string{"es"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteGlossary(ctx, "g1"); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		id       string
+		glossary *string
+		touched  bool
+	}{
+		{"uses", nil, true},
+		{"other", ptr(SeedGlossaryID), false},
+		{"none", nil, false},
+	}
+	for _, tc := range tests {
+		got, err := s.GetSession(ctx, tc.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got.GlossaryId, tc.glossary) {
+			t.Errorf("%s: glossaryId = %v, want %v", tc.id, got.GlossaryId, tc.glossary)
+		}
+		if touched := got.UpdatedAt.After(past); touched != tc.touched {
+			t.Errorf("%s: updatedAt %v, touched = %v, want %v", tc.id, got.UpdatedAt, touched, tc.touched)
+		}
+		if got.Name != "Session "+tc.id {
+			t.Errorf("%s: other fields changed: %+v", tc.id, got)
+		}
+	}
+	st, err := s.Settings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.DefaultGlossaryId != nil || len(st.DefaultTargetLanguages) != 1 {
+		t.Errorf("settings = %+v", st)
+	}
+	if err := s.DeleteGlossary(ctx, "g1"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("delete again: err = %v", err)
 	}
 }
