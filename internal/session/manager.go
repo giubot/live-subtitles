@@ -290,11 +290,49 @@ func (m *Manager) clockOrigin(ctx context.Context, id string) time.Duration {
 	if !ok && m.opts.Captions != nil {
 		t = m.lastCaptionEnd(ctx, id)
 	}
+	if !ok {
+		t = max(t, m.lastRecordingEnd(ctx, id))
+	}
 	if t == 0 {
 		return 0
 	}
 	// Start on the next whole second, at least one second after the last run.
 	return time.Duration(math.Ceil(t.Seconds())+1) * time.Second
+}
+
+// recordingLister is the part of recording.Recorder that lists a session's
+// recordings.
+type recordingLister interface {
+	List(ctx context.Context, sessionID string) ([]domain.Recording, error)
+}
+
+// lastRecordingEnd is where the session's latest recording ends on the
+// session clock. Audio often runs on after the last caption (silence,
+// applause, a crash mid-sentence), so after a server restart the clock
+// must continue past it too, or the next run's captions would fall inside
+// an earlier recording's replay window.
+func (m *Manager) lastRecordingEnd(ctx context.Context, id string) time.Duration {
+	l, ok := m.opts.Recorder.(recordingLister)
+	if !ok {
+		return 0
+	}
+	recs, err := l.List(ctx, id)
+	if err != nil {
+		m.log.Warn("read recordings for the session clock", "session", id, "err", err)
+		return 0
+	}
+	var end float64
+	for _, r := range recs {
+		if r.OffsetSec == nil {
+			continue
+		}
+		e := float64(*r.OffsetSec)
+		if r.DurationSec != nil {
+			e += float64(*r.DurationSec)
+		}
+		end = max(end, e)
+	}
+	return time.Duration(end * float64(time.Second))
 }
 
 func (m *Manager) lastCaptionEnd(ctx context.Context, id string) time.Duration {

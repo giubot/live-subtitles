@@ -90,7 +90,7 @@ A running session is one pipeline: audio source → speech recognition → one t
 - A session with provider `gemini` runs on the [Gemini provider](#gemini-provider); provider `local` transcribes with whisper-server and translates with Gemma through Ollama ([Local AI provider](#local-ai-provider)).
 - Provider `default` follows the [default-provider rule](#default-provider-rule): Gemini with a valid Google API key, local otherwise.
 - Provider `mock` runs on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions. It is never the default; name it on the session (development, demos, load tests).
-- Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
+- Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap. After a server restart the clock continues after the session's last caption and its last recording, whichever ends later, so a new run never falls inside an earlier recording's replay.
 - `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
 
 ### Default-provider rule
