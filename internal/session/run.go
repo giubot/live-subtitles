@@ -45,21 +45,24 @@ type run struct {
 	done       chan struct{}
 	doneOnce   sync.Once
 
-	mu          sync.Mutex
-	st          api.SessionState
-	startedAt   time.Time
-	detected    domain.LanguageCode
-	err         api.Error     // last error, shown in the status
-	fatal       bool          // err ended the run
-	usage       domain.Usage  // reported by the provider during this run
-	sent        time.Duration // audio sent to the provider
-	prior       totals        // usage of the session's earlier runs
-	latency     map[string]*metrics.Latency
-	arrived     arrivals      // when each frame arrived, for latency
-	base        time.Duration // source T of the first frame
-	hasBase     bool
-	end         time.Duration // session clock at the end of the last frame
-	sourceEnded bool
+	mu        sync.Mutex
+	st        api.SessionState
+	startedAt time.Time
+	detected  domain.LanguageCode
+	err       api.Error // last error, shown in the status
+	fatal     bool      // err ended the run
+	// Usage reported during this run, by speech recognition and by the
+	// translators: they run on different models and are priced apart.
+	asrUsage         domain.Usage
+	translationUsage domain.Usage
+	sent             time.Duration // audio sent to the provider
+	prior            totals        // usage of the session's earlier runs
+	latency          map[string]*metrics.Latency
+	arrived          arrivals      // when each frame arrived, for latency
+	base             time.Duration // source T of the first frame
+	hasBase          bool
+	end              time.Duration // session clock at the end of the last frame
+	sourceEnded      bool
 	// recording is the run's recording while it records (status.recordingId).
 	recording domain.RecordingSink
 }
@@ -304,7 +307,13 @@ func (r *run) providerError(err error) {
 
 func (r *run) addUsage(u domain.Usage) {
 	r.mu.Lock()
-	r.usage = r.usage.Add(u)
+	r.asrUsage = r.asrUsage.Add(u)
+	r.mu.Unlock()
+}
+
+func (r *run) addTranslationUsage(u domain.Usage) {
+	r.mu.Lock()
+	r.translationUsage = r.translationUsage.Add(u)
 	r.mu.Unlock()
 }
 
@@ -430,10 +439,10 @@ func (r *run) latencyStats() *map[string]api.LatencyStats {
 // totals is the session's usage including this run, with this run priced
 // for its provider. Called with mu held.
 func (r *run) totals() totals {
-	u := r.usage
+	asr := r.asrUsage
 	// Audio is billed for what was sent, whether or not the provider reports it.
-	u.AudioSeconds = max(u.AudioSeconds, r.sent.Seconds())
-	return r.prior.add(u, r.m.pricing.Cost(r.provider, u))
+	asr.AudioSeconds = max(asr.AudioSeconds, r.sent.Seconds())
+	return r.prior.add(asr.Add(r.translationUsage), r.m.pricing.Cost(r.provider, asr, r.translationUsage))
 }
 
 // finalStats are what the session shows once this run has ended.

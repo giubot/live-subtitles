@@ -27,7 +27,7 @@ func (r *run) newFanout(ctx context.Context) *translate.Fanout {
 			c.LatencyMs = r.latencyMs(secondsToDuration(c.End))
 			r.publish(c)
 		},
-		Usage: r.addUsage,
+		Usage: r.addTranslationUsage,
 		Failed: func(lang domain.LanguageCode, _ api.Caption, err error) {
 			r.fail(api.Error{Code: CodeTranslationFailed, Message: err.Error(), Params: &map[string]any{"lang": lang}})
 			r.m.logEvent(api.AdminEventLogLevelWarn, CodeTranslationFailed, r.id, map[string]any{"lang": lang})

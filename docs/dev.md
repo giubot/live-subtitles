@@ -90,15 +90,16 @@ A running session is one pipeline: audio source → speech recognition → one t
 
 Every caption carries `latencyMs`: the time from when the end of its audio reached the server to when the caption was emitted, so it covers recognition on the `source` track and recognition plus translation on the others (a target equal to the source language passes through untranslated). `SessionStatus.latency` (in `GET /api/sessions/{id}/status` and on `/ws/admin`) has the p50, p95 and last value per track over the last 200 final captions of the current or last run.
 
-`SessionStatus.usage` sums what a session used across its runs since the server started: audio seconds sent to the provider, the tokens the provider reports, and `estimatedCostUsd`. Only Gemini is priced; the local and mock providers cost 0. The prices are **estimates** from Google's published list prices (2025) and go stale, so set your own:
+`SessionStatus.usage` sums what a session used across its runs since the server started: audio seconds sent to the provider, the tokens the provider reports, and `estimatedCostUsd`. Only Gemini is priced; the local and mock providers cost 0. Speech recognition and translation run on different models, so each has its own prices. They are **estimates** from Google's published list prices (September 2026) and go stale, so set your own:
 
 | Flag | Environment | Default (USD) |
 |---|---|---|
-| `--gemini-input-usd-per-mtok` | `LIVESUBS_GEMINI_INPUT_USD_PER_MTOK` | `0.30` per million input text tokens (Gemini 2.5 Flash) |
-| `--gemini-output-usd-per-mtok` | `LIVESUBS_GEMINI_OUTPUT_USD_PER_MTOK` | `2.50` per million output tokens (Gemini 2.5 Flash) |
-| `--gemini-audio-usd-per-min` | `LIVESUBS_GEMINI_AUDIO_USD_PER_MIN` | `0.00576` per minute of audio (Live API: $3.00 per million audio tokens × 32 tokens/s) |
+| `--gemini-asr-audio-usd-per-min` | `LIVESUBS_GEMINI_ASR_AUDIO_USD_PER_MIN` | `0.005` per minute of audio (`gemini-3.5-transcribe-live`) |
+| `--gemini-asr-output-usd-per-mtok` | `LIVESUBS_GEMINI_ASR_OUTPUT_USD_PER_MTOK` | `21.00` per million transcript tokens (`gemini-3.5-transcribe-live`) |
+| `--gemini-translation-input-usd-per-mtok` | `LIVESUBS_GEMINI_TRANSLATION_INPUT_USD_PER_MTOK` | `0.30` per million input tokens (`gemini-3.5-flash-lite`) |
+| `--gemini-translation-output-usd-per-mtok` | `LIVESUBS_GEMINI_TRANSLATION_OUTPUT_USD_PER_MTOK` | `2.50` per million output tokens (`gemini-3.5-flash-lite`) |
 
-Audio is priced per minute rather than as tokens, so an hour of Gemini captions costs about $0.35 plus the translation tokens. Stats live in memory: a restart resets them.
+Audio is priced per minute rather than as tokens. Google puts the transcript output at about $0.004 per minute, so an hour of Gemini captions costs about $0.55 plus the translation tokens. Stats live in memory: a restart resets them.
 
 ## Subtitle files
 

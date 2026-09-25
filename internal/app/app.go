@@ -155,7 +155,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
 		IngestStatus:  a.hub.Status,
 		ReleaseIngest: a.hub.Remove,
-		Pricing:       &metrics.Pricing{Gemini: cfg.GeminiPrices},
+		Pricing:       &metrics.Pricing{GeminiASR: cfg.GeminiASRPrices, GeminiTranslation: cfg.GeminiTranslationPrices},
 		Recorder:      a.rec,
 		Logger:        log,
 	})

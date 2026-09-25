@@ -44,13 +44,19 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name: "gemini prices from env and flags",
-			args: []string{"-gemini-audio-usd-per-min", "0.01"},
-			env:  map[string]string{"LIVESUBS_GEMINI_INPUT_USD_PER_MTOK": "0.5", "LIVESUBS_GEMINI_OUTPUT_USD_PER_MTOK": "0", "LIVESUBS_GEMINI_AUDIO_USD_PER_MIN": "1"},
+			args: []string{"-gemini-asr-audio-usd-per-min", "0.01"},
+			env: map[string]string{
+				"LIVESUBS_GEMINI_ASR_AUDIO_USD_PER_MIN":           "1",
+				"LIVESUBS_GEMINI_ASR_OUTPUT_USD_PER_MTOK":         "20",
+				"LIVESUBS_GEMINI_TRANSLATION_INPUT_USD_PER_MTOK":  "0.5",
+				"LIVESUBS_GEMINI_TRANSLATION_OUTPUT_USD_PER_MTOK": "0",
+			},
 			want: Config{Addr: "0.0.0.0:8080", DataDir: "./data", LogFormat: "text", LogLevel: slog.LevelInfo, FFmpeg: "ffmpeg",
-				GeminiPrices: metrics.Prices{InputPerMTok: 0.5, OutputPerMTok: 0, AudioPerMin: 0.01}},
+				GeminiASRPrices:         metrics.Prices{OutputPerMTok: 20, AudioPerMin: 0.01},
+				GeminiTranslationPrices: metrics.Prices{InputPerMTok: 0.5}},
 		},
-		{name: "bad price", env: map[string]string{"LIVESUBS_GEMINI_AUDIO_USD_PER_MIN": "cheap"}, wantErr: true},
-		{name: "negative price", args: []string{"-gemini-input-usd-per-mtok", "-1"}, wantErr: true},
+		{name: "bad price", env: map[string]string{"LIVESUBS_GEMINI_ASR_AUDIO_USD_PER_MIN": "cheap"}, wantErr: true},
+		{name: "negative price", args: []string{"-gemini-translation-input-usd-per-mtok", "-1"}, wantErr: true},
 		{name: "short admin token", env: map[string]string{"LIVESUBS_ADMIN_TOKEN": "short"}, wantErr: true},
 		{name: "bad keychain bool", env: map[string]string{"LIVESUBS_NO_KEYCHAIN": "maybe"}, wantErr: true},
 		{name: "bad level", args: []string{"-log-level", "loud"}, wantErr: true},
@@ -63,8 +69,10 @@ func TestLoad(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
 			}
-			if tt.want.GeminiPrices == (metrics.Prices{}) { // cases that don't set prices expect the defaults
-				tt.want.GeminiPrices = metrics.DefaultGeminiPrices
+			if tt.want.GeminiASRPrices == (metrics.Prices{}) && tt.want.GeminiTranslationPrices == (metrics.Prices{}) {
+				// Cases that don't set prices expect the defaults.
+				tt.want.GeminiASRPrices = metrics.DefaultGeminiASRPrices
+				tt.want.GeminiTranslationPrices = metrics.DefaultGeminiTranslationPrices
 			}
 			if tt.want.TLS == (TLS{}) { // TLS cases live in tls_test.go
 				tt.want.TLS = TLS{Mode: TLSModeAuto}

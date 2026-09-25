@@ -34,9 +34,12 @@ type Config struct {
 	// only read from LIVESUBS_ADMIN_TOKEN: a flag would show in `ps`.
 	AdminToken string
 
-	// GeminiPrices estimate the cost of Gemini usage in session status
-	// (AI-9). The defaults are list-price estimates; see metrics.DefaultGeminiPrices.
-	GeminiPrices metrics.Prices
+	// GeminiASRPrices and GeminiTranslationPrices estimate the cost of
+	// Gemini usage in session status (AI-9), for speech recognition and for
+	// translation. The defaults are list-price estimates; see
+	// metrics.DefaultGeminiASRPrices and metrics.DefaultGeminiTranslationPrices.
+	GeminiASRPrices         metrics.Prices
+	GeminiTranslationPrices metrics.Prices
 	// TLS configures the HTTPS listener next to the HTTP one (tls.go).
 	TLS TLS
 }
@@ -74,12 +77,14 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 		def       float64
 		what      string
 	}{
-		{"gemini-input-usd-per-mtok", "GEMINI_INPUT_USD_PER_MTOK", &c.GeminiPrices.InputPerMTok,
-			metrics.DefaultGeminiPrices.InputPerMTok, "estimated Gemini price per million input tokens, USD"},
-		{"gemini-output-usd-per-mtok", "GEMINI_OUTPUT_USD_PER_MTOK", &c.GeminiPrices.OutputPerMTok,
-			metrics.DefaultGeminiPrices.OutputPerMTok, "estimated Gemini price per million output tokens, USD"},
-		{"gemini-audio-usd-per-min", "GEMINI_AUDIO_USD_PER_MIN", &c.GeminiPrices.AudioPerMin,
-			metrics.DefaultGeminiPrices.AudioPerMin, "estimated Gemini price per minute of audio, USD"},
+		{"gemini-asr-audio-usd-per-min", "GEMINI_ASR_AUDIO_USD_PER_MIN", &c.GeminiASRPrices.AudioPerMin,
+			metrics.DefaultGeminiASRPrices.AudioPerMin, "estimated Gemini speech recognition price per minute of audio, USD"},
+		{"gemini-asr-output-usd-per-mtok", "GEMINI_ASR_OUTPUT_USD_PER_MTOK", &c.GeminiASRPrices.OutputPerMTok,
+			metrics.DefaultGeminiASRPrices.OutputPerMTok, "estimated Gemini speech recognition price per million transcript tokens, USD"},
+		{"gemini-translation-input-usd-per-mtok", "GEMINI_TRANSLATION_INPUT_USD_PER_MTOK", &c.GeminiTranslationPrices.InputPerMTok,
+			metrics.DefaultGeminiTranslationPrices.InputPerMTok, "estimated Gemini translation price per million input tokens, USD"},
+		{"gemini-translation-output-usd-per-mtok", "GEMINI_TRANSLATION_OUTPUT_USD_PER_MTOK", &c.GeminiTranslationPrices.OutputPerMTok,
+			metrics.DefaultGeminiTranslationPrices.OutputPerMTok, "estimated Gemini translation price per million output tokens, USD"},
 	} {
 		def := p.def
 		if v := env(p.env, ""); v != "" {
@@ -110,7 +115,7 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	if c.LogFormat != "text" && c.LogFormat != "json" {
 		return c, fmt.Errorf("log format %q: want text or json", c.LogFormat)
 	}
-	if err := c.GeminiPrices.Validate(); err != nil {
+	if err := errors.Join(c.GeminiASRPrices.Validate(), c.GeminiTranslationPrices.Validate()); err != nil {
 		return c, fmt.Errorf("gemini prices: %w", err)
 	}
 	if c.AdminToken != "" && len(c.AdminToken) < MinAdminTokenLength {

@@ -163,9 +163,12 @@ func TestLatencyAndUsagePerTrack(t *testing.T) {
 	wantSource := api.LatencyStats{P50Ms: 1000, P95Ms: 2100, LastMs: ptr(2100)}
 	wantES := api.LatencyStats{P50Ms: 1300, P95Ms: 2400, LastMs: ptr(2400)}
 	// Tokens: 3 × ASR (1000 in, 100 out) + 3 × es translation (50 in, 20 out);
-	// 3 s of audio sent.
-	pricing := metrics.Pricing{Gemini: metrics.Prices{InputPerMTok: 1, OutputPerMTok: 10, AudioPerMin: 0.6}}
-	geminiCost := 3150e-6*1 + 360e-6*10 + 3.0/60*0.6
+	// 3 s of audio sent. Each side has its own prices.
+	pricing := metrics.Pricing{
+		GeminiASR:         metrics.Prices{InputPerMTok: 1, OutputPerMTok: 10, AudioPerMin: 0.6},
+		GeminiTranslation: metrics.Prices{InputPerMTok: 2, OutputPerMTok: 20},
+	}
+	geminiCost := 3000e-6*1 + 300e-6*10 + 3.0/60*0.6 + 150e-6*2 + 60e-6*20
 
 	for _, c := range []struct {
 		kind     domain.ProviderKind
