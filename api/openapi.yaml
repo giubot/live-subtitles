@@ -1832,6 +1832,14 @@ components:
         startedAt: { $ref: "#/components/schemas/Timestamp" }
         endedAt: { $ref: "#/components/schemas/Timestamp" }
         durationSec: { type: number }
+        offsetSec:
+          type: number
+          description: |
+            Session clock time of the recording's first sample (REC-3). Session
+            captions are on the session clock, so a caption at `start` plays at
+            `start - offsetSec` in this file; captions and subtitles requested
+            with `recordingId` are already shifted.
+          example: 0
         sizeBytes: { type: integer, format: int64 }
         status: { type: string, enum: [recording, complete, failed] }
         languages:

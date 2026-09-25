@@ -1535,6 +1535,14 @@ export interface components {
             startedAt: components["schemas"]["Timestamp"];
             endedAt?: components["schemas"]["Timestamp"];
             durationSec?: number;
+            /**
+             * @description Session clock time of the recording's first sample (REC-3). Session
+             *     captions are on the session clock, so a caption at `start` plays at
+             *     `start - offsetSec` in this file; captions and subtitles requested
+             *     with `recordingId` are already shifted.
+             * @example 0
+             */
+            offsetSec?: number;
             /** Format: int64 */
             sizeBytes?: number;
             /** @enum {string} */
