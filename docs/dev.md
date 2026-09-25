@@ -45,7 +45,7 @@ After the PIN, `/setup` walks through the hardware check, local models, the Goog
 - `/admin/providers`: which provider new sessions use, and the write-only Google API key.
 - `/admin/settings` and `/admin/tls` (certificate details and how to trust the local CA on each OS).
 
-Scripts can do the same over the API. Anything left out comes from the settings (target languages `[es, en]`, source language `auto`, recording on):
+Scripts can do the same over the API. Anything left out comes from the settings (target languages `[es, en]`, source language `auto`, recording on). `GET /api/languages` lists the supported languages: captions can be translated into `es`, `en`, `pt`, `fr`, `de`, `it`, `zh`, `ja` and `ko`, and the source language is `auto`, `en` or `es` (`canBeSource`). Any other language answers 400 `session.invalid_language`:
 
 ```sh
 curl -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" -H "Content-Type: application/json" \

@@ -237,19 +237,28 @@ func validateSession(b api.SessionBase, requireName bool) map[string]string {
 	if b.Room != nil && utf8.RuneCountInString(*b.Room) > 120 {
 		bad["room"] = "request.invalid"
 	}
-	if b.SourceLanguage != nil && !b.SourceLanguage.Valid() {
-		bad["sourceLanguage"] = "request.invalid"
+	if b.SourceLanguage != nil {
+		switch sl := *b.SourceLanguage; {
+		case !languagePattern.MatchString(string(sl)) && sl != api.Auto:
+			bad["sourceLanguage"] = "request.invalid"
+		case !domain.SupportedSource(sl):
+			bad["sourceLanguage"] = codeInvalidLanguage
+		}
 	}
 	if b.TargetLanguages != nil {
 		langs := *b.TargetLanguages
 		seen := map[string]bool{}
-		ok := len(langs) > 0
+		wellFormed, supported := len(langs) > 0, true
 		for _, l := range langs {
-			ok = ok && languagePattern.MatchString(l) && !seen[l]
+			wellFormed = wellFormed && languagePattern.MatchString(l) && !seen[l]
+			supported = supported && domain.SupportedTarget(l)
 			seen[l] = true
 		}
-		if !ok {
+		switch {
+		case !wellFormed:
 			bad["targetLanguages"] = "request.invalid"
+		case !supported:
+			bad["targetLanguages"] = codeInvalidLanguage
 		}
 	}
 	if b.Provider != nil && !b.Provider.Valid() {
@@ -269,12 +278,24 @@ func validateSession(b api.SessionBase, requireName bool) map[string]string {
 	return bad
 }
 
-// invalidSession answers 400 with the bad fields; a bad slug alone gets
-// its own code.
+// codeInvalidLanguage: a well-formed language code that isn't in the
+// catalog (GET /api/languages), or can't be the source language.
+const codeInvalidLanguage = "session.invalid_language"
+
+// invalidSession answers 400 with the bad fields. When every bad field
+// has the same specific code (a bad slug, an unsupported language), that
+// code is the response's code; otherwise it's request.invalid.
 func invalidSession(fields map[string]string) api.BadRequestJSONResponse {
-	code := "request.invalid"
-	if len(fields) == 1 && fields["slug"] != "" {
-		code = fields["slug"]
+	code := ""
+	for _, c := range fields {
+		if code != "" && c != code {
+			code = "request.invalid"
+			break
+		}
+		code = c
+	}
+	if code == "" {
+		code = "request.invalid"
 	}
 	return api.BadRequestJSONResponse{Code: code, Message: "invalid session", Fields: &fields}
 }

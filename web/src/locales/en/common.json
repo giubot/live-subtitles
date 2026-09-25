@@ -102,6 +102,11 @@
         "title": "That session address is taken",
         "why": "Another session already uses {{slug}}, and each address has to point to one session.",
         "fix": "Pick another address, or edit the existing session instead."
+      },
+      "invalid_language": {
+        "title": "That language isn't supported",
+        "why": "Captions can be translated into Spanish, English, Portuguese, French, German, Italian, Chinese, Japanese and Korean, and the source language can only be English, Spanish or automatic.",
+        "fix": "Pick the languages from the list."
       }
     },
     "ingest": {

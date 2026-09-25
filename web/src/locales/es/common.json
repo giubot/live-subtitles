@@ -102,6 +102,11 @@
         "title": "Esa dirección de sesión ya está en uso",
         "why": "Otra sesión ya usa {{slug}}, y cada dirección tiene que apuntar a una sola sesión.",
         "fix": "Elegí otra dirección, o editá la sesión que ya existe."
+      },
+      "invalid_language": {
+        "title": "Ese idioma no está disponible",
+        "why": "Los subtítulos se pueden traducir a español, inglés, portugués, francés, alemán, italiano, chino, japonés y coreano, y el idioma de origen solo puede ser inglés, español o automático.",
+        "fix": "Elegí los idiomas de la lista."
       }
     },
     "ingest": {
