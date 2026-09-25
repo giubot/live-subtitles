@@ -11,6 +11,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/iencodev/live-subtitles/internal/metrics"
 )
 
 // MinAdminTokenLength keeps a guessable bearer token out of the config.
@@ -31,6 +33,15 @@ type Config struct {
 	// AdminToken is accepted as a bearer token on admin endpoints. It is
 	// only read from LIVESUBS_ADMIN_TOKEN: a flag would show in `ps`.
 	AdminToken string
+
+	// GeminiASRPrices and GeminiTranslationPrices estimate the cost of
+	// Gemini usage in session status (AI-9), for speech recognition and for
+	// translation. The defaults are list-price estimates; see
+	// metrics.DefaultGeminiASRPrices and metrics.DefaultGeminiTranslationPrices.
+	GeminiASRPrices         metrics.Prices
+	GeminiTranslationPrices metrics.Prices
+	// TLS configures the HTTPS listener next to the HTTP one (tls.go).
+	TLS TLS
 }
 
 // Load parses args (without the program name) with defaults taken from
@@ -60,6 +71,32 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	fs.StringVar(&c.FFmpeg, "ffmpeg", env("FFMPEG", "ffmpeg"), "ffmpeg executable (LIVESUBS_FFMPEG)")
 	fs.BoolVar(&c.Version, "version", false, "print the version and exit")
 	c.AdminToken = getenv("LIVESUBS_ADMIN_TOKEN")
+	for _, p := range []struct {
+		flag, env string
+		dst       *float64
+		def       float64
+		what      string
+	}{
+		{"gemini-asr-audio-usd-per-min", "GEMINI_ASR_AUDIO_USD_PER_MIN", &c.GeminiASRPrices.AudioPerMin,
+			metrics.DefaultGeminiASRPrices.AudioPerMin, "estimated Gemini speech recognition price per minute of audio, USD"},
+		{"gemini-asr-output-usd-per-mtok", "GEMINI_ASR_OUTPUT_USD_PER_MTOK", &c.GeminiASRPrices.OutputPerMTok,
+			metrics.DefaultGeminiASRPrices.OutputPerMTok, "estimated Gemini speech recognition price per million transcript tokens, USD"},
+		{"gemini-translation-input-usd-per-mtok", "GEMINI_TRANSLATION_INPUT_USD_PER_MTOK", &c.GeminiTranslationPrices.InputPerMTok,
+			metrics.DefaultGeminiTranslationPrices.InputPerMTok, "estimated Gemini translation price per million input tokens, USD"},
+		{"gemini-translation-output-usd-per-mtok", "GEMINI_TRANSLATION_OUTPUT_USD_PER_MTOK", &c.GeminiTranslationPrices.OutputPerMTok,
+			metrics.DefaultGeminiTranslationPrices.OutputPerMTok, "estimated Gemini translation price per million output tokens, USD"},
+	} {
+		def := p.def
+		if v := env(p.env, ""); v != "" {
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return c, fmt.Errorf("LIVESUBS_%s: %w", p.env, err)
+			}
+			def = f
+		}
+		fs.Float64Var(p.dst, p.flag, def, fmt.Sprintf("%s (LIVESUBS_%s)", p.what, p.env))
+	}
+	tlsFlags(fs, &c.TLS, env)
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -78,8 +115,14 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	if c.LogFormat != "text" && c.LogFormat != "json" {
 		return c, fmt.Errorf("log format %q: want text or json", c.LogFormat)
 	}
+	if err := errors.Join(c.GeminiASRPrices.Validate(), c.GeminiTranslationPrices.Validate()); err != nil {
+		return c, fmt.Errorf("gemini prices: %w", err)
+	}
 	if c.AdminToken != "" && len(c.AdminToken) < MinAdminTokenLength {
 		return c, fmt.Errorf("LIVESUBS_ADMIN_TOKEN must be at least %d characters", MinAdminTokenLength)
+	}
+	if err := c.TLS.finish(); err != nil {
+		return c, err
 	}
 	return c, nil
 }

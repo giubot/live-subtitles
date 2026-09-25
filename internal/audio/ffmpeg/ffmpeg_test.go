@@ -28,7 +28,12 @@ func needFFmpeg(t *testing.T) {
 }
 
 func TestFilesOpen(t *testing.T) {
-	root := t.TempDir()
+	// Resolve symlinks (macOS temp dirs live under /var → /private/var) so
+	// the expected inputs match the resolved paths Open returns.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	outside := t.TempDir()
 	for _, p := range []string{filepath.Join(root, "talk.wav"), filepath.Join(outside, "secret.wav")} {
 		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {

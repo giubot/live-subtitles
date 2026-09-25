@@ -84,3 +84,16 @@ var (
 	ErrConflict = errors.New("conflict")
 	ErrInvalid  = errors.New("invalid")
 )
+
+// CodedError is an error with a translatable dotted code (UI-4), for a
+// cause more specific than the caller's generic code. A provider returns
+// one from ASRProvider.Start when it refuses its configuration, and the
+// session status then shows Code instead of `provider.unavailable`.
+type CodedError struct {
+	Code    string
+	Message string
+	// Params fill the placeholders of the code's translated text.
+	Params map[string]any
+}
+
+func (e *CodedError) Error() string { return e.Message }

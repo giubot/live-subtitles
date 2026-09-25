@@ -252,6 +252,31 @@ func TestDefaultProviderRule(t *testing.T) {
 	}
 }
 
+// refusingASR refuses its configuration with a specific code.
+type refusingASR struct{}
+
+func (refusingASR) Kind() domain.ProviderKind { return api.ProviderKindMock }
+
+func (refusingASR) Start(context.Context, domain.ASRConfig) (chan<- domain.AudioFrame, <-chan domain.ASREvent, error) {
+	return nil, nil, fmt.Errorf("start: %w", &domain.CodedError{
+		Code: "provider.model_english_only", Message: "english-only model", Params: map[string]any{"model": "base.en"},
+	})
+}
+
+func TestProviderRefusesConfig(t *testing.T) {
+	e := newEnv(t, Options{Providers: map[domain.ProviderKind]Provider{
+		api.ProviderKindMock: {ASR: refusingASR{}, Translator: &mock.Translator{}},
+	}}, sess("main", "es"))
+	st, err := e.m.Start(t.Context(), "main", nil)
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("start: %v, want ErrUnavailable", err)
+	}
+	if st.Error == nil || st.Error.Code != "provider.model_english_only" || st.Error.Params == nil ||
+		(*st.Error.Params)["model"] != "base.en" || (*st.Error.Params)["provider"] != api.ProviderKindMock {
+		t.Errorf("status error %+v", st.Error)
+	}
+}
+
 // failingSource can't start.
 type failingSource struct{ fake.Source }
 

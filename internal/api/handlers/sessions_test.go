@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -99,10 +100,15 @@ func TestFileSource(t *testing.T) {
 	h := s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
 
 	fixture := filepath.Join(testdata, "audio", "fixtures", "en.wav")
+	// An existing file outside the allowed roots (not /etc/hostname: macOS has none).
+	outside := filepath.Join(t.TempDir(), "outside.wav")
+	if err := os.WriteFile(outside, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	body := func(uri string) string { return `{"uri":` + strconv.Quote(uri) + `,"loop":true}` }
 	for _, c := range []call{
 		{"DELETE", "/api/sessions/main/sources/file", "", "", "", 404, `"code":"source.not_running"`},
-		{"POST", "/api/sessions/main/sources/file", body("/etc/hostname"), "", "", 400, `"code":"source.file_not_allowed"`},
+		{"POST", "/api/sessions/main/sources/file", body(outside), "", "", 400, `"code":"source.file_not_allowed"`},
 		{"POST", "/api/sessions/main/sources/file", body(filepath.Join(testdata, "nope.wav")), "", "", 400, `"code":"source.file_not_found"`},
 		{"POST", "/api/sessions/main/sources/file", `{"uri":"x.wav","startAtSec":-1}`, "", "", 400, `"code":"request.invalid"`},
 		{"POST", "/api/sessions/nope/sources/file", body(fixture), "", "", 404, `"code":"session.not_found"`},
@@ -190,6 +196,12 @@ func TestSessionCRUD(t *testing.T) {
 		{"slug too long", `{"slug":"` + strings.Repeat("a", 64) + `","name":"x"}`, 400, `"slug":"session.slug_invalid"`},
 		{"blank name", `{"slug":"x","name":"  "}`, 400, `"fields":{"name":"request.invalid"}`},
 		{"bad language", `{"slug":"x","name":"x","targetLanguages":["spa"]}`, 400, `"targetLanguages":"request.invalid"`},
+		{"unsupported target", `{"slug":"x","name":"x","targetLanguages":["es","ru"]}`, 400,
+			`"code":"session.invalid_language","fields":{"targetLanguages":"session.invalid_language"}`},
+		{"unsupported source", `{"slug":"x","name":"x","sourceLanguage":"pt"}`, 400,
+			`"code":"session.invalid_language","fields":{"sourceLanguage":"session.invalid_language"}`},
+		{"bad source", `{"slug":"x","name":"x","sourceLanguage":"english"}`, 400, `"sourceLanguage":"request.invalid"`},
+		{"mixed errors", `{"slug":"x","name":" ","targetLanguages":["ru"]}`, 400, `"code":"request.invalid"`},
 		{"duplicate language", `{"slug":"x","name":"x","targetLanguages":["es","es"]}`, 400, `"targetLanguages"`},
 		{"no languages", `{"slug":"x","name":"x","targetLanguages":[]}`, 400, `"targetLanguages"`},
 		{"bad provider", `{"slug":"x","name":"x","provider":"openai"}`, 400, `"provider":"request.invalid"`},
@@ -202,9 +214,13 @@ func TestSessionCRUD(t *testing.T) {
 	admin("GET", "/api/sessions", "", 200, `"id":"main"`)
 	admin("GET", "/api/sessions/main", "", 200, `"urls":{"capture":"http://192.168.1.20:8080/capture/main"`)
 	admin("GET", "/api/sessions/nope", "", 404, `"code":"session.not_found"`)
+	admin("PATCH", "/api/sessions/main", `{"sourceLanguage":"es","targetLanguages":["es","en","pt","fr","de","it","zh","ja","ko"]}`, 200,
+		`"sourceLanguage":"es","state":"idle","targetLanguages":["es","en","pt","fr","de","it","zh","ja","ko"]`)
 	admin("PATCH", "/api/sessions/main", `{"room":"Sala Konex","targetLanguages":["en"]}`, 200,
 		`"overlay":"http://192.168.1.20:8080/overlay/main?lang=en"`)
 	admin("PATCH", "/api/sessions/main", `{"name":""}`, 400, `"name":"request.invalid"`)
+	admin("PATCH", "/api/sessions/main", `{"targetLanguages":["xx"]}`, 400, `"code":"session.invalid_language"`)
+	admin("PATCH", "/api/sessions/main", `{"sourceLanguage":"fr"}`, 400, `"sourceLanguage":"session.invalid_language"`)
 	admin("PATCH", "/api/sessions/nope", `{"name":"x"}`, 404, `"code":"session.not_found"`)
 
 	// Public views carry no tokens or provider config.

@@ -6,23 +6,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
+	"maps"
 	"sync"
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/metrics"
+	"github.com/iencodev/live-subtitles/internal/translate"
 )
 
 // run is one running session: the goroutines of its pipeline and its
 // live state.
 //
 //	source ─frames─▶ feed ─▶ (recorder) ─▶ ASR ─events─▶ consume ─▶ bus + store (source track)
-//	                                                        └─▶ one worker per target language ─▶ bus + store
+//	                                                        └─▶ translate.Fanout (one goroutine per target language) ─▶ bus + store
 //
 // Stopping cancels only the source: its channel closes, feed closes the
 // ASR input, the provider flushes its last finals, and consume drains the
-// translation workers before the run finishes. Cancelling ctx aborts all.
+// translation fan-out before the run finishes. Cancelling ctx aborts all.
 type run struct {
 	m    *Manager
 	id   string
@@ -43,22 +45,26 @@ type run struct {
 	done       chan struct{}
 	doneOnce   sync.Once
 
-	mu          sync.Mutex
-	st          api.SessionState
-	startedAt   time.Time
-	detected    domain.LanguageCode
-	err         api.Error // last error, shown in the status
-	fatal       bool      // err ended the run
-	usage       domain.Usage
-	sent        time.Duration // audio sent to the provider
-	latency     map[string]*latency
-	base        time.Duration // source T of the first frame
-	hasBase     bool
-	end         time.Duration // session clock at the end of the last frame
-	origin      time.Time     // wall time of session clock 0, for latency
-	hasOrigin   bool
-	sourceEnded bool
-	history     []string // last final source sentences, oldest first
+	mu        sync.Mutex
+	st        api.SessionState
+	startedAt time.Time
+	detected  domain.LanguageCode
+	err       api.Error // last error, shown in the status
+	fatal     bool      // err ended the run
+	// Usage reported during this run, by speech recognition and by the
+	// translators: they run on different models and are priced apart.
+	asrUsage         domain.Usage
+	translationUsage domain.Usage
+	sent             time.Duration // audio sent to the provider
+	prior            totals        // usage of the session's earlier runs
+	latency          map[string]*metrics.Latency
+	arrived          arrivals      // when each frame arrived, for latency
+	base             time.Duration // source T of the first frame
+	hasBase          bool
+	end              time.Duration // session clock at the end of the last frame
+	sourceEnded      bool
+	// recording is the run's recording while it records (status.recordingId).
+	recording domain.RecordingSink
 }
 
 func newRun(m *Manager, sess domain.Session) *run {
@@ -69,7 +75,7 @@ func newRun(m *Manager, sess domain.Session) *run {
 		ctx: ctx, cancel: cancel, srcCtx: srcCtx, stopSource: stopSource,
 		done:    make(chan struct{}),
 		st:      api.SessionStateStarting,
-		latency: map[string]*latency{},
+		latency: map[string]*metrics.Latency{},
 	}
 }
 
@@ -85,8 +91,13 @@ func (r *run) start(ctx context.Context) error {
 	}
 	in, out, err := r.asr.Start(r.ctx, domain.ASRConfig{SessionID: r.id, SourceLanguage: r.sess.SourceLanguage})
 	if err != nil {
-		r.fail(api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
-			Params: &map[string]any{"provider": r.provider}})
+		e := api.Error{Code: CodeProviderUnavailable, Message: err.Error(),
+			Params: &map[string]any{"provider": r.provider}}
+		if coded := (*domain.CodedError)(nil); errors.As(err, &coded) {
+			e.Code = coded.Code
+			maps.Copy(*e.Params, coded.Params)
+		}
+		r.fail(e)
 		r.abort()
 		return fmt.Errorf("%w: provider %s: %v", ErrUnavailable, r.provider, err)
 	}
@@ -98,19 +109,9 @@ func (r *run) start(ctx context.Context) error {
 		}
 	}
 
-	var workers []*worker
-	seen := map[string]bool{domain.SourceTrack: true}
-	for _, lang := range r.sess.TargetLanguages {
-		if lang == "" || seen[lang] {
-			continue
-		}
-		seen[lang] = true
-		w := newWorker(r, lang)
-		workers = append(workers, w)
-		go w.loop()
-	}
+	fan := r.newFanout(ctx)
 	go r.feed(frames, in, sink)
-	go r.consume(out, workers)
+	go r.consume(out, fan)
 	return nil
 }
 
@@ -126,7 +127,13 @@ func (r *run) abort() {
 func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame, sink domain.RecordingSink) {
 	defer close(in)
 	if sink != nil {
+		r.mu.Lock()
+		r.recording = sink
+		r.mu.Unlock()
 		defer func() {
+			if sink == nil { // it failed and was closed already
+				return
+			}
 			if err := sink.Close(); err != nil {
 				r.m.log.Warn("recording did not close cleanly", "session", r.id, "err", err)
 			}
@@ -140,9 +147,7 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 		}
 		f = domain.AudioFrame{PCM: f.PCM, T: r.offset + f.T - r.base}
 		r.end = f.End()
-		if !r.hasOrigin {
-			r.origin, r.hasOrigin = now.Add(-f.End()), true
-		}
+		r.arrived.add(f.End(), now)
 		paused := r.st == api.SessionStatePaused
 		if !paused {
 			r.sent += f.End() - f.T
@@ -156,6 +161,9 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 				r.m.log.Warn("recording stopped", "session", r.id, "err", err)
 				_ = sink.Close()
 				sink = nil
+				r.mu.Lock()
+				r.recording = nil
+				r.mu.Unlock()
 			}
 		}
 		select {
@@ -174,9 +182,9 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 }
 
 // consume turns ASR events into source captions and hands them to the
-// translation workers. When the ASR stream ends it drains the workers and
+// translation fan-out. When the ASR stream ends it drains the fan-out and
 // finishes the run.
-func (r *run) consume(out <-chan domain.ASREvent, workers []*worker) {
+func (r *run) consume(out <-chan domain.ASREvent, fan *translate.Fanout) {
 	defer r.finish()
 	prefix := fmt.Sprintf("r%d-", r.offset/time.Second)
 	for ev := range out {
@@ -202,17 +210,9 @@ func (r *run) consume(out <-chan domain.ASREvent, workers []*worker) {
 		}
 		c.LatencyMs = r.latencyMs(ev.End)
 		r.publish(c)
-		context := r.context(c)
-		for _, w := range workers {
-			w.push(item{c: c, context: context})
-		}
+		fan.Push(c)
 	}
-	for _, w := range workers {
-		w.close()
-	}
-	for _, w := range workers {
-		<-w.done
-	}
+	fan.Close()
 	r.mu.Lock()
 	crashed := !r.sourceEnded && r.srcCtx.Err() == nil && r.ctx.Err() == nil
 	r.mu.Unlock()
@@ -241,10 +241,10 @@ func (r *run) publish(c api.Caption) {
 		r.mu.Lock()
 		l := r.latency[c.Lang]
 		if l == nil {
-			l = &latency{}
+			l = &metrics.Latency{}
 			r.latency[c.Lang] = l
 		}
-		l.add(*c.LatencyMs)
+		l.Add(*c.LatencyMs)
 		r.mu.Unlock()
 	}
 	if st := r.m.opts.Captions; st != nil {
@@ -281,30 +281,19 @@ func (r *run) sourceLang(detected domain.LanguageCode, final bool) domain.Langua
 	return lang
 }
 
-// context returns the translation context for c and, when c is final,
-// adds it to the history.
-func (r *run) context(c api.Caption) []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	ctx := slices.Clone(r.history)
-	if c.Final {
-		r.history = append(r.history, c.Text)
-		if n := len(r.history) - r.m.opts.ContextSentences; n > 0 {
-			r.history = slices.Delete(r.history, 0, n)
-		}
-	}
-	return ctx
-}
-
-// latencyMs is how long after the end of its audio a caption is emitted.
+// latencyMs is how long after the end of its audio (end, on the session
+// clock) reached the server a caption is emitted now: recognition time for
+// the source track, plus translation time for the others. Nil before any
+// audio arrived.
 func (r *run) latencyMs(end time.Duration) *int {
+	now := r.m.opts.Clock.Now()
 	r.mu.Lock()
-	origin, ok := r.origin, r.hasOrigin
+	arrived, ok := r.arrived.at(end)
 	r.mu.Unlock()
 	if !ok {
 		return nil
 	}
-	ms := int(max(0, r.m.opts.Clock.Now().Sub(origin.Add(end))).Milliseconds())
+	ms := int(max(0, now.Sub(arrived)).Milliseconds())
 	return &ms
 }
 
@@ -318,7 +307,13 @@ func (r *run) providerError(err error) {
 
 func (r *run) addUsage(u domain.Usage) {
 	r.mu.Lock()
-	r.usage = r.usage.Add(u)
+	r.asrUsage = r.asrUsage.Add(u)
+	r.mu.Unlock()
+}
+
+func (r *run) addTranslationUsage(u domain.Usage) {
+	r.mu.Lock()
+	r.translationUsage = r.translationUsage.Add(u)
 	r.mu.Unlock()
 }
 
@@ -414,25 +409,47 @@ func (r *run) status() api.SessionStatus {
 	if r.source != nil {
 		st.Audio = &audio
 	}
-	if len(r.latency) > 0 {
-		lat := make(map[string]api.LatencyStats, len(r.latency))
-		for track, l := range r.latency {
-			lat[track] = l.stats()
+	if r.recording != nil {
+		if id := r.recording.ID(); id != "" {
+			st.RecordingId = &id
 		}
-		st.Latency = &lat
 	}
-	secs := float32(max(r.usage.AudioSeconds, r.sent.Seconds()))
-	usage := api.UsageStats{AudioSeconds: &secs}
-	if r.usage.InputTokens > 0 || r.usage.OutputTokens > 0 {
-		in, out := r.usage.InputTokens, r.usage.OutputTokens
-		usage.InputTokens, usage.OutputTokens = &in, &out
-	}
-	st.Usage = &usage
+	st.Latency = r.latencyStats()
+	st.Usage = r.totals().stats()
 	if r.err.Code != "" {
 		e := r.err
 		st.Error = &e
 	}
 	return st
+}
+
+// latencyStats are the per-track latencies of the finals so far, nil
+// before the first. Called with mu held.
+func (r *run) latencyStats() *map[string]api.LatencyStats {
+	if len(r.latency) == 0 {
+		return nil
+	}
+	lat := make(map[string]api.LatencyStats, len(r.latency))
+	for track, l := range r.latency {
+		lat[track] = l.Stats()
+	}
+	return &lat
+}
+
+// totals is the session's usage including this run, with this run priced
+// for its provider. Called with mu held.
+func (r *run) totals() totals {
+	asr := r.asrUsage
+	// Audio is billed for what was sent, whether or not the provider reports it.
+	asr.AudioSeconds = max(asr.AudioSeconds, r.sent.Seconds())
+	return r.prior.add(asr.Add(r.translationUsage), r.m.pricing.Cost(r.provider, asr, r.translationUsage))
+}
+
+// finalStats are what the session shows once this run has ended.
+func (r *run) finalStats() (totals, *map[string]api.LatencyStats) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.totals(), r.latencyStats()
 }
 
 // errCanceled reports a context cancellation of the run itself (not a

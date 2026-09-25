@@ -102,6 +102,11 @@
         "title": "Esa dirección de sesión ya está en uso",
         "why": "Otra sesión ya usa {{slug}}, y cada dirección tiene que apuntar a una sola sesión.",
         "fix": "Elegí otra dirección, o editá la sesión que ya existe."
+      },
+      "invalid_language": {
+        "title": "Ese idioma no está disponible",
+        "why": "Los subtítulos se pueden traducir a español, inglés, portugués, francés, alemán, italiano, chino, japonés y coreano, y el idioma de origen solo puede ser inglés, español o automático.",
+        "fix": "Elegí los idiomas de la lista."
       }
     },
     "ingest": {
@@ -136,6 +141,11 @@
         "title": "El proveedor de IA informó un error",
         "why": "{{provider}} falló mientras transcribía. Puede faltar un tramo de subtítulos.",
         "fix": "Si sigue pasando, detené y volvé a iniciar la sesión, o cambiá de proveedor."
+      },
+      "model_english_only": {
+        "title": "El modelo de whisper solo entiende inglés",
+        "why": "El reconocimiento de voz local usa {{model}}, un modelo solo en inglés (.en), que no puede transcribir español.",
+        "fix": "Iniciá whisper-server con un modelo multilingüe, como large-v3-turbo, y poné su nombre en los ajustes del proveedor local."
       }
     },
     "auth": {
@@ -175,6 +185,13 @@
         "title": "La configuración ya está hecha",
         "why": "Ya se eligió un PIN de administración, quizás desde otro navegador.",
         "fix": "Iniciá sesión con ese PIN."
+      }
+    },
+    "tls": {
+      "no_local_ca": {
+        "title": "No hay un certificado para instalar",
+        "why": "Este servidor no usa su propia autoridad de certificación local: HTTPS está apagado, o usa un certificado que le diste o uno de Let's Encrypt, en el que los dispositivos ya confían.",
+        "fix": "No hace falta instalar nada. Para usar la CA local, iniciá el servidor sin --tls-cert y sin una dirección pública https, o con --tls=local-ca."
       }
     },
     "translation": {
@@ -278,6 +295,13 @@
         "title": "El servidor no conoce esta clave",
         "why": "Probablemente la app y el servidor son versiones distintas.",
         "fix": "Recargá la página. Si sigue pasando, actualizá el servidor."
+      }
+    },
+    "recording": {
+      "not_found": {
+        "title": "No encontramos la grabación",
+        "why": "Puede que la haya borrado un administrador o la limpieza automática de grabaciones viejas, o que el enlace tenga un error.",
+        "fix": "Elegí la grabación desde la lista de grabaciones de la sesión."
       }
     }
   }

@@ -102,6 +102,11 @@
         "title": "That session address is taken",
         "why": "Another session already uses {{slug}}, and each address has to point to one session.",
         "fix": "Pick another address, or edit the existing session instead."
+      },
+      "invalid_language": {
+        "title": "That language isn't supported",
+        "why": "Captions can be translated into Spanish, English, Portuguese, French, German, Italian, Chinese, Japanese and Korean, and the source language can only be English, Spanish or automatic.",
+        "fix": "Pick the languages from the list."
       }
     },
     "ingest": {
@@ -136,6 +141,11 @@
         "title": "The AI provider reported an error",
         "why": "{{provider}} failed while transcribing. Captions may have a gap.",
         "fix": "If it keeps happening, stop and start the session, or switch provider."
+      },
+      "model_english_only": {
+        "title": "The whisper model only understands English",
+        "why": "Local speech recognition uses {{model}}, an English-only (.en) model that can't transcribe Spanish.",
+        "fix": "Start whisper-server with a multilingual model such as large-v3-turbo, and set its name in the local provider settings."
       }
     },
     "auth": {
@@ -175,6 +185,13 @@
         "title": "Setup is already done",
         "why": "An admin PIN was set before, possibly from another browser.",
         "fix": "Log in with that PIN."
+      }
+    },
+    "tls": {
+      "no_local_ca": {
+        "title": "There's no certificate to install",
+        "why": "This server doesn't use its own local certificate authority: HTTPS is off, or it uses a certificate you provided or one from Let's Encrypt, which devices already trust.",
+        "fix": "Nothing to install. To use the local CA, start the server without --tls-cert and without a public https address, or with --tls=local-ca."
       }
     },
     "translation": {
@@ -278,6 +295,13 @@
         "title": "The server doesn’t know this key",
         "why": "The app and the server are probably different versions.",
         "fix": "Reload the page. If it keeps happening, update the server."
+      }
+    },
+    "recording": {
+      "not_found": {
+        "title": "Recording not found",
+        "why": "It may have been deleted by an admin or by the automatic clean-up of old recordings, or the link has a typo.",
+        "fix": "Pick the recording from the session's list of recordings."
       }
     }
   }

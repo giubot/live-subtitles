@@ -13,6 +13,7 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/metrics"
 )
 
 // Provider is one AI provider: its ASR and its translator.
@@ -50,11 +51,17 @@ type Options struct {
 	// StopTimeout bounds how long Stop waits for pending captions to flush
 	// (default 10 s).
 	StopTimeout time.Duration
+	// Settings, if set, is read at each start for
+	// translation.contextSentences.
+	Settings domain.SettingsStore
 	// ContextSentences is how many previous final sentences go to the
-	// translator as context (default 3).
+	// translator as context when the settings don't say (default 3).
 	ContextSentences int
 	// TranslateTimeout bounds one translation call (default 15 s).
 	TranslateTimeout time.Duration
+	// Pricing estimates the cost of provider usage in
+	// SessionStatus.usage (AI-9); nil uses metrics.DefaultPricing.
+	Pricing *metrics.Pricing
 }
 
 // Errors returned by Manager methods, besides domain.ErrNotFound.
@@ -84,16 +91,19 @@ const (
 // Runtime state lives here, not in the store: after a restart every
 // session is idle.
 type Manager struct {
-	opts   Options
-	log    *slog.Logger
-	events *Events
+	opts    Options
+	log     *slog.Logger
+	events  *Events
+	pricing metrics.Pricing
 
-	mu     sync.Mutex
-	runs   map[string]*run          // running sessions, including paused and stopping
-	failed map[string]api.Error     // why a session's last start or run failed
-	clocks map[string]time.Duration // session clock at the end of the last run
-	closed bool
-	done   chan struct{} // closed by Close; stops the status ticker
+	mu      sync.Mutex
+	runs    map[string]*run                         // running sessions, including paused and stopping
+	failed  map[string]api.Error                    // why a session's last start or run failed
+	clocks  map[string]time.Duration                // session clock at the end of the last run
+	totals  map[string]totals                       // usage of the finished runs, per session
+	latency map[string]*map[string]api.LatencyStats // per-track latency of the last run
+	closed  bool
+	done    chan struct{} // closed by Close; stops the status ticker
 }
 
 // New returns a Manager. Call Close to stop every session.
@@ -116,14 +126,21 @@ func New(opts Options) *Manager {
 	if opts.TranslateTimeout <= 0 {
 		opts.TranslateTimeout = 15 * time.Second
 	}
+	pricing := metrics.DefaultPricing()
+	if opts.Pricing != nil {
+		pricing = *opts.Pricing
+	}
 	m := &Manager{
-		opts:   opts,
-		log:    opts.Logger,
-		events: NewEvents(),
-		runs:   map[string]*run{},
-		failed: map[string]api.Error{},
-		clocks: map[string]time.Duration{},
-		done:   make(chan struct{}),
+		opts:    opts,
+		log:     opts.Logger,
+		events:  NewEvents(),
+		pricing: pricing,
+		runs:    map[string]*run{},
+		failed:  map[string]api.Error{},
+		clocks:  map[string]time.Duration{},
+		totals:  map[string]totals{},
+		latency: map[string]*map[string]api.LatencyStats{},
+		done:    make(chan struct{}),
 	}
 	go m.tick()
 	return m
@@ -157,6 +174,7 @@ func (m *Manager) Start(ctx context.Context, id string, src domain.AudioSource) 
 		return m.changed(r), nil
 	}
 	r := newRun(m, sess)
+	r.prior = m.totals[id]
 	m.runs[id] = r
 	delete(m.failed, id)
 	m.mu.Unlock()
@@ -302,11 +320,16 @@ func (m *Manager) Stop(ctx context.Context, id string) (api.SessionStatus, error
 
 // finished is called by a run when its pipeline has ended.
 func (m *Manager) finished(r *run) {
+	usage, latency := r.finalStats()
 	m.mu.Lock()
 	if m.runs[r.id] == r {
 		delete(m.runs, r.id)
 	}
 	m.clocks[r.id] = r.clock()
+	m.totals[r.id] = usage
+	if latency != nil {
+		m.latency[r.id] = latency
+	}
 	if e := r.lastError(); e.Code != "" && r.failedRun() {
 		m.failed[r.id] = e
 	}
@@ -351,6 +374,8 @@ func (m *Manager) Forget(id string) error {
 	}
 	delete(m.failed, id)
 	delete(m.clocks, id)
+	delete(m.totals, id)
+	delete(m.latency, id)
 	m.mu.Unlock()
 	if m.opts.ReleaseIngest != nil {
 		m.opts.ReleaseIngest(id)
@@ -387,6 +412,8 @@ func (m *Manager) status(id string) api.SessionStatus {
 	m.mu.Lock()
 	r := m.runs[id]
 	failed, isFailed := m.failed[id]
+	used, hasUsage := m.totals[id]
+	latency := m.latency[id]
 	m.mu.Unlock()
 	if r != nil {
 		return r.status()
@@ -395,6 +422,11 @@ func (m *Manager) status(id string) api.SessionStatus {
 	if isFailed {
 		st.State, st.Error = api.SessionStateError, &failed
 	}
+	// A stopped session keeps showing what it used and its last latencies.
+	if hasUsage {
+		st.Usage = used.stats()
+	}
+	st.Latency = latency
 	if m.opts.IngestStatus != nil {
 		a := m.opts.IngestStatus(id)
 		st.Audio = &a

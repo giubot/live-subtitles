@@ -50,7 +50,7 @@ func TestRoutes(t *testing.T) {
 		{"network on loopback", "GET", "/api/network", testDist, 200, `"viewerBaseUrl":"http://localhost:0"`, ""},
 		{"admin operation needs login", "GET", "/api/sessions", testDist, 401, `"code":"auth.required"`, ""},
 		{"setup status", "GET", "/api/setup", testDist, 200, `"adminPinSet":false`, ""},
-		{"unimplemented operation", "GET", "/api/languages", testDist, 501, `"code":"not_implemented"`, ""},
+		{"unimplemented operation", "GET", "/api/overlay-presets", testDist, 501, `"code":"not_implemented"`, ""},
 		{"unknown api path", "GET", "/api/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"unknown ws path", "GET", "/ws/nope", testDist, 404, `"code":"route.not_found"`, ""},
 		{"root", "GET", "/", testDist, 200, "<title>app</title>", "no-cache"},
