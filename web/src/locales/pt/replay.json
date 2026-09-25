@@ -1,0 +1,27 @@
+{
+  "title": "Reprodução · {{id}}",
+  "allSessions": "Ver todas as sessões",
+  "recording": {
+    "label": "Gravação",
+    "option": "{{date}} · {{duration}}",
+    "inProgress": "{{date}} · ainda gravando",
+    "failed": "{{date}} · incompleta"
+  },
+  "noRecordings": {
+    "title": "Nenhuma gravação ainda",
+    "body": "As gravações de uma sessão aparecem aqui depois que ela for gravada. A gravação é ligada por sessão no painel de administração."
+  },
+  "stillRecording": "Esta sessão ainda está sendo gravada. O áudio e a transcrição cobrem o que foi gravado até agora; recarregue a página para ver mais.",
+  "player": "Áudio gravado",
+  "sourceTrack": "Original (como foi falado)",
+  "transcript": "Transcrição",
+  "loading": "Carregando a transcrição…",
+  "transcriptEmpty": "Esta gravação não tem legendas neste idioma. Escolha outro acima.",
+  "downloads": {
+    "label": "Downloads",
+    "audio": "Áudio (M4A)",
+    "srt": "Legendas (SRT)",
+    "vtt": "Legendas (VTT)",
+    "txt": "Texto (TXT)"
+  }
+}

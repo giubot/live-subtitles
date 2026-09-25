@@ -1,0 +1,33 @@
+{
+  "sessionsTitle": "Sessões ao vivo",
+  "sessionsIntro": "Escolha uma sessão para acompanhar as legendas neste dispositivo.",
+  "title": "Legendas ao vivo · {{id}}",
+  "allSessions": "Ver todas as sessões",
+  "noSessions": {
+    "title": "Nenhuma sessão ainda",
+    "body": "As sessões aparecem aqui quando a organização as cria. Esta página se atualiza sozinha."
+  },
+  "state": {
+    "idle": "Não iniciada",
+    "starting": "Começando",
+    "live": "Ao vivo",
+    "paused": "Pausada",
+    "stopping": "Encerrando",
+    "error": "Interrompida"
+  },
+  "size": {
+    "label": "Tamanho do texto",
+    "smaller": "Texto menor",
+    "larger": "Texto maior"
+  },
+  "transcript": "Transcrição",
+  "empty": {
+    "live": "Ouvindo… as legendas aparecem aqui assim que alguém falar.",
+    "waiting": "A sessão ainda não começou. As legendas aparecem aqui quando começar; mantenha esta página aberta."
+  },
+  "reconnecting": "Conexão perdida. Reconectando… as legendas que você perdeu são preenchidas quando ela voltar.",
+  "recorded": "Esta sessão está sendo gravada",
+  "jumpToLive": "Ir para o ao vivo",
+  "retry": "Tentar de novo",
+  "gap": "{{seconds}} s de áudio faltando"
+}

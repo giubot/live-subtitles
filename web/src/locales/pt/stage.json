@@ -1,0 +1,10 @@
+{
+  "title": "Palco · {{name}}",
+  "waiting": "Aguardando legendas…",
+  "live": "Ao vivo · {{name}}",
+  "paused": "Pausada · {{name}}",
+  "reconnecting": "Reconectando…",
+  "followQr": "Acompanhe as legendas no seu celular",
+  "notFound": "Não existe uma sessão chamada “{{id}}”. Confira o link do palco no painel de administração.",
+  "fullscreenHint": "Clique duas vezes ou pressione F para tela cheia"
+}

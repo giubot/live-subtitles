@@ -1,0 +1,624 @@
+{
+  "appName": "Legendas ao vivo",
+  "uiLanguage": {
+    "label": "Idioma da interface"
+  },
+  "stub": "Esta página está em construção.",
+  "notFound": {
+    "title": "Página não encontrada",
+    "body": "Não há nada neste endereço. Confira o link ou volte para o início.",
+    "action": "Ir para o início"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Sistema"
+  },
+  "status": {
+    "live": "Ao vivo",
+    "ok": "OK",
+    "warn": "Atenção",
+    "error": "Erro",
+    "idle": "Parada",
+    "starting": "Começando"
+  },
+  "meter": {
+    "label": "Nível de entrada",
+    "value": "{{value}} dBFS",
+    "clipping": "{{value}} dBFS, saturando",
+    "silent": "Silêncio"
+  },
+  "copy": {
+    "action": "Copiar",
+    "done": "Copiado",
+    "retry": "Copiar de novo",
+    "failed": "O navegador bloqueou o acesso à área de transferência. O texto está selecionado: pressione Ctrl+C (⌘C no Mac) para copiá-lo."
+  },
+  "qr": {
+    "label": "Código QR para {{value}}"
+  },
+  "captionLanguage": {
+    "label": "Idioma das legendas",
+    "source": "Original (como foi falado)"
+  },
+  "errors": {
+    "codeLabel": "Código de erro:",
+    "generic": {
+      "title": "A solicitação falhou",
+      "why": "O servidor retornou um erro que esta versão do app não sabe descrever.",
+      "fix": "Tente de novo. Se continuar falhando, procure o código no log do servidor."
+    },
+    "network": {
+      "unreachable": {
+        "title": "Não foi possível acessar o servidor",
+        "why": "A solicitação não teve resposta: o servidor pode estar parado ou este dispositivo pode estar sem internet.",
+        "fix": "Verifique a rede e se o Legendas ao vivo está rodando, depois tente de novo."
+      }
+    },
+    "request": {
+      "invalid": {
+        "title": "O servidor recusou a solicitação",
+        "why": "Ele não conseguiu ler os dados enviados.",
+        "fix": "Confira os campos e tente de novo. Se continuar acontecendo, recarregue a página: o app pode ser mais antigo que o servidor."
+      },
+      "failed": {
+        "title": "A solicitação falhou",
+        "why": "Algo entre este dispositivo e o servidor respondeu com HTTP {{status}} no lugar do próprio servidor.",
+        "fix": "Tente de novo. Se continuar falhando, verifique a rede ou o proxy na frente do servidor."
+      }
+    },
+    "route": {
+      "not_found": {
+        "title": "O servidor não conhece esta ação",
+        "why": "Não há nada nesse endereço da API, o que geralmente significa que o app e o servidor são de versões diferentes.",
+        "fix": "Recarregue a página. Se continuar acontecendo, atualize o servidor."
+      }
+    },
+    "method": {
+      "not_allowed": {
+        "title": "O servidor recusou esta ação",
+        "why": "Esse endereço da API não aceita este tipo de solicitação, o que geralmente significa que o app e o servidor são de versões diferentes.",
+        "fix": "Recarregue a página. Se continuar acontecendo, atualize o servidor."
+      }
+    },
+    "session": {
+      "not_found": {
+        "title": "Sessão não encontrada",
+        "why": "Ela pode ter sido excluída, ou o link tem um erro de digitação.",
+        "fix": "Confira o link ou escolha a sessão na lista."
+      },
+      "state_conflict": {
+        "title": "A sessão não pode fazer isso agora",
+        "why": "Ela está {{state}}, e essa ação precisa de outro estado (por exemplo, só uma sessão ao vivo pode ser pausada).",
+        "fix": "Espere o status atualizar e tente de novo."
+      },
+      "slug_invalid": {
+        "title": "Esse endereço de sessão não é válido",
+        "why": "O endereço (slug) vai em todos os links, então só pode usar letras minúsculas, dígitos e hifens, começar com uma letra ou dígito e ter no máximo 63 caracteres.",
+        "fix": "Use algo como palco-principal ou sala-2."
+      },
+      "slug_taken": {
+        "title": "Esse endereço de sessão já está em uso",
+        "why": "Outra sessão já usa {{slug}}, e cada endereço precisa apontar para uma única sessão.",
+        "fix": "Escolha outro endereço ou edite a sessão existente."
+      },
+      "invalid_language": {
+        "title": "Esse idioma não é compatível",
+        "why": "As legendas podem ser traduzidas para espanhol, inglês, português, francês, alemão, italiano, chinês, japonês e coreano, e o idioma falado só pode ser inglês, espanhol ou automático.",
+        "fix": "Escolha os idiomas da lista."
+      }
+    },
+    "ingest": {
+      "replaced": {
+        "title": "Outro dispositivo assumiu esta entrada de áudio",
+        "why": "Uma segunda página de captura se conectou com o mesmo link, e o servidor fica com a mais recente.",
+        "fix": "Feche a outra página de captura ou recarregue esta para retomar a entrada."
+      },
+      "bad_hello": {
+        "title": "A página de captura e o servidor não concordam sobre o formato de áudio",
+        "why": "O servidor espera áudio mono de 16 kHz e 16 bits, e a página enviou outra coisa.",
+        "fix": "Recarregue a página de captura. Se continuar acontecendo, a página é mais antiga que o servidor."
+      },
+      "closed": {
+        "title": "A sessão fechou a entrada de áudio",
+        "why": "A sessão foi encerrada ou excluída, então o servidor parou de receber áudio desta página.",
+        "fix": "A página se reconecta sozinha; inicie a sessão de novo para retomar as legendas."
+      }
+    },
+    "provider": {
+      "key_invalid": {
+        "title": "O Google recusou a chave de API",
+        "why": "A chave está errada, foi revogada ou não pode usar a API do Gemini.",
+        "fix": "Confira a chave no Google AI Studio e cole-a de novo nas Configurações."
+      },
+      "unavailable": {
+        "title": "O provedor de IA não está disponível",
+        "why": "A sessão usa {{provider}}, que ainda não está configurado neste servidor.",
+        "fix": "Escolha outro provedor para a sessão ou configure este nas Configurações."
+      },
+      "error": {
+        "title": "O provedor de IA informou um erro",
+        "why": "{{provider}} falhou ao transcrever. As legendas podem ter uma lacuna.",
+        "fix": "Se continuar acontecendo, encerre e inicie a sessão de novo ou troque de provedor."
+      },
+      "model_english_only": {
+        "title": "O modelo do whisper só entende inglês",
+        "why": "O reconhecimento de fala local usa {{model}}, um modelo só de inglês (.en) que não consegue transcrever espanhol.",
+        "fix": "Inicie o whisper-server com um modelo multilíngue, como large-v3-turbo, e defina o nome dele nas configurações do provedor local."
+      },
+      "no_api_key": {
+        "title": "O Gemini precisa de uma chave de API do Google",
+        "why": "Não há nenhuma chave de API do Google salva, então as novas sessões usam o provedor local.",
+        "fix": "Adicione uma chave nas Configurações para usar o Gemini, ou continue rodando tudo neste computador."
+      },
+      "key_unverified": {
+        "title": "Não foi possível verificar a chave de API do Google",
+        "why": "O servidor não conseguiu acessar o Google, então não sabe se a chave funciona. As novas sessões usam o provedor local até ele conseguir verificar.",
+        "fix": "Verifique a conexão com a internet e depois verifique a chave de novo nas Configurações."
+      },
+      "whisper_unreachable": {
+        "title": "O whisper-server não está respondendo",
+        "why": "O reconhecimento de fala local precisa do whisper-server rodando no endereço definido nas configurações do provedor local.",
+        "fix": "Inicie o whisper-server (veja docs/dev.md) ou corrija o endereço dele nas Configurações."
+      },
+      "ollama_unreachable": {
+        "title": "O Ollama não está respondendo",
+        "why": "A tradução local precisa do Ollama rodando no endereço definido nas configurações do provedor local.",
+        "fix": "Inicie o Ollama (veja docs/dev.md) ou corrija o endereço dele nas Configurações."
+      },
+      "fallback_key_invalid": {
+        "title": "As novas sessões usam o provedor local",
+        "why": "O Google recusou a chave de API salva, então as sessões com o provedor padrão não usam mais o Gemini.",
+        "fix": "Salve uma chave válida nas Configurações ou escolha um provedor para cada sessão."
+      },
+      "fallback_key_removed": {
+        "title": "As novas sessões usam o provedor local",
+        "why": "A chave de API do Google foi removida, então as sessões com o provedor padrão não usam mais o Gemini.",
+        "fix": "Salve uma chave nas Configurações para voltar a usar o Gemini."
+      },
+      "fallback_key_unverified": {
+        "title": "As novas sessões usam o provedor local",
+        "why": "Não foi possível verificar a chave de API do Google porque o Google está inacessível, então as sessões com o provedor padrão não usam o Gemini por enquanto.",
+        "fix": "Verifique a conexão com a internet. O servidor verifica a chave de novo sozinho."
+      },
+      "restarting": {
+        "title": "Reiniciando o provedor de IA",
+        "why": "{{provider}} parou de transcrever inesperadamente. A sessão continua ao vivo e tenta de novo em {{retryInMs}} ms (tentativa {{attempt}} de {{maxAttempts}}).",
+        "fix": "Nada a fazer por enquanto. Se continuar falhando, verifique se {{provider}} está acessível."
+      },
+      "restarted": {
+        "title": "O provedor de IA voltou",
+        "why": "{{provider}} reiniciou na tentativa {{attempt}}. O áudio nesse intervalo não tem legendas, e a lacuna fica marcada.",
+        "fix": "Nada a fazer."
+      },
+      "failed": {
+        "title": "O provedor de IA parou de funcionar",
+        "why": "{{provider}} continuou falhando e não se recuperou depois de {{attempts}} reinícios, então a sessão foi encerrada.",
+        "fix": "Verifique se {{provider}} está acessível (o sidecar, a rede ou a chave de API) e depois inicie a sessão de novo ou troque de provedor."
+      },
+      "quota_exhausted": {
+        "title": "{{provider}} ficou sem cota",
+        "why": "O Google recusou a solicitação porque a chave de API passou da cota ou do limite de taxa, então {{provider}} parou de transcrever ou traduzir.",
+        "fix": "Confira a cota no Google AI Studio ou espere ela ser renovada. Com a troca de provedor ligada nas Configurações, as sessões em andamento passam para o provedor local."
+      },
+      "auth_failed": {
+        "title": "O Google recusou a chave de API",
+        "why": "A chave foi revogada, restringida ou substituída enquanto a sessão rodava, então {{provider}} não pode ser usado.",
+        "fix": "Salve uma chave válida nas Configurações. Com a troca de provedor ligada, as sessões em andamento passam para o provedor local."
+      },
+      "errors_repeated": {
+        "title": "O provedor de IA continuou falhando",
+        "why": "O provedor informou um erro atrás do outro em pouco tempo.",
+        "fix": "Verifique o status do provedor (o sidecar, a rede ou a chave de API)."
+      },
+      "restarts_failed": {
+        "title": "Não foi possível reiniciar o provedor de IA",
+        "why": "O stream do provedor caiu e os reinícios falharam um atrás do outro.",
+        "fix": "Verifique se o provedor está acessível (o sidecar, a rede ou a chave de API)."
+      },
+      "fallback": {
+        "title": "A sessão passou para {{to}}",
+        "why": "{{from}} continuou falhando, então a sessão passou para {{to}} sem parar. As legendas continuam nas mesmas faixas; o áudio perdido na troca fica marcado como lacuna.",
+        "fix": "Corrija {{from}} quando puder. A sessão fica em {{to}} até você encerrá-la e iniciá-la de novo. Desligue a troca de provedor nas Configurações para evitar trocas."
+      }
+    },
+    "auth": {
+      "required": {
+        "title": "Você precisa entrar",
+        "why": "Esta página é para o administrador do evento, e este navegador não está conectado, ou o login expirou.",
+        "fix": "Entre com o PIN de administrador e tente de novo."
+      },
+      "invalid_pin": {
+        "title": "PIN incorreto",
+        "why": "O PIN não corresponde ao PIN de administrador definido na configuração inicial.",
+        "fix": "Confira e tente de novo. Depois de algumas tentativas erradas, o login fica pausado por um tempo."
+      },
+      "rate_limited": {
+        "title": "Tentativas de login demais",
+        "why": "O login deste dispositivo fica pausado depois de vários PINs errados, para impedir tentativas de adivinhação.",
+        "fix": "Aguarde {{retryAfterSec}} segundos e tente de novo."
+      },
+      "setup_required": {
+        "title": "A configuração inicial não foi concluída",
+        "why": "Ainda não foi definido um PIN de administrador, então não há com o que entrar.",
+        "fix": "Abra a página de configuração inicial e escolha um PIN de administrador."
+      },
+      "invalid_token": {
+        "title": "Este link de captura não é válido",
+        "why": "O token de acesso está errado, ou o administrador gerou um novo.",
+        "fix": "Copie o link de captura de novo na página de administração."
+      }
+    },
+    "setup": {
+      "pin_invalid": {
+        "title": "Escolha outro PIN",
+        "why": "O PIN precisa ter de {{min}} a {{max}} caracteres.",
+        "fix": "Digite um PIN desse tamanho. Números são mais fáceis de digitar no PC do evento."
+      },
+      "already_done": {
+        "title": "A configuração inicial já foi feita",
+        "why": "Um PIN de administrador já foi definido, talvez em outro navegador.",
+        "fix": "Entre com esse PIN."
+      }
+    },
+    "tls": {
+      "no_local_ca": {
+        "title": "Não há certificado para instalar",
+        "why": "Este servidor não usa uma autoridade certificadora local própria: o HTTPS está desligado, ou ele usa um certificado fornecido por você ou um do Let's Encrypt, em que os dispositivos já confiam.",
+        "fix": "Não há nada para instalar. Para usar a CA local, inicie o servidor sem --tls-cert e sem um endereço https público, ou com --tls=local-ca."
+      }
+    },
+    "translation": {
+      "failed": {
+        "title": "Uma legenda não pôde ser traduzida",
+        "why": "A tradução para {{lang}} falhou, então essa linha está faltando na faixa {{lang}}.",
+        "fix": "Verifique o status do provedor. As próximas linhas são traduzidas normalmente."
+      }
+    },
+    "source": {
+      "unavailable": {
+        "title": "A fonte de áudio não iniciou",
+        "why": "Não foi possível abrir a entrada {{source}}.",
+        "fix": "Verifique a entrada de áudio e tente de novo."
+      },
+      "failed": {
+        "title": "A fonte de áudio parou",
+        "why": "A entrada {{source}} terminou com um erro, então a sessão foi encerrada.",
+        "fix": "Verifique a entrada de áudio e depois inicie a sessão de novo."
+      },
+      "unsupported": {
+        "title": "Essa fonte de áudio não pode ser iniciada aqui",
+        "why": "Só a captura pelo navegador começa pelo botão Iniciar; o áudio {{source}} tem controles próprios ou ainda não está disponível.",
+        "fix": "Use a página de captura ou inicie a fonte na seção dela."
+      },
+      "file_not_found": {
+        "title": "Arquivo de áudio não encontrado",
+        "why": "Não há nenhum arquivo nesse caminho no servidor.",
+        "fix": "Confira o caminho. Caminhos relativos partem da pasta em que o servidor está rodando."
+      },
+      "file_not_allowed": {
+        "title": "Essa entrada de áudio não é permitida",
+        "why": "O áudio de teste precisa ser um arquivo na pasta data ou testdata do servidor, ou um link http(s).",
+        "fix": "Mova o arquivo para uma dessas pastas ou use um link da web."
+      },
+      "not_running": {
+        "title": "Nenhum arquivo de teste está tocando",
+        "why": "Esta sessão não está sendo alimentada por um arquivo agora.",
+        "fix": "Não há nada para parar. Para parar a captura pelo navegador, encerre a sessão."
+      },
+      "srt_unavailable": {
+        "title": "A recepção SRT não está disponível",
+        "why": "O ffmpeg do servidor foi compilado sem libsrt, então não consegue receber streams SRT.",
+        "fix": "Instale um ffmpeg compilado com libsrt (a maioria dos pacotes Linux e a imagem Docker têm; o ffmpeg padrão do Homebrew não tem) ou use a captura pelo navegador."
+      },
+      "srt_disabled": {
+        "title": "A recepção SRT está desligada",
+        "why": "O SRT está desativado nas configurações.",
+        "fix": "Ligue o SRT nas Configurações ou use a captura pelo navegador."
+      },
+      "srt_port_busy": {
+        "title": "A porta SRT está em uso",
+        "why": "A porta UDP {{port}} já está sendo usada por outro programa, ou não sobraram portas SRT.",
+        "fix": "Feche o programa que usa essa porta ou mude a primeira porta SRT nas Configurações."
+      },
+      "srt_passphrase_invalid": {
+        "title": "A senha SRT não é válida",
+        "why": "As senhas SRT precisam ter de {{min}} a {{max}} caracteres.",
+        "fix": "Defina uma nova senha SRT nas Configurações ou remova-a para receber sem criptografia."
+      },
+      "restarting": {
+        "title": "Reconectando a fonte de áudio",
+        "why": "A entrada {{source}} falhou. A sessão continua ao vivo e tenta de novo em {{retryInMs}} ms (tentativa {{attempt}} de {{maxAttempts}}).",
+        "fix": "Nada a fazer por enquanto. Se continuar falhando, verifique a entrada de áudio."
+      },
+      "restarted": {
+        "title": "A fonte de áudio voltou",
+        "why": "A entrada {{source}} reiniciou na tentativa {{attempt}}. O áudio nesse intervalo está faltando, e a lacuna fica marcada.",
+        "fix": "Nada a fazer."
+      }
+    },
+    "capture": {
+      "insecure": {
+        "title": "Esta página não pode usar o microfone",
+        "why": "Os navegadores só permitem captura de áudio em endereços https:// ou em http://localhost.",
+        "fix": "Abra o link de captura no próprio computador do servidor (http://localhost:8080/…) ou configure HTTPS para estações de captura remotas."
+      },
+      "permission_denied": {
+        "title": "O acesso ao microfone foi bloqueado",
+        "why": "O navegador ou o sistema operacional negou a esta página o acesso às entradas de áudio.",
+        "fix": "Permita o microfone na barra de endereço do navegador (e nas configurações de privacidade do sistema) e comece de novo."
+      },
+      "no_device": {
+        "title": "Nenhuma entrada de áudio encontrada",
+        "why": "Este computador não tem microfone nem entrada de linha que o navegador consiga ver.",
+        "fix": "Conecte a interface de áudio ou o cabo da mesa de som e comece de novo."
+      },
+      "device_busy": {
+        "title": "A entrada de áudio está ocupada",
+        "why": "Outro programa ou aba do navegador está usando a entrada, ou o sistema não conseguiu abri-la.",
+        "fix": "Feche os outros programas que usam a entrada ou escolha outra, e comece de novo."
+      },
+      "device_lost": {
+        "title": "A entrada de áudio sumiu",
+        "why": "Ela foi desconectada, ou o navegador parou de compartilhá-la.",
+        "fix": "Conecte-a de novo ou escolha outra entrada, e comece de novo."
+      },
+      "failed": {
+        "title": "Não foi possível iniciar a captura de áudio",
+        "why": "O navegador não conseguiu preparar o processamento de áudio.",
+        "fix": "Recarregue a página e comece de novo. Se continuar falhando, use uma versão atualizada do Chrome, Edge, Firefox ou Safari."
+      }
+    },
+    "not_implemented": {
+      "title": "Isto ainda não está disponível",
+      "why": "Esta versão do servidor ainda não tem este recurso.",
+      "fix": "Atualize o Legendas ao vivo ou use o recurso quando a próxima versão sair."
+    },
+    "secret": {
+      "read_only_env": {
+        "title": "Esta chave é definida por uma variável de ambiente",
+        "why": "O servidor a lê do ambiente, então ela não pode ser alterada nem removida aqui.",
+        "fix": "Altere ou remova a variável onde o servidor é iniciado e depois reinicie-o."
+      },
+      "no_backend": {
+        "title": "Não há um lugar seguro para guardar a chave",
+        "why": "Este computador não tem chaveiro do sistema, e não há chave mestra definida para o arquivo criptografado.",
+        "fix": "Defina LIVESUBS_MASTER_KEY (veja docs/dev.md) e reinicie o servidor."
+      },
+      "not_found": {
+        "title": "Essa chave não está guardada",
+        "why": "Ela pode já ter sido removida.",
+        "fix": "Recarregue a página para ver as chaves atuais."
+      },
+      "value_required": {
+        "title": "A chave está vazia",
+        "why": "Não há nada para salvar.",
+        "fix": "Cole a chave e tente de novo."
+      },
+      "unknown_name": {
+        "title": "O servidor não conhece esta chave",
+        "why": "O app e o servidor provavelmente são de versões diferentes.",
+        "fix": "Recarregue a página. Se continuar acontecendo, atualize o servidor."
+      },
+      "validation_unsupported": {
+        "title": "Esta chave não pode ser verificada",
+        "why": "O servidor não tem como testar este segredo no serviço correspondente.",
+        "fix": "Salve-a e teste onde ela é usada."
+      }
+    },
+    "recording": {
+      "not_found": {
+        "title": "Gravação não encontrada",
+        "why": "Ela pode ter sido excluída por um administrador ou pela limpeza automática de gravações antigas, ou o link tem um erro de digitação.",
+        "fix": "Escolha a gravação na lista de gravações da sessão."
+      }
+    },
+    "caption": {
+      "not_found": {
+        "title": "Linha de legenda não encontrada",
+        "why": "A linha ainda não está guardada para esse idioma, o que acontece com texto que ainda está sendo reconhecido, ou as legendas da sessão foram removidas.",
+        "fix": "Espere a linha ficar final e tente de novo, ou recarregue as legendas."
+      }
+    },
+    "settings": {
+      "invalid": {
+        "title": "Algumas configurações não são válidas",
+        "why": "O servidor não salvou nada porque vários campos têm problemas.",
+        "fix": "Corrija os campos destacados e salve de novo."
+      },
+      "invalid_language": {
+        "title": "Esse idioma não é compatível",
+        "why": "Um idioma padrão não está na lista de idiomas, ou não pode ser o idioma falado (só inglês, espanhol ou detecção automática podem).",
+        "fix": "Escolha os idiomas da lista e salve de novo."
+      },
+      "invalid_url": {
+        "title": "Esse endereço não é válido",
+        "why": "Precisa ser um endereço completo, com esquema e host, como http://127.0.0.1:8178 (ou ws://127.0.0.1:4455 para o OBS), sem query nem credenciais.",
+        "fix": "Corrija o endereço e salve de novo."
+      },
+      "out_of_range": {
+        "title": "Um número está fora do intervalo",
+        "why": "Um dos números está fora dos valores que o servidor aceita.",
+        "fix": "Use um valor dentro do intervalo indicado abaixo do campo e salve de novo."
+      },
+      "too_long": {
+        "title": "Um valor é longo demais",
+        "why": "Os nomes de modelo, o nome da interface e o glossário são limitados a 200 caracteres.",
+        "fix": "Encurte o valor e salve de novo."
+      }
+    },
+    "overlay": {
+      "not_found": {
+        "title": "Não encontramos essa predefinição de overlay",
+        "why": "Ela pode ter sido excluída, ou o link tem um erro de digitação.",
+        "fix": "Escolha uma predefinição na página de predefinições de overlay ou use uma das incluídas, como classic."
+      },
+      "builtin_read_only": {
+        "title": "As predefinições incluídas não podem ser alteradas",
+        "why": "Caixa clássica, Só contorno e Terço inferior fazem parte do app, então não podem ser editadas nem excluídas.",
+        "fix": "Duplique a predefinição e edite a cópia."
+      },
+      "invalid": {
+        "title": "A predefinição não é válida",
+        "why": "O servidor não a salvou porque vários campos têm problemas.",
+        "fix": "Corrija os campos destacados e salve de novo."
+      },
+      "invalid_name": {
+        "title": "A predefinição precisa de um nome",
+        "why": "O nome de uma predefinição tem de 1 a 80 caracteres.",
+        "fix": "Digite um nome e salve de novo."
+      },
+      "invalid_color": {
+        "title": "Essa cor não é válida",
+        "why": "As cores são cores CSS, como #FFFFFF ou rgba(0,0,0,0.5), ou transparent para o fundo.",
+        "fix": "Corrija a cor e salve de novo."
+      },
+      "out_of_range": {
+        "title": "Um tamanho está fora do intervalo",
+        "why": "Um dos tamanhos ou tempos está fora dos valores que o overlay aceita.",
+        "fix": "Use um valor dentro do intervalo indicado abaixo do campo e salve de novo."
+      }
+    },
+    "glossary": {
+      "not_found": {
+        "title": "Glossário não encontrado",
+        "why": "Ele pode ter sido excluído, talvez em outra aba de administração.",
+        "fix": "Recarregue a lista de glossários e escolha-o de novo."
+      },
+      "invalid": {
+        "title": "O glossário tem vários problemas",
+        "why": "Mais de um campo precisa de correção antes de salvar.",
+        "fix": "Corrija os campos destacados e salve de novo."
+      },
+      "name_required": {
+        "title": "O glossário precisa de um nome",
+        "why": "É pelo nome que você escolhe o glossário em uma sessão.",
+        "fix": "Dê um nome a ele, como o do evento ou da trilha."
+      },
+      "term_required": {
+        "title": "Uma linha não tem termo",
+        "why": "Cada linha precisa do termo como ele é falado ou escrito na palestra; só as traduções não bastam para encontrá-lo.",
+        "fix": "Escreva o termo ou remova a linha."
+      },
+      "term_duplicate": {
+        "title": "Um termo aparece duas vezes",
+        "why": "Cada termo só pode aparecer uma vez (maiúsculas e minúsculas contam como iguais), para que os modelos recebam uma única tradução preferida.",
+        "fix": "Junte as duas linhas em uma."
+      },
+      "language_invalid": {
+        "title": "Uma coluna de tradução não é um código de idioma",
+        "why": "As colunas de tradução são nomeadas pelo código do idioma, como es, en ou pt-BR.",
+        "fix": "Renomeie a coluna para um código de idioma."
+      },
+      "too_large": {
+        "title": "O glossário é longo demais",
+        "why": "Um glossário comporta até 1000 termos, entradas de até 200 caracteres e um nome de até 120, para caber nos prompts dos modelos.",
+        "fix": "Encurte as entradas longas ou divida o glossário por palestra ou trilha."
+      }
+    },
+    "audio": {
+      "gap": {
+        "title": "Parte do áudio se perdeu",
+        "why": "{{gapMs}} ms de áudio em {{atSec}} s não chegaram ao provedor, porque ele reiniciou ou a estação de captura se reconectou. Essas palavras não têm legendas.",
+        "fix": "Nada a fazer se for raro. Se acontecer com frequência, verifique a rede da estação de captura e o provedor."
+      }
+    },
+    "streamcc": {
+      "no_url": {
+        "title": "Sem URL de ingestão de legendas",
+        "why": "Esta sessão está com as legendas na transmissão ligadas, mas a URL de ingestão de legendas do YouTube não está salva, então não há para onde enviá-las.",
+        "fix": "No YouTube Live Control Room, abra Configurações da transmissão → Legendas → \"POST captions to URL\", copie a URL e cole nas legendas na transmissão da sessão."
+      },
+      "url_invalid": {
+        "title": "Isso não é uma URL de ingestão de legendas",
+        "why": "A URL de ingestão precisa ser um endereço http:// ou https:// completo.",
+        "fix": "Copie a URL inteira do YouTube Live Control Room (ela começa com http://upload.youtube.com/closedcaption) e cole de novo."
+      },
+      "unreachable": {
+        "title": "Não foi possível acessar o YouTube para enviar as legendas",
+        "why": "O POST das legendas não teve resposta: este servidor pode estar sem internet ou o YouTube pode estar inacessível pela rede dele.",
+        "fix": "Verifique a conexão do servidor com a internet. As legendas são reenviadas automaticamente; linhas com mais de cerca de um minuto são descartadas."
+      },
+      "server_error": {
+        "title": "O YouTube não está aceitando legendas agora",
+        "why": "O YouTube respondeu com um erro temporário (HTTP {{status}}).",
+        "fix": "Nada a fazer por enquanto: as legendas são reenviadas automaticamente. Se continuar, verifique a transmissão no YouTube Live Control Room."
+      },
+      "rejected": {
+        "title": "O YouTube recusou a legenda",
+        "why": "O YouTube recusou a legenda (HTTP {{status}}). A URL de ingestão pode ser antiga, ser de outra transmissão, ou a transmissão pode não estar ao vivo.",
+        "fix": "Confirme que a transmissão está ao vivo e que \"POST captions to URL\" está selecionado, depois copie de novo a URL de ingestão atual e envie uma legenda de teste."
+      },
+      "dropped": {
+        "title": "Algumas legendas foram descartadas",
+        "why": "{{count}} legendas não puderam ser enviadas a tempo e ficaram antigas demais para aparecer na transmissão.",
+        "fix": "Verifique a conexão com o YouTube. As novas legendas são enviadas assim que ela se recuperar."
+      },
+      "obs_unreachable": {
+        "title": "Não foi possível acessar o OBS",
+        "why": "O servidor não conseguiu se conectar ao websocket do OBS para enviar as legendas: o OBS pode estar fechado ou reiniciando, ou o servidor websocket pode estar desligado.",
+        "fix": "Abra o OBS, ative Ferramentas → Configurações do servidor WebSocket → Ativar servidor WebSocket e confira a URL do websocket nas Configurações. As legendas são reenviadas automaticamente."
+      },
+      "obs_auth_failed": {
+        "title": "O OBS recusou a senha",
+        "why": "O servidor websocket do OBS pede uma senha, e a senha do websocket do OBS salva está faltando ou errada.",
+        "fix": "Copie a senha no OBS (Ferramentas → Configurações do servidor WebSocket → Mostrar informações de conexão) e salve-a nas Configurações como senha do websocket do OBS."
+      },
+      "obs_rejected": {
+        "title": "O OBS não aceitou a legenda",
+        "why": "O OBS recusou a legenda ({{comment}}). As legendas só saem enquanto o OBS está transmitindo.",
+        "fix": "Inicie a transmissão no OBS e depois envie uma legenda de teste."
+      }
+    },
+    "benchmark": {
+      "running": {
+        "title": "Já há um benchmark em andamento",
+        "why": "Só um benchmark roda por vez, para não distorcer os números.",
+        "fix": "Espere ele terminar; o resultado aparece aqui."
+      },
+      "runtime_unavailable": {
+        "title": "A IA local não consegue rodar o benchmark",
+        "why": "{{runtime}} não está rodando ou o servidor não consegue acessá-lo.",
+        "fix": "Inicie o whisper-server e o Ollama e rode o benchmark de novo."
+      },
+      "failed": {
+        "title": "O benchmark falhou",
+        "why": "A IA local falhou ao transcrever ou traduzir o clipe de teste.",
+        "fix": "Verifique se o whisper-server e o Ollama estão rodando com os modelos escolhidos e tente de novo."
+      },
+      "no_speech": {
+        "title": "O benchmark não obteve texto",
+        "why": "O whisper-server respondeu, mas não transcreveu nada do clipe de teste.",
+        "fix": "Verifique se o whisper-server roda um modelo multilíngue (por exemplo large-v3-turbo) e tente de novo."
+      }
+    },
+    "model": {
+      "not_found": {
+        "title": "Modelo desconhecido",
+        "why": "{{model}} não está na lista de modelos deste servidor.",
+        "fix": "Escolha um modelo da lista."
+      },
+      "ollama_unreachable": {
+        "title": "O Ollama não está acessível",
+        "why": "O Ollama baixa e roda os modelos Gemma, e o servidor não consegue acessá-lo.",
+        "fix": "Inicie o Ollama (ou confira o endereço dele nas Configurações) e tente de novo."
+      },
+      "download_failed": {
+        "title": "O download falhou",
+        "why": "A conexão com o servidor de modelos falhou, ou ele recusou a solicitação.",
+        "fix": "Verifique a conexão com a internet e tente de novo: o download continua de onde parou."
+      },
+      "checksum_mismatch": {
+        "title": "O modelo baixado está corrompido",
+        "why": "O arquivo de {{model}} não corresponde ao checksum publicado, então foi excluído.",
+        "fix": "Baixe-o de novo."
+      },
+      "pull_failed": {
+        "title": "O Ollama não conseguiu baixar o modelo",
+        "why": "O Ollama informou um erro ao baixar {{model}}.",
+        "fix": "Verifique o log do Ollama e a conexão com a internet e tente de novo."
+      }
+    }
+  }
+}

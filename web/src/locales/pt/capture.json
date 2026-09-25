@@ -1,0 +1,44 @@
+{
+  "title": "Captura de áudio · {{id}}",
+  "status": {
+    "off": "Sem enviar",
+    "closed": "Sem enviar",
+    "opening": "Abrindo a entrada",
+    "connecting": "Conectando",
+    "ready": "Enviando",
+    "reconnecting": "Reconectando",
+    "replaced": "Assumida por outra página"
+  },
+  "session": {
+    "idle": "A sessão ainda não começou. O áudio já chega ao servidor; as legendas começam quando um administrador iniciar a sessão.",
+    "starting": "A sessão está começando.",
+    "live": "A sessão está ao vivo: este áudio vira legendas.",
+    "paused": "A sessão está pausada. O áudio chega ao servidor, mas não é transcrito.",
+    "stopping": "A sessão está sendo encerrada.",
+    "error": "A sessão parou com um erro. O painel de administração mostra o motivo."
+  },
+  "device": {
+    "label": "Entrada de áudio",
+    "default": "Entrada padrão",
+    "help": "Fica salva neste computador.",
+    "locked": "Os nomes das entradas aparecem quando você permitir o acesso ao microfone."
+  },
+  "meter": {
+    "label": "Nível",
+    "readout": "{{value}} dBFS · 16 kHz mono",
+    "silent": "Silêncio · 16 kHz mono"
+  },
+  "notice": {
+    "noToken": "Este link não tem token de captura, então o servidor não vai aceitar o áudio. Abra o link de captura pelo painel de administração.",
+    "clipping": "A entrada está saturando. Abaixe um pouco a saída da mesa de som.",
+    "silent": "Nenhum som está chegando ao servidor. Verifique se a saída da mesa de som está aberta e se a entrada certa está selecionada.",
+    "reconnecting": "A conexão com o servidor caiu. Os últimos segundos de áudio ficam guardados e são enviados quando ela voltar. Se continuar, verifique a rede ou peça ao administrador um novo link de captura.",
+    "replaced": "Outra página de captura assumiu esta sessão, e só uma pode enviar por vez."
+  },
+  "action": {
+    "start": "Começar a enviar",
+    "stop": "Parar de enviar",
+    "takeOver": "Enviar desta página de novo"
+  },
+  "hint": "Mantenha esta página aberta. A tela fica ligada enquanto ela envia."
+}

@@ -21,7 +21,7 @@ export const fallbackLanguage = 'en'
 /** Where the chosen UI language is stored per device (UI-2). */
 export const storageKey = 'ls.ui'
 
-// Detection order: ?ui=es|en, then the stored choice, then the browser.
+// Detection order: ?ui=<lang> (es, en, pt…), then the stored choice, then the browser.
 // Browser languages match on the base code (es-AR → es); anything
 // unsupported falls back to English.
 void i18n
