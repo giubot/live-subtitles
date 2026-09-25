@@ -59,6 +59,8 @@ type run struct {
 	hasBase     bool
 	end         time.Duration // session clock at the end of the last frame
 	sourceEnded bool
+	// recording is the run's recording while it records (status.recordingId).
+	recording domain.RecordingSink
 }
 
 func newRun(m *Manager, sess domain.Session) *run {
@@ -116,7 +118,13 @@ func (r *run) abort() {
 func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame, sink domain.RecordingSink) {
 	defer close(in)
 	if sink != nil {
+		r.mu.Lock()
+		r.recording = sink
+		r.mu.Unlock()
 		defer func() {
+			if sink == nil { // it failed and was closed already
+				return
+			}
 			if err := sink.Close(); err != nil {
 				r.m.log.Warn("recording did not close cleanly", "session", r.id, "err", err)
 			}
@@ -144,6 +152,9 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 				r.m.log.Warn("recording stopped", "session", r.id, "err", err)
 				_ = sink.Close()
 				sink = nil
+				r.mu.Lock()
+				r.recording = nil
+				r.mu.Unlock()
 			}
 		}
 		select {
@@ -382,6 +393,11 @@ func (r *run) status() api.SessionStatus {
 	}
 	if r.source != nil {
 		st.Audio = &audio
+	}
+	if r.recording != nil {
+		if id := r.recording.ID(); id != "" {
+			st.RecordingId = &id
+		}
 	}
 	st.Latency = r.latencyStats()
 	st.Usage = r.totals().stats()
