@@ -66,16 +66,19 @@ func WithViewersInterval(d time.Duration) Option {
 // History semantics, per track:
 //   - Final captions go into a ring buffer of the last HistorySize finals. A
 //     final whose segmentId is already in the ring (a correction or an admin
-//     edit) replaces that entry in place and is delivered again.
+//     edit) replaces that entry in place and is delivered again. Once an
+//     entry is edited (ADM-4), only another edited final replaces it: a
+//     provider's late re-final is dropped so it can't undo the correction.
 //   - The track keeps at most one interim caption: the latest one. A newer
 //     interim replaces it whatever its segment; the final of its segment
 //     clears it. An interim for a segment that is already final in the ring
 //     is late and is dropped (neither stored nor delivered), so a final is
 //     never overwritten by an interim.
 //   - The `history` message a subscriber gets first holds the last n finals
-//     of each requested track merged in start-time order, followed by the
-//     current interim of each track (final=false), so a viewer joining
-//     mid-sentence sees the sentence in progress.
+//     of each requested track merged in start-time order, without the ones
+//     an admin hid, followed by the current interim of each track
+//     (final=false), so a viewer joining mid-sentence sees the sentence in
+//     progress. Hidden finals stay in the ring and still count towards n.
 //
 // Delivery never blocks the publisher: each subscriber has a bounded
 // channel, and a subscriber whose channel is full is dropped (its channel
@@ -195,7 +198,11 @@ func (t *track) add(c domain.CaptionEvent, size int) bool {
 		t.interim = nil
 	}
 	if seq, ok := t.final[c.SegmentId]; ok {
-		t.ring[seq%uint64(size)] = c // a final's slot is its seq modulo size
+		slot := &t.ring[seq%uint64(size)] // a final's slot is its seq modulo size
+		if isTrue(slot.Edited) && !isTrue(c.Edited) {
+			return false
+		}
+		*slot = c
 		return true
 	}
 	if len(t.ring) < size {
@@ -224,6 +231,8 @@ func (t *track) last(n int) []domain.CaptionEvent {
 	}
 	return out
 }
+
+func isTrue(b *bool) bool { return b != nil && *b }
 
 // broadcast delivers msg to the subscribers of track, or to every
 // subscriber when track is empty, dropping those that can't keep up.
@@ -303,7 +312,11 @@ func (s *session) history(tracks []string, n int) domain.BusMessage {
 		}
 		seen[name] = true
 		if n > 0 {
-			finals = append(finals, t.last(n)...)
+			for _, c := range t.last(n) {
+				if !isTrue(c.Hidden) {
+					finals = append(finals, c)
+				}
+			}
 		}
 		if t.interim != nil {
 			interims = append(interims, *t.interim)
