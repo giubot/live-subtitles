@@ -218,26 +218,29 @@ func TestListCaptions(t *testing.T) {
 	}
 
 	tests := []struct {
-		name  string
-		track string
-		limit int
-		want  []string // track/segment in order
+		name     string
+		track    string
+		limit    int
+		from, to time.Duration
+		want     []string // track/segment in order
 	}{
-		{"one track, one per page", "es", 1, []string{"es/s-1", "es/s-2", "es/s-3", "es/s-3b", "es/s-4"}},
-		{"one track, two per page", "es", 2, []string{"es/s-1", "es/s-2", "es/s-3", "es/s-3b", "es/s-4"}},
-		{"exact fit", "en", 5, []string{"en/s-1", "en/s-2", "en/s-3", "en/s-3b", "en/s-4"}},
-		{"default limit", "en", 0, []string{"en/s-1", "en/s-2", "en/s-3", "en/s-3b", "en/s-4"}},
-		{"all tracks", "", 3, []string{
+		{"one track, one per page", "es", 1, 0, 0, []string{"es/s-1", "es/s-2", "es/s-3", "es/s-3b", "es/s-4"}},
+		{"one track, two per page", "es", 2, 0, 0, []string{"es/s-1", "es/s-2", "es/s-3", "es/s-3b", "es/s-4"}},
+		{"exact fit", "en", 5, 0, 0, []string{"en/s-1", "en/s-2", "en/s-3", "en/s-3b", "en/s-4"}},
+		{"default limit", "en", 0, 0, 0, []string{"en/s-1", "en/s-2", "en/s-3", "en/s-3b", "en/s-4"}},
+		{"all tracks", "", 3, 0, 0, []string{
 			"en/s-1", "es/s-1", "en/s-2", "es/s-2", "en/s-3", "en/s-3b", "es/s-3", "es/s-3b", "en/s-4", "es/s-4",
 		}},
-		{"unknown track", "fr", 2, nil},
+		{"unknown track", "fr", 2, 0, 0, nil},
+		{"window", "es", 1, 10 * time.Second, 30 * time.Second, []string{"es/s-2", "es/s-3", "es/s-3b"}},
+		{"window from a start", "es", 0, 20 * time.Second, time.Hour, []string{"es/s-3", "es/s-3b", "es/s-4"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var got []string
 			cursor, pages := "", 0
 			for {
-				items, next, err := s.ListCaptions(ctx, domain.CaptionQuery{SessionID: "main", Track: tt.track, Cursor: cursor, Limit: tt.limit})
+				items, next, err := s.ListCaptions(ctx, domain.CaptionQuery{SessionID: "main", Track: tt.track, Cursor: cursor, Limit: tt.limit, From: tt.from, To: tt.to})
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -121,9 +121,22 @@ A session with `provider: gemini` transcribes with the [Gemini Live API](https:/
 - **Long talks**: the connection asks for session resumption and context window compression (sliding window). When the server announces a disconnect (`GoAway`), the provider opens the next connection with the latest resumption handle and switches to it. A dropped connection is reopened with backoff (0.5 s doubling to 10 s, 8 tries); meanwhile up to 15 s of audio is kept and sent on reconnect, and anything older is logged as an audio gap (`gemini live reconnected; audio was lost`, with the session-clock range). Each drop also shows as a `provider.error` on the session.
 - **Usage**: audio seconds sent and the prompt/response tokens the API reports go into the session's `usage`.
 
-The Gemini translator comes with P2-02; until it lands, the session manager refuses to start a Gemini session.
-
 `go test -tags gemini -run Integration -v ./internal/provider/gemini/` with `GEMINI_API_KEY` set streams the EN and ES fixtures to the real API in real time and logs the transcript, the detected languages and the latency (`GEMINI_LIVE_MODEL` overrides the model). Without the tag or the key it's skipped, so CI never calls Google.
+
+## Recordings
+
+A session with `recordingEnabled` (new sessions take `settings.recording.enabledByDefault`) records the same 16 kHz audio it sends to the provider. ffmpeg encodes it to AAC-LC in fragmented MP4 at `settings.recording.bitrateKbps` (32, 48 or 64) into `<data dir>/recordings/<session>/<recording id>.m4a`. A new file starts with each run of the session and every 30 minutes, and after a pause longer than 5 minutes; shorter pauses are recorded as silence. Each ~1 s fragment is written to disk as it's done, so after a crash or `kill -9` the file plays up to its last second, and on the next start the server marks such recordings `complete` (or `failed` if nothing playable was written). If ffmpeg is missing, or the disk can't keep up, the session runs on without recording (the log says why).
+
+Each recording has `offsetSec`, where it starts on the session clock: a session caption at `start` plays at `start - offsetSec` in the file. Add `recordingId=<id>` to the captions or subtitles URLs above to get just that recording's captions, already shifted to its timeline.
+
+| URL | What you get |
+|---|---|
+| `/api/recordings?sessionId=main` | The session's recordings, newest first (`status` is `recording`, `complete` or `failed`) |
+| `/api/recordings/{id}/audio` | The audio (`audio/mp4`), with HTTP Range so players can seek |
+| `/api/recordings/usage` (admin) | Bytes used by recordings and free on their disk |
+| `DELETE /api/recordings/{id}` (admin) | Deletes the recording and its file; one still being written stops |
+
+Recordings older than `settings.recording.retentionDays` (default 30, counted from when they ended; `0` keeps them forever) are deleted at startup and then hourly. Deleting a session keeps its recordings.
 
 ## Local AI provider
 

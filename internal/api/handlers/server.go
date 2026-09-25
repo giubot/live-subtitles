@@ -37,6 +37,9 @@ type Server struct {
 	Manager *session.Manager
 	// Files opens file and URL test sources (sources/file); nil: 501.
 	Files *ffmpeg.Files
+	// Recordings lists, serves and deletes recordings; nil: the recordings
+	// operations (and captions by recordingId) answer 501.
+	Recordings Recordings
 
 	// WebSocket endpoints need the raw connection, so they are served
 	// outside the strict handler; nil: 501.
@@ -89,7 +92,8 @@ func (s *Server) Handler(mux *http.ServeMux, log *slog.Logger) http.Handler {
 	})
 }
 
-// websockets routes the WebSocket operations to the Server's handlers and
+// websockets routes the WebSocket operations (and the recording audio,
+// which needs the request for Range) to the Server's handlers and
 // everything else to the strict handler.
 type websockets struct {
 	api.ServerInterface
@@ -110,6 +114,14 @@ func (ws websockets) WsIngest(w http.ResponseWriter, r *http.Request, sessionID 
 		return
 	}
 	ws.s.IngestWS(w, r, sessionID)
+}
+
+func (ws websockets) GetRecordingAudio(w http.ResponseWriter, r *http.Request, id api.RecordingId, params api.GetRecordingAudioParams) {
+	if ws.s.Recordings == nil {
+		ws.ServerInterface.GetRecordingAudio(w, r, id, params)
+		return
+	}
+	ws.s.serveRecordingAudio(w, r, id)
 }
 
 func (ws websockets) WsAdmin(w http.ResponseWriter, r *http.Request) {

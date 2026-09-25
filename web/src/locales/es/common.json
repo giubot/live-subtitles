@@ -291,6 +291,13 @@
         "why": "Probablemente la app y el servidor son versiones distintas.",
         "fix": "Recargá la página. Si sigue pasando, actualizá el servidor."
       }
+    },
+    "recording": {
+      "not_found": {
+        "title": "No encontramos la grabación",
+        "why": "Puede que la haya borrado un administrador o la limpieza automática de grabaciones viejas, o que el enlace tenga un error.",
+        "fix": "Elegí la grabación desde la lista de grabaciones de la sesión."
+      }
     }
   }
 }

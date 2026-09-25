@@ -80,6 +80,10 @@ func (s *Store) ListCaptions(ctx context.Context, q domain.CaptionQuery) ([]doma
 		where.WriteString(` AND track = ?`)
 		args = append(args, q.Track)
 	}
+	if q.To > q.From {
+		where.WriteString(` AND start_sec >= ? AND start_sec < ?`)
+		args = append(args, q.From.Seconds(), q.To.Seconds())
+	}
 	if q.Cursor != "" {
 		cur, err := decodeCaptionCursor(q.Cursor)
 		if err != nil {

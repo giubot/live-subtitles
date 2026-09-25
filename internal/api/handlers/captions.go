@@ -15,10 +15,12 @@ import (
 	"github.com/iencodev/live-subtitles/internal/subtitle"
 )
 
-// Recording-relative captions (recordingId) arrive with recordings (P3-07/P3-08).
+// With recordingId, captions and subtitles cover only that recording and
+// their times are relative to its start, so they line up with its audio
+// (REC-3); that needs the recordings service.
 
 func (s *Server) ListCaptions(ctx context.Context, req api.ListCaptionsRequestObject) (api.ListCaptionsResponseObject, error) {
-	if s.Sessions == nil || s.Captions == nil || req.Params.RecordingId != nil {
+	if s.Sessions == nil || s.Captions == nil || (req.Params.RecordingId != nil && s.Recordings == nil) {
 		return nil, api.ErrNotImplemented
 	}
 	if _, err := s.Sessions.GetSession(ctx, req.SessionId); errors.Is(err, domain.ErrNotFound) {
@@ -27,6 +29,16 @@ func (s *Server) ListCaptions(ctx context.Context, req api.ListCaptionsRequestOb
 		return nil, err
 	}
 	q := domain.CaptionQuery{SessionID: req.SessionId, Track: req.Params.Lang}
+	if req.Params.RecordingId != nil {
+		from, to, ok, err := s.recordingWindow(ctx, req.SessionId, *req.Params.RecordingId)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return api.ListCaptions404JSONResponse{NotFoundJSONResponse: recordingNotFound}, nil
+		}
+		q.From, q.To = from, to
+	}
 	if req.Params.After != nil {
 		q.Cursor = *req.Params.After
 	}
@@ -43,7 +55,7 @@ func (s *Server) ListCaptions(ctx context.Context, req api.ListCaptionsRequestOb
 	if err != nil {
 		return nil, err
 	}
-	page := api.ListCaptions200JSONResponse{Items: visible(items)}
+	page := api.ListCaptions200JSONResponse{Items: shift(visible(items), q.From)}
 	if next != "" {
 		page.NextCursor = &next
 	}
@@ -51,7 +63,7 @@ func (s *Server) ListCaptions(ctx context.Context, req api.ListCaptionsRequestOb
 }
 
 func (s *Server) GetSubtitles(ctx context.Context, req api.GetSubtitlesRequestObject) (api.GetSubtitlesResponseObject, error) {
-	if s.Sessions == nil || s.Captions == nil || req.Params.RecordingId != nil {
+	if s.Sessions == nil || s.Captions == nil || (req.Params.RecordingId != nil && s.Recordings == nil) {
 		return nil, api.ErrNotImplemented
 	}
 	format := req.Params.Format
@@ -66,17 +78,30 @@ func (s *Server) GetSubtitles(ctx context.Context, req api.GetSubtitlesRequestOb
 	} else if err != nil {
 		return nil, err
 	}
-	captions, err := s.allCaptions(ctx, req.SessionId, req.Params.Lang)
+	q := domain.CaptionQuery{SessionID: req.SessionId, Track: req.Params.Lang}
+	name := req.SessionId
+	if req.Params.RecordingId != nil {
+		from, to, ok, err := s.recordingWindow(ctx, req.SessionId, *req.Params.RecordingId)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return api.GetSubtitles404JSONResponse{NotFoundJSONResponse: recordingNotFound}, nil
+		}
+		q.From, q.To, name = from, to, *req.Params.RecordingId
+	}
+	captions, err := s.allCaptions(ctx, q)
 	if err != nil {
 		return nil, err
 	}
+	captions = shift(captions, q.From)
 
 	var headers api.GetSubtitles200ResponseHeaders
 	if req.Params.Live != nil && *req.Params.Live {
 		noStore := "no-store"
 		headers.CacheControl = &noStore
 	} else {
-		d := fmt.Sprintf(`attachment; filename="%s-%s.%s"`, fileSafe(req.SessionId), fileSafe(req.Params.Lang), format)
+		d := fmt.Sprintf(`attachment; filename="%s-%s.%s"`, fileSafe(name), fileSafe(req.Params.Lang), format)
 		headers.ContentDisposition = &d
 	}
 
@@ -106,9 +131,9 @@ func (s *Server) GetSubtitles(ctx context.Context, req api.GetSubtitlesRequestOb
 	return api.GetSubtitles200TextvttResponse{Body: &b, ContentLength: int64(b.Len()), Headers: headers}, nil
 }
 
-// allCaptions returns every visible final caption of a track, in order.
-func (s *Server) allCaptions(ctx context.Context, sessionID, track string) ([]api.Caption, error) {
-	q := domain.CaptionQuery{SessionID: sessionID, Track: track, Limit: store.MaxCaptionLimit}
+// allCaptions returns every visible final caption q selects, in order.
+func (s *Server) allCaptions(ctx context.Context, q domain.CaptionQuery) ([]api.Caption, error) {
+	q.Limit = store.MaxCaptionLimit
 	out := []api.Caption{}
 	for {
 		items, next, err := s.Captions.ListCaptions(ctx, q)

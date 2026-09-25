@@ -291,6 +291,13 @@
         "why": "The app and the server are probably different versions.",
         "fix": "Reload the page. If it keeps happening, update the server."
       }
+    },
+    "recording": {
+      "not_found": {
+        "title": "Recording not found",
+        "why": "It may have been deleted by an admin or by the automatic clean-up of old recordings, or the link has a typo.",
+        "fix": "Pick the recording from the session's list of recordings."
+      }
     }
   }
 }

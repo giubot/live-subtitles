@@ -36,6 +36,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/provider/gemini"
 	"github.com/iencodev/live-subtitles/internal/provider/local/gemma"
 	"github.com/iencodev/live-subtitles/internal/provider/mock"
+	"github.com/iencodev/live-subtitles/internal/recording"
 	"github.com/iencodev/live-subtitles/internal/secrets"
 	"github.com/iencodev/live-subtitles/internal/session"
 	"github.com/iencodev/live-subtitles/internal/store"
@@ -62,6 +63,7 @@ type App struct {
 	hub     *ingest.Hub
 	manager *session.Manager
 	tls     *tlsutil.Manager // HTTPS certificate; mode disabled when off
+	rec     *recording.Recorder
 }
 
 // New opens the data directory and wires services and routes. dist is the
@@ -123,6 +125,14 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	// The Gemini key and model are read at each session start (AI-11).
 	geminiKey := googleAPIKey(sec)
 	a.hub = ingest.NewHub(srv.Auth.VerifyIngestToken, ingest.Options{Logger: log})
+	// Recordings live in <data>/recordings/<session>/ (REC-1, REC-5).
+	a.rec = recording.New(recording.Options{Dir: filepath.Join(cfg.DataDir, "recordings"), Store: st,
+		Sessions: st, Settings: st, FFmpeg: cfg.FFmpeg, Logger: log})
+	if err := a.rec.Recover(ctx); err != nil {
+		log.Warn("settle interrupted recordings", "err", err)
+	}
+	a.rec.StartRetention()
+	srv.Recordings = a.rec
 	a.manager = session.New(session.Options{
 		Sessions: st,
 		Captions: st,
@@ -141,6 +151,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		IngestStatus:  a.hub.Status,
 		ReleaseIngest: a.hub.Remove,
 		Pricing:       &metrics.Pricing{Gemini: cfg.GeminiPrices},
+		Recorder:      a.rec,
 		Logger:        log,
 	})
 	srv.Manager = a.manager
@@ -172,6 +183,7 @@ func googleAPIKey(sec domain.SecretStore) func(ctx context.Context) (string, err
 // Close stops running sessions and releases the data directory.
 func (a *App) Close() error {
 	a.manager.Close()
+	a.rec.Close()
 	a.hub.Close()
 	return a.store.Close()
 }
