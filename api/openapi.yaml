@@ -117,6 +117,7 @@ paths:
               schema: { $ref: "#/components/schemas/BenchmarkResult" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
 
   /api/languages:
     get:
@@ -1341,8 +1342,12 @@ components:
           description: Processing time / audio duration; < 1 means faster than real time
         asrMs: { type: integer }
         translationMs: { type: integer }
-        ok: { type: boolean }
+        ok: { type: boolean, description: "realTimeFactor is at most maxRealTimeFactor: the local provider keeps up" }
         ranAt: { $ref: "#/components/schemas/Timestamp" }
+        audioMs: { type: integer, description: Duration of the benchmark clip }
+        maxRealTimeFactor: { type: number, example: 0.8, description: Highest realTimeFactor that counts as ok }
+        whisperModel: { type: string, example: large-v3-turbo }
+        gemmaModel: { type: string, example: "gemma3:4b" }
 
     # ── setup & auth ──
     SetupStatus:

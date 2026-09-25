@@ -1034,8 +1034,20 @@ export interface components {
             realTimeFactor: number;
             asrMs: number;
             translationMs: number;
+            /** @description realTimeFactor is at most maxRealTimeFactor: the local provider keeps up */
             ok: boolean;
             ranAt: components["schemas"]["Timestamp"];
+            /** @description Duration of the benchmark clip */
+            audioMs?: number;
+            /**
+             * @description Highest realTimeFactor that counts as ok
+             * @example 0.8
+             */
+            maxRealTimeFactor?: number;
+            /** @example large-v3-turbo */
+            whisperModel?: string;
+            /** @example gemma3:4b */
+            gemmaModel?: string;
         };
         SetupStatus: {
             completed: boolean;
@@ -1784,6 +1796,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listLanguages: {
