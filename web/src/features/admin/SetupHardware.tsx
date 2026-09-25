@@ -12,6 +12,7 @@ import { ErrorAlert } from '../../components/ErrorAlert'
 import { Notice } from '../../components/Notice'
 import { Stat } from '../../components/Stat'
 import { StatusChip } from '../../components/StatusChip'
+import { SidecarGuide } from '../models/SidecarGuide'
 import { SetupFrame, StepActions } from './SetupFrame'
 import { localRuntimesMissing } from './setupSteps'
 
@@ -164,6 +165,7 @@ export function SetupHardware({ onNext }: { onNext: () => void }) {
               })}
             </Notice>
           )}
+          <SidecarGuide report={report} />
           <Typography>
             {t('hardware.recommend', {
               whisper: report.recommendation.whisperModel,

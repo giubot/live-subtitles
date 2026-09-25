@@ -1326,6 +1326,13 @@ components:
             gemmaModel: { type: string, example: "gemma3:4b" }
             localRealtimeLikely: { type: boolean }
         lastBenchmark: { $ref: "#/components/schemas/BenchmarkResult" }
+        modelsDir:
+          type: string
+          example: /Users/ana/livesubs/models
+          description: >-
+            Absolute path of the directory the server downloads whisper models
+            into (`--models-dir`). whisper-server is started with
+            `--model <modelsDir>/ggml-<name>.bin`, so the setup guide shows it.
     RuntimeStatus:
       type: object
       required: [reachable]

@@ -215,7 +215,11 @@ describe('models page', () => {
       /whisper-server isn’t answering at http:\/\/127\.0\.0\.1:8178/,
     )
     expect(notice).toHaveTextContent('Ollama isn’t answering at http://127.0.0.1:11434')
-    expect(notice).toHaveTextContent('Start them (see docs/dev.md) and check again.')
+    expect(notice).toHaveTextContent(
+      'Start them with the steps under “This computer” above, then check again.',
+    )
+    // The install guide is shown once, under "This computer".
+    expect(screen.getAllByRole('button', { name: /How to install/ })).toHaveLength(1)
     // A Gemma model blocked on Ollama can't be downloaded, and isn't an error to fix here.
     const gemma = await row('gemma3:4b')
     expect(gemma.getByText('Needs Ollama')).toBeInTheDocument()

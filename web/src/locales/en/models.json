@@ -24,7 +24,7 @@
     "recommend": "Recommended models for this computer: speech {{whisper}}, translation {{gemma}}.",
     "slow": "From its hardware, this computer may not run the local models in real time. Run the benchmark to measure it, or use Gemini with a Google API key.",
     "slowMeasured": "The benchmark says the local models don’t keep up in real time here. Use smaller models, or use Gemini with a Google API key.",
-    "localMissing": "Not running: {{names}}. The local provider and the benchmark need both. Start them (see docs/dev.md), then check again.",
+    "localMissing": "Not running: {{names}}. The local provider and the benchmark need both. Start them with the steps below, then check again.",
     "benchmarkHelp": "The benchmark runs the local models on a bundled clip of about 40 seconds. It needs whisper-server and Ollama running, and can take a few minutes.",
     "benchmark": "Run benchmark",
     "benchmarkRunning": "Running the benchmark…",
@@ -77,7 +77,54 @@
     "settingsUnavailable": "The settings couldn’t be read, so the models new sessions use can’t be changed here.",
     "whisperDown": "whisper-server isn’t answering at {{url}}. The speech models still download here, but whisper-server has to be started with one (--model <models dir>/ggml-<name>.bin) before local sessions work.",
     "ollamaDown": "Ollama isn’t answering at {{url}}, and the Gemma translation models download through it.",
-    "startSidecars": "Start them (see docs/dev.md) and check again.",
+    "startSidecars": "Start them with the steps under “This computer” above, then check again.",
     "background": "Downloads continue on the server if you leave this page. A stopped download resumes where it left off."
+  },
+  "guide": {
+    "title": "Install whisper-server and Ollama",
+    "toggle": "How to install whisper-server and Ollama",
+    "toggleMissing": "How to install and start {{names}}",
+    "intro": "Run these on the computer that runs Live Subtitles. The commands already use its addresses, its models folder and the models new sessions use.",
+    "allRunning": "Both are running. The steps are here for a new install or another computer.",
+    "running": "{{name}} already running",
+    "osLabel": "Operating system",
+    "os": {
+      "macos": "macOS",
+      "linux": "Linux",
+      "windows": "Windows",
+      "docker": "Docker"
+    },
+    "modelsDirPlaceholder": "<models folder>",
+    "modelsDirHint": "Replace <models folder> with the server’s models folder: the --models-dir it was started with (./models by default).",
+    "step": {
+      "macos": {
+        "install": "If Homebrew isn’t installed yet, install it first from <brew>brew.sh</brew>. Then install {{packages}} with it.",
+        "ollama": "Start Ollama: open the Ollama app, or run this and keep the terminal open.",
+        "whisper": "Start whisper-server with the speech model {{whisper}} and keep the terminal open. It uses Metal, the Mac’s GPU, automatically."
+      },
+      "linux": {
+        "ollama": "Install Ollama. It runs as a service, so it keeps running and starts with the computer.",
+        "build": "Build whisper.cpp from source. It needs git, CMake and a C++ compiler (on Debian or Ubuntu: sudo apt install git cmake build-essential). Or use the Docker steps instead.",
+        "whisper": "Start whisper-server from the whisper.cpp folder with the speech model {{whisper}} and keep the terminal open."
+      },
+      "windows": {
+        "ollama": "Install Ollama with winget, or with the installer from <ollama>ollama.com/download</ollama>. It keeps running in the system tray.",
+        "download": "Download whisper-bin-x64.zip from <releases>whisper.cpp’s releases on GitHub</releases> and unzip it. Or use the Docker steps instead.",
+        "whisper": "Open PowerShell in the folder that has whisper-server.exe, start it with the speech model {{whisper}} and keep the window open."
+      },
+      "docker": {
+        "ollama": "Start Ollama in a container. Its models stay in the ollama volume.",
+        "whisper": "Start whisper-server in a container with the speech model {{whisper}}."
+      },
+      "models": "Download the speech model {{whisper}} and the translation model {{gemma}} under Local models.",
+      "modelsAfterOllama": "With Ollama running, download the speech model {{whisper}} and the translation model {{gemma}} under Local models. Gemma downloads through Ollama.",
+      "check": "Press “Check again” to confirm that both answer."
+    },
+    "gpu": "The whisper.cpp image is for x86-64 computers and runs on the CPU. With an NVIDIA GPU, use the image ghcr.io/ggml-org/whisper.cpp:main-cuda and add --gpus all after docker run; it needs the NVIDIA Container Toolkit.",
+    "gpuLinux": "With an NVIDIA GPU, build with cmake -B build -DGGML_CUDA=1 instead; it needs the CUDA toolkit.",
+    "dockerMac": "Containers can’t use the Apple GPU, so on a Mac the macOS steps are faster.",
+    "restart": "whisper-server loads one model when it starts. After you download or choose a different speech model, stop it and start it again with that model’s file.",
+    "addresses": "If they run at other addresses, change them in Settings.",
+    "openSettings": "Open Settings"
   }
 }

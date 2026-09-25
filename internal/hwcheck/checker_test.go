@@ -7,6 +7,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -332,5 +334,31 @@ func TestReportShape(t *testing.T) {
 	}
 	if rep.LastBenchmark != nil {
 		t.Errorf("lastBenchmark = %+v without a benchmark", rep.LastBenchmark)
+	}
+	if rep.ModelsDir != nil {
+		t.Errorf("modelsDir = %q without a models directory", *rep.ModelsDir)
+	}
+}
+
+func TestReportModelsDir(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs := t.TempDir()
+	tests := []struct{ name, dir, want string }{
+		{"relative is made absolute", "models", filepath.Join(cwd, "models")},
+		{"absolute is kept", abs, abs},
+		{"cleaned", abs + "/sub/../", abs},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := New(Options{ModelsDir: tt.dir, FFmpeg: &ffmpeg.Prober{Binary: "/nonexistent"}, HTTPClient: noNet})
+			c.sys = fakeSystem("linux", "amd64", 8, nil, nil)
+			rep := c.Report(t.Context())
+			if rep.ModelsDir == nil || *rep.ModelsDir != tt.want {
+				t.Errorf("modelsDir = %v, want %q", rep.ModelsDir, tt.want)
+			}
+		})
 	}
 }
