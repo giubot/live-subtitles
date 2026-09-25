@@ -2,6 +2,7 @@
 import HttpsOutlined from '@mui/icons-material/HttpsOutlined'
 import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import GraphicEqOutlined from '@mui/icons-material/GraphicEqOutlined'
+import MemoryOutlined from '@mui/icons-material/MemoryOutlined'
 import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import SubtitlesOutlined from '@mui/icons-material/SubtitlesOutlined'
@@ -12,6 +13,7 @@ import { create } from 'zustand'
 export type AdminPath =
   | '/admin'
   | '/admin/glossaries'
+  | '/admin/models'
   | '/admin/overlays'
   | '/admin/providers'
   | '/admin/recordings'
@@ -19,7 +21,7 @@ export type AdminPath =
   | '/admin/tls'
 
 export type AdminPageKey =
-  'sessions' | 'glossaries' | 'overlays' | 'recordings' | 'providers' | 'settings' | 'tls'
+  'sessions' | 'glossaries' | 'overlays' | 'recordings' | 'providers' | 'models' | 'settings' | 'tls'
 
 export interface AdminNavItem {
   to: AdminPath
@@ -35,6 +37,7 @@ export const adminNav: AdminNavItem[] = [
   { to: '/admin/overlays', key: 'overlays', icon: <SubtitlesOutlined /> },
   { to: '/admin/recordings', key: 'recordings', icon: <GraphicEqOutlined /> },
   { to: '/admin/providers', key: 'providers', icon: <KeyOutlined /> },
+  { to: '/admin/models', key: 'models', icon: <MemoryOutlined /> },
   { to: '/admin/settings', key: 'settings', icon: <SettingsOutlined /> },
   { to: '/admin/tls', key: 'tls', icon: <HttpsOutlined /> },
 ]

@@ -1,0 +1,228 @@
+{
+  "retry": "Tentar de novo",
+  "save": "Salvar configurações",
+  "saved": "Salvo",
+  "unsaved": "Alterações não salvas",
+  "invalidForm": "Alguns campos precisam de correção antes de salvar. Eles estão marcados abaixo.",
+  "languages": {
+    "title": "Idiomas padrão",
+    "intro": "As novas sessões começam com estes. Cada sessão pode alterá-los antes de entrar ao vivo.",
+    "source": "Idioma falado",
+    "sourceHelp": "Automático detecta inglês e espanhol frase por frase.",
+    "sourceOption": {
+      "auto": "Automático (inglês ou espanhol)",
+      "en": "Inglês",
+      "es": "Espanhol"
+    },
+    "targets": "Idiomas das legendas",
+    "targetsHelp": "Os espectadores escolhem um destes no celular.",
+    "glossary": "Glossário padrão",
+    "glossaryNone": "Nenhum",
+    "glossaryMissing": "{{id}} (excluído)",
+    "glossaryHelp": "As novas sessões usam este, a menos que escolham outro. Os glossários ficam na página Glossários."
+  },
+  "providers": {
+    "title": "Provedores de IA",
+    "intro": "Quais modelos cada provedor usa. A chave de API do Google fica na página Provedores e chaves.",
+    "gemini": "Gemini",
+    "liveModel": "Modelo de transcrição ao vivo",
+    "translationModel": "Modelo de tradução",
+    "local": "Local (whisper + Ollama)",
+    "whisperUrl": "Endereço do whisper-server",
+    "whisperModel": "Modelo do Whisper",
+    "ollamaUrl": "Endereço do Ollama",
+    "gemmaModel": "Modelo de tradução no Ollama",
+    "fallback": "Trocar para o outro provedor se um falhar",
+    "fallbackHelp": "As legendas continuam com o outro provedor em vez de parar.",
+    "contextSentences": "Frases de contexto para a tradução",
+    "contextSentencesHelp": "Frases anteriores enviadas junto para que a tradução fique consistente (0–10)."
+  },
+  "captions": {
+    "title": "Formato das legendas",
+    "maxCharsPerLine": "Caracteres por linha",
+    "maxCharsPerLineHelp": "42 é o padrão de transmissão.",
+    "maxLines": "Linhas por legenda",
+    "maxLinesHelp": "Normalmente 2."
+  },
+  "network": {
+    "title": "Rede",
+    "publicBaseUrl": "Endereço público",
+    "publicBaseUrlHelp": "Usado nos links e códigos QR no lugar do endereço da rede local, por exemplo https://subs.example.org. Deixe vazio para usar a rede local.",
+    "preferredInterface": "Interface de rede",
+    "preferredInterfaceHelp": "O endereço que os celulares dos espectadores usam para acessar este computador.",
+    "automatic": "Automática"
+  },
+  "recording": {
+    "title": "Gravação",
+    "enabledByDefault": "Gravar novas sessões",
+    "enabledByDefaultHelp": "Guarda o áudio para que as legendas possam ser revisadas ou reprocessadas depois.",
+    "bitrate": "Qualidade do áudio",
+    "bitrateOption": "{{kbps}} kbps",
+    "bitrateHelp": "32 kbps é mais do que suficiente para fala e ocupa cerca de 14 MB por hora.",
+    "retentionDays": "Manter gravações por (dias)",
+    "retentionDaysHelp": "0 mantém para sempre."
+  },
+  "obs": {
+    "title": "OBS",
+    "websocketUrl": "Endereço do WebSocket do OBS",
+    "websocketUrlHelp": "Para onde enviar as legendas para a faixa de legendas do próprio OBS. A senha fica na página Provedores e chaves."
+  },
+  "srt": {
+    "title": "Entrada SRT",
+    "enabled": "Aceitar áudio por SRT",
+    "enabledHelp": "Para uma mesa de som ou encoder que envia um stream SRT em vez de usar a página de captura.",
+    "port": "Porta",
+    "portHelp": "Porta UDP, 1–65535.",
+    "latencyMs": "Latência (ms)",
+    "latencyMsHelp": "Valores mais altos aguentam uma rede pior, mas adicionam atraso.",
+    "passphraseSet": "Senha definida",
+    "passphraseUnset": "Sem senha"
+  },
+  "invalid": {
+    "required": "Preencha este campo.",
+    "integer": "Digite um número inteiro de {{min}} a {{max}}.",
+    "url": "Digite um endereço completo que comece com http:// ou https://.",
+    "wsUrl": "Digite um endereço completo que comece com ws:// ou wss://.",
+    "languages": "Escolha pelo menos um idioma de legenda.",
+    "server": "O servidor não aceitou este valor.",
+    "tooLong": "Use no máximo {{max}} caracteres.",
+    "language": "O servidor não é compatível com este idioma.",
+    "glossary": "Esse glossário não existe mais. Escolha outro ou Nenhum.",
+    "passphrase": "Use de {{min}} a {{max}} caracteres."
+  },
+  "keys": {
+    "banner": {
+      "gemini": "Usando o Gemini",
+      "geminiBody": "As novas sessões usam o Gemini por padrão porque há uma chave de API do Google válida definida.",
+      "local": "Usando o local: adicione uma chave de API do Google para usar o Gemini",
+      "localInvalid": "Usando o local: o Google recusou a chave de API, então o Gemini está desligado",
+      "localBody": "As novas sessões rodam neste computador com whisper e Ollama. Adicione uma chave abaixo para trocar para o Gemini.",
+      "mock": "Usando o provedor simulado",
+      "mockBody": "Este é um servidor de desenvolvimento: as sessões mostram legendas de roteiro.",
+      "localUnverified": "Usando o local: não foi possível verificar a chave de API do Google",
+      "localUnverifiedBody": "O Google não respondeu, então as novas sessões rodam neste computador até a chave ser confirmada. Verifique a conexão com a internet e depois clique em Verificar chave."
+    },
+    "providersTitle": "Provedores",
+    "available": "Disponível",
+    "unavailable": "Indisponível",
+    "realtime": "Acompanha em tempo real",
+    "notRealtime": "Lento demais para uso ao vivo",
+    "provider": {
+      "gemini": "Gemini",
+      "local": "Local (whisper + Ollama)",
+      "mock": "Simulado (roteiro)"
+    },
+    "secret": {
+      "google_api_key": {
+        "title": "Chave de API do Google",
+        "intro": "Permite que as sessões usem o Gemini. Crie uma no Google AI Studio.",
+        "field": "Nova chave de API",
+        "save": "Salvar chave",
+        "removeConfirm": "Remover esta chave?"
+      },
+      "obs_websocket_password": {
+        "title": "Senha do WebSocket do OBS",
+        "intro": "Só é necessária para enviar legendas para a faixa de legendas do próprio OBS.",
+        "field": "Nova senha",
+        "save": "Salvar senha",
+        "removeConfirm": "Remover esta senha?"
+      },
+      "srt_passphrase": {
+        "title": "Senha SRT",
+        "intro": "Criptografa o áudio enviado por SRT pelo OBS, vMix ou um encoder. Use de 10 a 79 caracteres.",
+        "field": "Nova senha",
+        "save": "Salvar senha",
+        "removeConfirm": "Remover a senha? O áudio SRT vai chegar sem criptografia."
+      },
+      "youtube_caption_url": {
+        "title": "URL de legendas do YouTube",
+        "intro": "A URL de ingestão do YouTube Live Control Room. Cada sessão tem a sua; defina-a na sessão.",
+        "field": "Nova URL de legendas",
+        "save": "Salvar URL",
+        "removeConfirm": "Remover esta URL?"
+      }
+    },
+    "fieldHelp": "Guardada com criptografia neste computador. Não pode ser mostrada de novo, só substituída.",
+    "notSet": "Não definida",
+    "current": "Valor atual",
+    "stored": "Guardada em",
+    "source": {
+      "keychain": "o chaveiro do sistema",
+      "encrypted_file": "um arquivo criptografado",
+      "env": "uma variável de ambiente"
+    },
+    "updated": "Atualizada em {{date}}",
+    "valid": "Válida",
+    "invalid": "Recusada",
+    "unchecked": "Não verificada",
+    "validate": "Verificar chave",
+    "accepted": "O Google aceitou a chave.",
+    "remove": "Remover",
+    "removeYes": "Remover",
+    "removeNo": "Manter",
+    "envReadOnly": "Definida por uma variável de ambiente, então só pode ser alterada onde o servidor é iniciado."
+  },
+  "tls": {
+    "certTitle": "Certificado",
+    "status": "HTTPS",
+    "on": "Ligado",
+    "off": "Desligado",
+    "offNotice": "O HTTPS está desligado. Os celulares ainda podem ver as legendas, mas os navegadores não vão permitir o microfone na página de captura.",
+    "mode": "Tipo de certificado",
+    "modeOption": {
+      "local-ca": "Criado por este servidor (CA local)",
+      "provided": "Fornecido por você",
+      "acme": "Do Let’s Encrypt",
+      "disabled": "Nenhum"
+    },
+    "port": "Porta HTTPS",
+    "sans": "Válido para",
+    "notAfter": "Expira em",
+    "fingerprint": "Impressão digital da CA · SHA-256",
+    "installTitle": "Confie no certificado em cada dispositivo",
+    "installIntro": "Este servidor assina o próprio certificado. Instale a CA dele uma vez em cada celular ou computador que abrir a página de captura, para que o navegador confie nele e permita o microfone. Espectadores que só assistem às legendas não precisam disso.",
+    "download": "Baixar certificado da CA",
+    "notLocalCa": "Este certificado não vem da CA deste servidor, então não há nada para instalar: os navegadores já confiam nele, ou você mesmo o gerencia.",
+    "os": "Dispositivo",
+    "checkFingerprint": "Se for solicitado, confira se a impressão digital corresponde à mostrada acima.",
+    "osName": {
+      "macos": "macOS",
+      "windows": "Windows",
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "linux": "Linux"
+    },
+    "steps": {
+      "macos": [
+        "Baixe o certificado da CA e abra o arquivo: o Acesso às Chaves abre.",
+        "Adicione-o às chaves do “Sistema” e digite a senha do seu Mac.",
+        "No Acesso às Chaves, clique duas vezes em “Live Subtitles Local CA”, abra Confiar e defina “Ao usar este certificado” como “Sempre Confiar”.",
+        "Feche a janela, digite a senha de novo e recarregue a página."
+      ],
+      "windows": [
+        "Baixe o certificado da CA e abra o arquivo.",
+        "Clique em “Instalar Certificado…”, escolha “Máquina Local” e continue.",
+        "Escolha “Colocar todos os certificados no repositório a seguir” e depois “Autoridades de Certificação Raiz Confiáveis”.",
+        "Conclua o assistente, aceite o aviso de segurança e reinicie o navegador."
+      ],
+      "ios": [
+        "Abra esta página no Safari e toque em Baixar certificado da CA e depois em Permitir.",
+        "Abra Ajustes › Geral › VPN e Gerenciamento de Dispositivo, toque no perfil “Live Subtitles Local CA” e instale-o.",
+        "Vá em Ajustes › Geral › Sobre › Ajustes de Confiança de Certificados e ative a confiança total para “Live Subtitles Local CA”.",
+        "Volte ao Safari e recarregue a página."
+      ],
+      "android": [
+        "Toque em Baixar certificado da CA.",
+        "Abra Configurações › Segurança › Criptografia e credenciais › Instalar um certificado › Certificado CA (os nomes variam conforme o celular).",
+        "Toque em “Instalar assim mesmo”, escolha o arquivo baixado e confirme com o bloqueio de tela.",
+        "Abra o Chrome de novo e recarregue a página."
+      ],
+      "linux": [
+        "Baixe o certificado da CA.",
+        "Copie-o para /usr/local/share/ca-certificates/ com um nome .crt e rode sudo update-ca-certificates (Debian, Ubuntu) ou use trust anchor no Fedora.",
+        "O Firefox e o Chrome têm a própria lista: importe-o em Configurações › Privacidade e segurança › Certificados › Autoridades e confie nele para sites.",
+        "Reinicie o navegador e recarregue a página."
+      ]
+    }
+  }
+}

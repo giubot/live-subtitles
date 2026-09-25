@@ -1,0 +1,59 @@
+{
+  "title": "Glossários",
+  "newGlossary": "Novo glossário",
+  "edit": "Editar",
+  "empty": {
+    "title": "Nenhum glossário ainda",
+    "body": "Um glossário diz aos modelos de fala e de tradução como escrever nomes, produtos e jargões. Crie um e depois escolha-o em uma sessão."
+  },
+  "summary_one": "{{count}} termo · {{keep}} mantidos como estão · atualizado {{updated}}",
+  "summary_many": "{{count}} termos · {{keep}} mantidos como estão · atualizado {{updated}}",
+  "summary_other": "{{count}} termos · {{keep}} mantidos como estão · atualizado {{updated}}",
+  "more_one": "mais {{count}}",
+  "more_many": "mais {{count}}",
+  "more_other": "mais {{count}}",
+  "form": {
+    "createTitle": "Novo glossário",
+    "editTitle": "Editar “{{name}}”",
+    "name": "Nome",
+    "nameHelp": "ex.: “Nerdearla 2026 – palestras”",
+    "nameInvalid": "Dê um nome ao glossário.",
+    "create": "Criar glossário",
+    "save": "Salvar glossário",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "deleteConfirm": "Excluir este glossário? As sessões e o padrão nas Configurações que o usam deixam de usá-lo; uma sessão ao vivo mantém sua cópia até ser encerrada.",
+    "deleteYes": "Excluir glossário",
+    "deleteNo": "Manter"
+  },
+  "terms": {
+    "heading_one": "{{count}} termo",
+    "heading_many": "{{count}} termos",
+    "heading_other": "{{count}} termos",
+    "term": "Termo",
+    "note": "Nota para o modelo",
+    "keep": "Manter como está",
+    "actions": "Ações",
+    "rowN": "linha {{n}}",
+    "termOf": "Termo, linha {{n}}",
+    "translationOf": "Tradução em {{lang}} de {{term}}",
+    "noteOf": "Nota para {{term}}",
+    "keepOf": "Manter {{term}} como está",
+    "remove": "Remover {{term}}",
+    "add": "Adicionar termo",
+    "addLanguage": "Código do idioma",
+    "addLanguageAction": "Adicionar idioma",
+    "keepHelp": "Escreva cada termo como ele é falado ou escrito na palestra. As traduções são a forma preferida em cada idioma de legenda; as vazias ficam a critério do modelo. “Manter como está” deixa o termo sem tradução em todos os idiomas."
+  },
+  "keep": {
+    "label": "Outras palavras para manter como estão",
+    "help": "Uma por linha, por exemplo nomes de produtos e marcas que não estão na tabela."
+  },
+  "import": {
+    "open": "Colar CSV",
+    "label": "Linhas de CSV ou planilha",
+    "help": "Um termo por linha, colunas separadas por vírgulas, ponto e vírgula ou tabulações: {{columns}}. Ou comece com uma linha de cabeçalho com o nome das colunas (term, códigos de idioma, note, keep).",
+    "action": "Importar linhas",
+    "result": "{{added}} adicionados, {{updated}} atualizados. Revise e depois salve."
+  }
+}

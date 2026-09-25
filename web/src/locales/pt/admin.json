@@ -1,0 +1,269 @@
+{
+  "title": "Sessões",
+  "appTitle": "Administração do Legendas ao vivo",
+  "newSession": "Nova sessão",
+  "logout": "Sair",
+  "nav": {
+    "label": "Administração",
+    "sessions": "Sessões",
+    "server": "Este servidor",
+    "glossaries": "Glossários",
+    "overlays": "Overlays",
+    "recordings": "Gravações",
+    "providers": "Provedores e chaves",
+    "models": "Modelos e hardware",
+    "settings": "Configurações",
+    "tls": "HTTPS",
+    "menu": "Abrir o menu"
+  },
+  "login": {
+    "title": "Entrar",
+    "intro": "Digite o PIN de administrador escolhido na configuração deste servidor.",
+    "pin": "PIN de administrador",
+    "submit": "Entrar"
+  },
+  "empty": {
+    "title": "Nenhuma sessão ainda",
+    "body": "Uma sessão é uma sala ou palco com suas próprias legendas. Crie uma com Nova sessão."
+  },
+  "state": {
+    "idle": "Parada",
+    "starting": "Começando",
+    "live": "Ao vivo",
+    "paused": "Pausada",
+    "stopping": "Encerrando",
+    "error": "Erro"
+  },
+  "source": {
+    "browser": "navegador",
+    "file": "arquivo",
+    "srt": "SRT",
+    "device": "dispositivo"
+  },
+  "provider": {
+    "default": "Padrão",
+    "gemini": "Gemini",
+    "local": "Local (whisper + Ollama)",
+    "mock": "Simulado (roteiro)"
+  },
+  "card": {
+    "start": "Iniciar",
+    "resume": "Retomar",
+    "pause": "Pausar",
+    "stop": "Encerrar",
+    "edit": "Editar",
+    "links": "Links",
+    "input": "Entrada · {{source}}",
+    "noCapture": "Nenhuma página de captura conectada",
+    "provider": "Provedor",
+    "speaking": "Falando",
+    "viewers": "Espectadores",
+    "latency": "Latência p95",
+    "sourceTrack": "Original",
+    "seconds": "{{value}} s",
+    "srt": "Entrada SRT",
+    "srtUp": "Conectada",
+    "srtDown": "Desconectada",
+    "srtRtt": "RTT {{value}} ms",
+    "srtLoss": "perda {{value}} %",
+    "srtBitrate": "{{value}} kbps",
+    "streamCaptions": "Legendas na transmissão",
+    "ccSeq": "seq {{seq}}",
+    "ccSent": "enviada {{time}}",
+    "clipping": "A entrada está saturando. Abaixe um pouco a saída da mesa de som.",
+    "silent": "Nenhum som está chegando ao servidor. Verifique a saída da mesa de som e a entrada do computador de captura.",
+    "playFile": "Tocar um arquivo",
+    "stopFile": "Parar arquivo",
+    "cost": "Custo est.",
+    "tokens": "{{value}} tokens",
+    "audio": "Áudio",
+    "minutes": "{{value}} min",
+    "recovering": {
+      "provider": "Reiniciando o provedor de IA — tentativa {{attempt}} de {{max}}",
+      "source": "Reiniciando a entrada de áudio — tentativa {{attempt}} de {{max}}"
+    },
+    "retryIn": "próxima tentativa em {{value}} s",
+    "noEncoder": "Nenhum encoder conectado",
+    "restarts": "Reinícios automáticos: {{value}}"
+  },
+  "file": {
+    "title": "Tocar um arquivo em {{name}}",
+    "uri": "Arquivo ou link",
+    "uriHelp": "Um arquivo na pasta data ou testdata do servidor, ou um link http(s). Ele toca em tempo real, como se alguém estivesse falando.",
+    "uriRequired": "Digite o caminho de um arquivo ou um link.",
+    "startAt": "Começar em (segundos)",
+    "startAtInvalid": "Use um número de segundos, 0 ou mais.",
+    "loop": "Repetir ao terminar",
+    "play": "Tocar",
+    "cancel": "Cancelar"
+  },
+  "links": {
+    "viewer": "Visualização do público",
+    "stage": "Tela do palco",
+    "overlay": "Overlay para OBS / vMix · 1920 × 1080",
+    "capture": "Página de captura",
+    "captureHidden": "O link de captura leva um token secreto que só aparece quando é criado. Crie um novo para vê-lo aqui.",
+    "rotate": "Criar um novo link de captura",
+    "rotateConfirm": "Um novo link de captura substitui o antigo: as páginas de captura abertas com o link antigo não conseguem se reconectar.",
+    "rotateYes": "Substituir o link de captura",
+    "rotateNo": "Manter o antigo",
+    "captureHint": "Abra-o no computador que tem a entrada de áudio. Ele continua válido até você criar um novo.",
+    "qr": "Escaneie para acompanhar as legendas",
+    "srt": "Entrada SRT para o encoder",
+    "srtHint": "No OBS: Configurações → Transmissão → Serviço: Personalizado → Servidor: cole este endereço e deixe a Chave de transmissão vazia. Se as Configurações tiverem uma senha SRT, o encoder também precisa dela (acrescente &passphrase=… no OBS)."
+  },
+  "form": {
+    "createTitle": "Nova sessão",
+    "editTitle": "Editar {{name}}",
+    "name": "Nome",
+    "slug": "Endereço",
+    "slugHelp": "Vai em todos os links: letras minúsculas, dígitos e hifens.",
+    "slugFixed": "O endereço não pode mudar, para que os links compartilhados continuem funcionando.",
+    "room": "Sala",
+    "roomHelp": "Opcional, aparece para o público.",
+    "sourceLanguage": "Idioma falado",
+    "sourceLanguageHelp": "Automático distingue inglês de espanhol frase por frase.",
+    "source": {
+      "auto": "Automático (inglês ou espanhol)",
+      "en": "Inglês",
+      "es": "Espanhol"
+    },
+    "provider": "Provedor de IA",
+    "providerHelp": {
+      "default": "Gemini quando há uma chave de API do Google definida; caso contrário, local.",
+      "gemini": "Google Gemini, pela internet.",
+      "local": "whisper e Ollama nesta rede, sem precisar de internet.",
+      "mock": "Legendas de roteiro para testes, sem IA."
+    },
+    "targetLanguages": "Idiomas das legendas",
+    "targetLanguagesHelp": "O original também fica sempre disponível.",
+    "recording": "Gravar o áudio",
+    "invalid": {
+      "name": "Dê um nome à sessão (até 120 caracteres).",
+      "slug": "Use letras minúsculas, dígitos e hifens, começando com uma letra ou dígito.",
+      "room": "Até 120 caracteres.",
+      "targetLanguages": "Escolha pelo menos um idioma."
+    },
+    "create": "Criar sessão",
+    "save": "Salvar alterações",
+    "cancel": "Cancelar",
+    "delete": "Excluir sessão",
+    "deleteConfirm": "Excluir a sessão e as legendas dela? As gravações são mantidas.",
+    "deleteYes": "Excluir",
+    "deleteNo": "Manter",
+    "glossary": "Glossário",
+    "glossaryNone": "Sem glossário",
+    "glossaryHelp": "Termos para escrever certo e nomes para não traduzir.",
+    "glossaryUnavailable": "Não foi possível carregar os glossários, então só a escolha atual aparece na lista.",
+    "audioSource": "Entrada de áudio",
+    "audioSources": {
+      "browser": "Página de captura (navegador)",
+      "srt": "SRT de um encoder (OBS, vMix…)"
+    },
+    "audioSourceHelp": {
+      "browser": "Um computador com o áudio da mesa de som abre a página de captura.",
+      "srt": "Um encoder envia o stream para este servidor por SRT. O endereço está nos links da sessão."
+    },
+    "audioSourceRunning": "Usada quando a sessão começa. Encerre a sessão para trocar a entrada.",
+    "srtBlocked": {
+      "noLibsrt": "O SRT não está disponível: o ffmpeg deste servidor foi compilado sem SRT (libsrt).",
+      "disabled": "O SRT está desligado nas Configurações.",
+      "unknown": "O SRT não está disponível neste servidor agora."
+    }
+  },
+  "live": {
+    "reconnecting": "O status ao vivo está se reconectando. As leituras podem estar alguns segundos atrasadas."
+  },
+  "cc": {
+    "title": "Legendas na transmissão ao vivo",
+    "enabled": "Enviar legendas para a transmissão",
+    "hint": "Dica: grave um idioma na imagem com o overlay e envie o outro como closed captions.",
+    "target": "Enviar para",
+    "targets": {
+      "youtube_http": "YouTube (URL de ingestão HTTP)",
+      "obs_websocket": "OBS (WebSocket, CEA-608)"
+    },
+    "targetHelp": {
+      "youtube_http": "YouTube Studio › Transmitir ao vivo › Legendas › POST captions to URL.",
+      "obs_websocket": "O OBS as incorpora no stream que envia. Usa a conexão com o OBS das Configurações."
+    },
+    "track": "Faixa de legendas",
+    "trackHelp": "O YouTube mostra uma faixa.",
+    "sourceTrack": "Original (como foi falado)",
+    "youtubeUrl": "URL de ingestão de legendas do YouTube",
+    "youtubeUrlHelp": "Cole-a do YouTube Studio. Ela é salva como segredo e nunca mais é mostrada.",
+    "youtubeUrlSet": "Há uma URL salva. Cole uma nova para substituí-la.",
+    "youtubeUrlRemove": "Remover a URL salva",
+    "saveFirst": "Crie a sessão primeiro e depois edite-a para adicionar a URL do YouTube e enviar uma legenda de teste.",
+    "test": "Enviar legenda de teste",
+    "testText": "Legenda de teste do Legendas ao vivo",
+    "testHelp": "Usa as configurações salvas: salve suas alterações antes.",
+    "state": {
+      "disabled": "Desligado",
+      "idle": "Parado",
+      "ok": "Enviando",
+      "retrying": "Tentando de novo",
+      "error": "Erro"
+    },
+    "youtubeUrlInvalid": "Cole a URL http:// ou https:// inteira do YouTube."
+  },
+  "palette": {
+    "trigger": "Buscar ou executar um comando",
+    "label": "Paleta de comandos",
+    "placeholder": "Digite um comando ou o nome de uma sessão…",
+    "results": "Comandos",
+    "empty": "Nenhum comando corresponde.",
+    "start": "Iniciar {{name}}",
+    "resume": "Retomar {{name}}",
+    "pause": "Pausar {{name}}",
+    "stop": "Encerrar {{name}}",
+    "open": "Abrir {{what}} — {{name}}",
+    "copy": "Copiar URL de {{what}} — {{name}}",
+    "go": "Ir para {{page}}",
+    "language": "Idioma da interface: {{language}}",
+    "links": {
+      "viewer": "espectador",
+      "stage": "tela do palco",
+      "overlay": "overlay",
+      "capture": "página de captura"
+    },
+    "theme": {
+      "light": "Tema: claro",
+      "dark": "Tema: escuro",
+      "system": "Tema: seguir o sistema"
+    },
+    "groups": {
+      "session": "Sessão",
+      "link": "Link",
+      "page": "Página",
+      "preference": "Preferência"
+    }
+  },
+  "corrections": {
+    "open": "Corrigir",
+    "title": "Corrigir legendas: {{name}}",
+    "close": "Fechar",
+    "intro": "Corrija uma linha ou oculte-a dos espectadores. Todos que estão assistindo veem a mudança na hora.",
+    "track": "Faixa",
+    "sourceTrack": "Original",
+    "sourceTrackLang": "Original ({{lang}})",
+    "lines": "Linhas recentes, {{track}}",
+    "saveHint": "salva",
+    "cancelHint": "cancela",
+    "inProgress": "Em andamento",
+    "edited": "Editada",
+    "hidden": "Oculta",
+    "edit": "Editar linha",
+    "hide": "Ocultar linha dos espectadores",
+    "unhide": "Mostrar a linha de novo",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "textLabel": "Texto da legenda",
+    "unavailable": "A correção ainda não está disponível neste servidor, então as linhas não podem ser editadas nem ocultadas. Atualize o Legendas ao vivo para usá-la.",
+    "reconnecting": "Reconectando às legendas. As novas linhas aparecem quando a conexão voltar.",
+    "empty": {
+      "title": "Nenhuma legenda ainda",
+      "body": "As linhas finais aparecem aqui conforme a sessão é legendada."
+    }
+  }
+}

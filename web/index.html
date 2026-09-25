@@ -15,6 +15,9 @@
         } catch (e) {}
         if (mode === 'system')
           mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        // The stage screen and the overlay style themselves and never follow
+        // the UI theme (UI-7), so their tokens stay on the fixed light set.
+        if (/^\/(stage|overlay)\//.test(location.pathname)) mode = 'light'
         root.dataset.theme = mode
         if (location.pathname.startsWith('/overlay/')) root.dataset.surface = 'overlay'
       })()

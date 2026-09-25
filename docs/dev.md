@@ -36,6 +36,19 @@ If the workflow fails, delete the draft and the tag (`git push --delete origin v
 
 Environment variables are listed in [`.env.example`](../.env.example). Flags win over `LIVESUBS_*` variables, which win over defaults (`bin/livesubs -h`).
 
+## UI languages
+
+The interface ships in English (`en`), Spanish (`es`) and Brazilian Portuguese (`pt`). `web/src/i18n/index.ts` bundles every `web/src/locales/<lang>/<namespace>.json`, and the language switcher, the command palette and `?ui=<lang>` all list the folders it finds. Each language is shown by its own name (`Intl.DisplayNames`). Caption languages are a separate list that comes from `GET /api/languages`.
+
+To add a UI language:
+
+1. Copy `web/src/locales/en/` to `web/src/locales/<code>/`, using the base code (`pt`, not `pt-BR`: detection matches browsers on the base code), and translate the values. Keep the keys, `{{placeholders}}`, `<tags>` and technical tokens as they are.
+2. Plural keys (`x_one`, `x_other`) follow the language's CLDR rules: `check:i18n` asks for every form the language uses for counts up to 1000 and accepts its other forms, such as `x_many` for millions in pt.
+3. Add the language's MUI locale pack to `muiLocales` in `web/src/theme/AppThemeProvider.tsx`. It falls back to English.
+4. Run `pnpm -C web check:i18n`. It compares every locale folder's namespaces and keys, and checks each language's plural forms.
+
+Dates and numbers use `Intl` with the active UI language, so they need no change.
+
 ## Admin access
 
 On first run, open `/setup` and choose the admin PIN (4 to 64 characters). It's stored as an Argon2id hash in `<data dir>/livesubs.db`. Logging in sets the `ls_admin` cookie (HttpOnly, SameSite=Strict, 7 days); after 5 wrong PINs in 15 minutes, a device has to wait.
@@ -82,6 +95,7 @@ After the PIN, `/setup` walks through the hardware check (with **Check again** o
 - `/admin/overlays`: built-in and saved overlay presets with a live preview. A saved preset's overlay link is `/overlay/<session>?lang=es&preset=<preset id>`. `GET /api/overlay-presets` (public) lists the built-ins `classic`, `outline` and `lower-third` (`builtIn: true`, which answer 409 `overlay.builtin_read_only` to `PUT` and `DELETE`), then the saved presets by name. A new preset's id comes from its name (`Caja clásica` → `caja-clasica`, then `caja-clasica-2`).
 - `/admin/recordings`: disk used by recordings and every recording (filterable by session), with its replay, the audio as M4A and delete. A recording still being written can't be deleted.
 - `/admin/providers`: which provider new sessions use (from `GET /api/providers`; a key that couldn't be checked yet has no `defaultReason` and gets its own banner), and the write-only Google API key (saved and checked at once, with **Check key** to recheck) and OBS WebSocket password.
+- `/admin/models`: the hardware check and benchmark from the setup, and the local model catalog with **Download** (progress follows `modelProgress` on `/ws/admin`, with polling while it's disconnected) and **Use for new sessions** on a ready model, which saves `providers.local.whisperModel` or `gemmaModel` (whisper-server still has to be restarted with that model).
 - `/admin/settings` (`GET`/`PUT /api/settings`) and `/admin/tls` (certificate details and how to trust the local CA on each OS). Before the first save, `GET /api/settings` answers the defaults the server applies; a `PUT` fills left-out objects and blank strings with those defaults and answers 400 with per-field codes (`settings.invalid_language`, `settings.invalid_url`, `settings.out_of_range`, `settings.too_long`) in `fields`, keyed by path such as `providers.local.whisperUrl`, and `glossary.not_found` for a `defaultGlossaryId` that doesn't exist. The page also picks the default glossary and, in its own panel saved apart from the form, the write-only `srt_passphrase` secret (10–79 characters, checked by the page; `srt.passphraseSet` reports it). Saved settings apply without a restart: provider models and URLs at the next session start, recording bitrate and retention at the next recording, caption line limits at the next subtitle download, and **Network** (public URL and preferred interface) at once in `/api/network`, session links and QR codes. The saved public URL overrides `--public-base-url`, except for the HTTPS certificate (`acme` and the `local-ca` names), which reads the flag at startup.
 
 Scripts can do the same over the API. Anything left out comes from the settings (target languages `[es, en]`, source language `auto`, recording on). `GET /api/languages` lists the supported languages: captions can be translated into `es`, `en`, `pt`, `fr`, `de`, `it`, `zh`, `ja` and `ko`, and the source language is `auto`, `en` or `es` (`canBeSource`). Any other language answers 400 `session.invalid_language`:

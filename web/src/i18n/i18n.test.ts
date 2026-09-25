@@ -52,6 +52,6 @@ describe('UI language detection (UI-2)', () => {
 
   it('bundles every locale folder', async () => {
     const { uiLanguages } = await loadWith({ browser: ['en'] })
-    expect(uiLanguages).toEqual(['en', 'es'])
+    expect(uiLanguages).toEqual(['en', 'es', 'pt'])
   })
 })

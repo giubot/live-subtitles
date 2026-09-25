@@ -28,6 +28,18 @@ const label: CSSProperties = {
   textTransform: 'uppercase',
 }
 
+const visuallyHidden: CSSProperties = {
+  position: 'absolute',
+  inlineSize: 1,
+  blockSize: 1,
+  margin: -1,
+  padding: 0,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+  border: 0,
+}
+
 /** Last `n` lines of a track: finals, then the sentence in progress. */
 function lastLines(finals: Caption[], interim: Caption | null, n: number): Caption[] {
   const all = interim ? [...finals, interim] : finals
@@ -118,6 +130,8 @@ export function StagePage({ sessionId, search, WebSocket }: StagePageProps) {
         cursor: idle ? 'none' : 'default',
       }}
     >
+      {/* The page heading for screen readers; the screen itself shows only captions. */}
+      <h1 style={visuallyHidden}>{name}</h1>
       <div
         role="status"
         style={{

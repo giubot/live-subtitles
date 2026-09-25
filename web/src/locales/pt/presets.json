@@ -1,0 +1,72 @@
+{
+  "title": "Predefinições de overlay",
+  "newPreset": "Nova predefinição",
+  "newName": "Meu overlay",
+  "builtin": {
+    "classic": "Caixa clássica",
+    "outline": "Só contorno",
+    "lower-third": "Terço inferior"
+  },
+  "list": {
+    "heading": "Predefinições",
+    "builtin": "Incluídas",
+    "saved": "Salvas",
+    "empty": "Nenhuma predefinição salva ainda. Duplique uma das incluídas para criar a sua.",
+    "unsaved": "Nova predefinição (não salva)"
+  },
+  "editor": {
+    "untitled": "Predefinição sem nome",
+    "name": "Nome",
+    "invalidName": "Dê um nome à predefinição, com até 80 caracteres.",
+    "readOnly": "As predefinições incluídas não podem ser alteradas. Duplique esta para ajustá-la e salvá-la com um nome seu.",
+    "duplicate": "Duplicar para editar",
+    "copyName": "{{name}} (cópia)",
+    "save": "Salvar predefinição",
+    "delete": "Excluir",
+    "deleteConfirm": "Excluir esta predefinição? Os overlays que a usam voltam para Caixa clássica.",
+    "deleteYes": "Excluir predefinição",
+    "deleteNo": "Manter",
+    "fontSize": "Tamanho do texto",
+    "pxHelp": "Pixels em 1920 × 1080",
+    "fontWeight": "Peso",
+    "maxLines": "Linhas na tela",
+    "color": "Cor do texto",
+    "outlineColor": "Cor do contorno",
+    "colorHelp": "Uma cor CSS, por exemplo white ou var(--overlay-fg)",
+    "outlineWidth": "Espessura do contorno",
+    "outlineWidthHelp": "Pixels; 0 para sem contorno",
+    "background": "Cor da caixa",
+    "backgroundHelp": "Uma cor CSS, ou “transparent” para sem caixa",
+    "margin": "Margem da borda",
+    "fadeAfter": "Ocultar após silêncio",
+    "fadeAfterHelp": "Segundos; 0 mantém o texto na tela",
+    "position": "Posição",
+    "top": "Em cima",
+    "bottom": "Embaixo",
+    "align": "Alinhamento",
+    "left": "Esquerda",
+    "center": "Centro",
+    "right": "Direita",
+    "interim": "Mostrar a frase em andamento",
+    "invalidRange": "Use um número de {{min}} a {{max}}.",
+    "invalidColor": "O navegador não reconhece esta cor."
+  },
+  "preview": {
+    "heading": "Pré-visualização",
+    "label": "Pré-visualização do overlay sobre um quadro do programa",
+    "frame": "Programa · 1920 × 1080",
+    "slate": "Sinal do programa",
+    "line1": "Então passamos as sessões para o Redis",
+    "line2": "e o autoscaler começou a funcionar.",
+    "interim": "Agora vamos ver o"
+  },
+  "urls": {
+    "heading": "URLs do overlay",
+    "session": "Sessão",
+    "sessionHelp": "Um link por idioma de legenda. Cole-o em uma fonte Navegador do OBS ou em uma entrada Web Browser do vMix.",
+    "noSessions": "Crie uma sessão primeiro; os links de overlay dela aparecem aqui.",
+    "label": "URL do overlay · {{lang}} · 1920 × 1080",
+    "copy": "Copiar URL do overlay",
+    "saveFirst": "Salve a predefinição para obter os links de overlay."
+  }
+}

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import CssBaseline from '@mui/material/CssBaseline'
-import { enUS, esES } from '@mui/material/locale'
+import { enUS, esES, ptBR } from '@mui/material/locale'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { colorSchemeStorageKey, themeOptions, themeStorageKey } from './theme'
 
-const muiLocales: Record<string, typeof enUS> = { en: enUS, es: esES }
+// One MUI locale pack per UI language (pt is Brazilian Portuguese).
+const muiLocales: Record<string, typeof enUS> = { en: enUS, es: esES, pt: ptBR }
 
 /**
  * Design-system theme for the themed surfaces (admin, setup, capture, viewer,
