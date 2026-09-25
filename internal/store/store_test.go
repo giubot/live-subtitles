@@ -197,6 +197,72 @@ func TestSaveCaption(t *testing.T) {
 	}
 }
 
+func TestEditCaption(t *testing.T) {
+	ctx := t.Context()
+	s := openTest(t)
+	if err := s.CreateSession(ctx, session("main", t0)); err != nil {
+		t.Fatal(err)
+	}
+	for _, track := range []string{"es", "en"} {
+		if err := s.SaveCaption(ctx, caption("main", track, "s-1", 1)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The cases run in order: each edits the result of the previous one.
+	tests := []struct {
+		name                 string
+		session, track, seg  string
+		edit                 domain.CaptionEdit
+		wantErr              error
+		wantText             string
+		wantHidden, wantEdit *bool
+	}{
+		{"missing session", "nope", "es", "s-1", domain.CaptionEdit{Text: ptr("x")}, domain.ErrNotFound, "", nil, nil},
+		{"missing track", "main", "fr", "s-1", domain.CaptionEdit{Text: ptr("x")}, domain.ErrNotFound, "", nil, nil},
+		{"missing segment", "main", "es", "s-9", domain.CaptionEdit{Text: ptr("x")}, domain.ErrNotFound, "", nil, nil},
+		{"text", "main", "es", "s-1", domain.CaptionEdit{Text: ptr("corregido")}, nil, "corregido", nil, ptr(true)},
+		{"hide keeps text", "main", "es", "s-1", domain.CaptionEdit{Hidden: ptr(true)}, nil, "corregido", ptr(true), ptr(true)},
+		{"unhide", "main", "es", "s-1", domain.CaptionEdit{Hidden: ptr(false)}, nil, "corregido", nil, ptr(true)},
+		{"both", "main", "es", "s-1", domain.CaptionEdit{Text: ptr("otra"), Hidden: ptr(true)}, nil, "otra", ptr(true), ptr(true)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := s.EditCaption(ctx, tt.session, tt.track, tt.seg, tt.edit)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			if got.Text != tt.wantText || !reflect.DeepEqual(got.Hidden, tt.wantHidden) || !reflect.DeepEqual(got.Edited, tt.wantEdit) {
+				t.Errorf("got text %q hidden %v edited %v", got.Text, got.Hidden, got.Edited)
+			}
+			items, _, err := s.ListCaptions(ctx, domain.CaptionQuery{SessionID: "main", Track: "es"})
+			if err != nil || len(items) != 1 || !reflect.DeepEqual(items[0], got) {
+				t.Errorf("stored = %+v, %v; want %+v", items, err, got)
+			}
+		})
+	}
+
+	// A provider re-final of the segment keeps the operator's correction
+	// but takes the new timing; the other track is untouched.
+	if err := s.SaveCaption(ctx, caption("main", "es", "s-1", 2)); err != nil {
+		t.Fatal(err)
+	}
+	items, _, err := s.ListCaptions(ctx, domain.CaptionQuery{SessionID: "main"})
+	if err != nil || len(items) != 2 {
+		t.Fatalf("ListCaptions = %+v, %v", items, err)
+	}
+	en, es := items[0], items[1]
+	if es.Text != "otra" || !isTrue(es.Hidden) || !isTrue(es.Edited) || es.Start != 2 {
+		t.Errorf("after re-final: %+v", es)
+	}
+	if en.Text != "en s-1" || en.Edited != nil {
+		t.Errorf("other track changed: %+v", en)
+	}
+}
+
 func TestListCaptions(t *testing.T) {
 	ctx := t.Context()
 	s := openTest(t)
