@@ -257,6 +257,32 @@ func (s *Selector) Providers(ctx context.Context) api.ProvidersResponse {
 	}
 }
 
+// Available reports whether a running session may switch to kind (the
+// provider fallback, AI-8), with a translatable reason when it can't:
+// Gemini needs a key Google accepted, local needs its sidecars to answer.
+// Mock is never a fallback. It is session.Options.FallbackAvailable.
+func (s *Selector) Available(ctx context.Context, kind domain.ProviderKind) (bool, string) {
+	switch kind {
+	case api.ProviderKindGemini:
+		switch s.keyState(ctx) {
+		case keyValid:
+			return true, ""
+		case keyInvalid:
+			return false, CodeKeyInvalid
+		case keyUnverified:
+			return false, CodeKeyUnverified
+		default:
+			return false, CodeNoAPIKey
+		}
+	case api.ProviderKindLocal:
+		if s.opts.Local == nil {
+			return true, ""
+		}
+		return s.opts.Local(ctx)
+	}
+	return false, ""
+}
+
 // Validate checks the named secret now (POST /api/secrets/{name}/validate
 // and saving a key). A check of the same key within MinRecheck returns the
 // previous result. ErrNotSet if the secret isn't stored, ErrUnsupported if
