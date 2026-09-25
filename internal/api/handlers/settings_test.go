@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -161,6 +162,35 @@ func TestSettingsDefaultGlossary(t *testing.T) {
 	}
 	// Without a glossary store the id isn't checked.
 	call{"PUT", "/api/settings", settingsBody(t, `"defaultTargetLanguages"`, `"defaultGlossaryId":"nope","defaultTargetLanguages"`), "", "", 200, `"defaultGlossaryId":"nope"`}.do(t, h)
+}
+
+func TestSettingsSRTPassphraseSet(t *testing.T) {
+	st, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "live.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	for _, c := range []struct {
+		name   string
+		values map[string]string
+		want   string
+	}{
+		{"no passphrase", map[string]string{}, `"passphraseSet":false`},
+		{"passphrase stored", map[string]string{"srt_passphrase": "0123456789ab"}, `"passphraseSet":true`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			s := New()
+			s.Settings, s.Secrets = st, &fakeSecrets{values: c.values}
+			h := s.Handler(http.NewServeMux(), slog.New(slog.DiscardHandler))
+			call{"GET", "/api/settings", "", "", "", 200, c.want}.do(t, h)
+			// A client echoing the flag back can't change it.
+			call{"PUT", "/api/settings", settingsBody(t, `"srt":{`, `"srt":{"passphraseSet":true,`), "", "", 200, c.want}.do(t, h)
+			res := call{"GET", "/api/settings", "", "", "", 200, c.want}.do(t, h)
+			if b, _ := io.ReadAll(res.Body); strings.Contains(string(b), "0123456789ab") {
+				t.Error("settings leak the passphrase")
+			}
+		})
+	}
 }
 
 func TestSettingsNotImplemented(t *testing.T) {

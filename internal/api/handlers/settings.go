@@ -223,14 +223,23 @@ func badRequest(fields map[string]string, fallback, message string) api.BadReque
 // DefaultSettings before the first save.
 func (s *Server) settings(ctx context.Context) (api.Settings, error) {
 	st, err := s.Settings.Settings(ctx)
-	if errors.Is(err, domain.ErrNotFound) {
-		return DefaultSettings(), nil
-	}
-	if err != nil {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		st = DefaultSettings()
+	case err != nil:
 		return api.Settings{}, err
+	default:
+		withSettingsDefaults(&st)
 	}
-	withSettingsDefaults(&st)
+	// passphraseSet reports the srt_passphrase secret, never a stored value.
 	st.Srt.PassphraseSet = nil
+	if s.Secrets != nil {
+		info, err := s.Secrets.SecretInfo(ctx, string(api.SrtPassphrase))
+		if err != nil {
+			return api.Settings{}, err
+		}
+		st.Srt.PassphraseSet = &info.Set
+	}
 	return st, nil
 }
 
@@ -274,7 +283,11 @@ func (s *Server) UpdateSettings(ctx context.Context, req api.UpdateSettingsReque
 	if err := s.Settings.PutSettings(ctx, st); err != nil {
 		return nil, err
 	}
-	return api.UpdateSettings200JSONResponse(st), nil
+	saved, err := s.settings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return api.UpdateSettings200JSONResponse(saved), nil
 }
 
 // ensure allocates *p if it's nil and returns it; it names the generated
