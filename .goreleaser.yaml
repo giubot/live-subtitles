@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+# Release binaries (P4-01): macOS, Linux and Windows × amd64/arm64, with the
+# web app embedded. `task release:snapshot` is a local dry run into dist/;
+# .github/workflows/release.yml publishes on a `v*` tag.
+version: 2
+
+project_name: livesubs
+
+before:
+  hooks:
+    # The web app is embedded by `go:embed`, so it must be built first.
+    - task web:build
+
+builds:
+  - id: livesubs
+    main: ./cmd/livesubs
+    binary: livesubs
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: livesubs
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: '{{ incpatch .Version }}-snapshot+{{ .ShortCommit }}'
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+
+release:
+  draft: true
+  prerelease: auto

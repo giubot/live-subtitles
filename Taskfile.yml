@@ -16,6 +16,9 @@ vars:
   PRISM: npx --yes @stoplight/prism-cli@5.16.0
   # air stays out of go.mod: as a `go tool` it pulls in Hugo and bumps shared deps.
   AIR: go run github.com/air-verse/air@v1.67.4
+  # GoReleaser stays out of go.mod for the same reason; a local install wins.
+  GORELEASER:
+    sh: command -v goreleaser || echo "go run github.com/goreleaser/goreleaser/v2@v2.18.2"
   # Every file `task gen` writes; check:gen fails if regenerating changes any of them.
   GENERATED: >-
     internal/api/gen.go internal/api/unimplemented_gen.go
@@ -227,3 +230,28 @@ tasks:
     cmds:
       - task: web:build
       - go build -trimpath -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} ./cmd/livesubs
+
+  build:all:
+    desc: 'Binaries for macOS, Linux and Windows × amd64/arm64 in bin/<os>_<arch>/ (web app embedded)'
+    env:
+      CGO_ENABLED: '0'
+    cmds:
+      - task: web:build
+      - for:
+          matrix:
+            OS: [darwin, linux, windows]
+            ARCH: [amd64, arm64]
+        cmd: >-
+          GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}}
+          go build -trimpath -ldflags "{{.LDFLAGS}}"
+          -o bin/{{.ITEM.OS}}_{{.ITEM.ARCH}}/livesubs{{if eq .ITEM.OS "windows"}}.exe{{end}} ./cmd/livesubs
+
+  release:snapshot:
+    desc: 'Local GoReleaser dry run: every archive and checksum in dist/, nothing published'
+    cmds:
+      - '{{.GORELEASER}} release --snapshot --clean'
+
+  release:check:
+    desc: Validate .goreleaser.yaml
+    cmds:
+      - '{{.GORELEASER}} check'

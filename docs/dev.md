@@ -19,6 +19,10 @@ How to run Live Subtitles from source. The [plan](plan.md) covers the architectu
 | `task gen` | Regenerate Go/TS code from the spec, the route tree and `palette.ts`. Commit the output. |
 | `task check` | Everything CI runs. |
 | `task build` | Web app + single binary in `bin/livesubs`. |
+| `task build:all` | Web app + binaries for macOS, Linux and Windows × amd64/arm64 in `bin/<os>_<arch>/`. |
+| `task release:snapshot` | GoReleaser dry run: the release archives (`.tar.gz`, `.zip` for Windows) and `checksums.txt` in `dist/`, nothing published. Uses `goreleaser` from `PATH`, else `go run` of the pinned version. |
+
+Every binary reports its version with `livesubs -version`: `git describe` locally, the tag in a release. Pushing a `v*` tag runs `.github/workflows/release.yml`, which makes a **draft** GitHub release with the archives.
 
 Environment variables are listed in [`.env.example`](../.env.example). Flags win over `LIVESUBS_*` variables, which win over defaults (`bin/livesubs -h`).
 
