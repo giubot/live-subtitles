@@ -64,6 +64,20 @@ tasks:
     cmds:
       - scripts/demo-file.sh "{{.SESSION}}" "{{.FILE}}" "{{.URL | default (printf "http://localhost:%s" .PORT)}}" "{{.LOOP | default "false"}}"
 
+  loadtest:
+    desc: 'Load test on the mock provider: SESSIONS=1 × VIEWERS=100 caption viewers for DURATION=30s (ADDR=http://host:port [PID=…] targets a running server; docs/scaling.md)'
+    cmds:
+      - cmd: go build -o bin/loadtest/livesubs ./cmd/livesubs
+        if: '[ -z "{{.ADDR}}" ]'
+      - >-
+        go run ./cmd/loadtest
+        -sessions {{.SESSIONS | default "1"}}
+        -viewers {{.VIEWERS | default "100"}}
+        -duration {{.DURATION | default "30s"}}
+        {{if .ADDR}}-addr {{.ADDR}}{{end}}
+        {{if .PID}}-pid {{.PID}}{{end}}
+        {{.CLI_ARGS}}
+
   design:preview:
     desc: Open design/preview.html in the browser
     cmds:

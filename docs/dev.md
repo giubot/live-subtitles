@@ -20,6 +20,7 @@ How to run Live Subtitles from source. The [plan](plan.md) covers the architectu
 | `task check` | Everything CI runs. |
 | `task build` | Web app + single binary in `bin/livesubs`. |
 | `task build:all` | Web app + binaries for macOS, Linux and Windows × amd64/arm64 in `bin/<os>_<arch>/`. |
+| `task loadtest SESSIONS=10 VIEWERS=500` | Load test on the mock provider: starts a throwaway server, plays the EN fixture into every session and reports caption delivery, drops, throughput and server CPU/RSS. `ADDR=http://host:port` targets a running server instead. See [scaling.md](scaling.md#load-test). |
 | `task release:snapshot` | GoReleaser dry run: the release archives (`.tar.gz`, `.zip` for Windows) and `checksums.txt` in `dist/`, nothing published. Uses `goreleaser` from `PATH`, else `go run` of the pinned version. |
 
 Every binary reports its version with `livesubs -version`: `git describe` locally, the tag in a release. Pushing a `v*` tag runs `.github/workflows/release.yml`, which makes a **draft** GitHub release with the archives and pushes the container image to GHCR ([deployment](deployment.md)).
