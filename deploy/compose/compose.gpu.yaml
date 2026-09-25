@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-# NVIDIA GPU override for compose.dev.yaml (needs the NVIDIA Container Toolkit).
+# NVIDIA GPU override for compose.dev.yaml and compose.yaml (needs the NVIDIA
+# Container Toolkit); both name the sidecars whisper and ollama.
 services:
   whisper:
     image: ghcr.io/ggml-org/whisper.cpp:main-cuda

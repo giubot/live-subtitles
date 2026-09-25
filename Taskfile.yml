@@ -255,3 +255,24 @@ tasks:
     desc: Validate .goreleaser.yaml
     cmds:
       - '{{.GORELEASER}} check'
+
+  docker:build:
+    desc: 'Build the container image (TAG=livesubs:latest)'
+    cmds:
+      - >-
+        docker build -f deploy/docker/Dockerfile
+        --build-arg VERSION={{.VERSION}}
+        -t {{.TAG | default "livesubs:latest"}} .
+
+  docker:up:
+    desc: 'Run the app with Docker Compose (PROFILE=app for Gemini only, PROFILE=local adds whisper-server + Ollama; GPU=1 for NVIDIA)'
+    cmds:
+      - >-
+        docker compose -f deploy/compose/compose.yaml
+        {{if .GPU}}-f deploy/compose/compose.gpu.yaml{{end}}
+        --profile {{.PROFILE | default "app"}} up -d --build
+
+  docker:down:
+    desc: Stop the Docker Compose stack
+    cmds:
+      - docker compose -f deploy/compose/compose.yaml --profile app --profile local down

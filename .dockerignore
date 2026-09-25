@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# Build context for deploy/docker/Dockerfile: only what the image build
+# reads, so local data, models, secrets and node_modules never get sent.
+*
+!go.mod
+!go.sum
+!api/
+!cmd/
+!internal/
+!web/
+!LICENSE
+!NOTICE
+web/node_modules/
+web/dist/
+web/coverage/
+web/test-results/
+web/playwright-report/
+**/*_test.go
+**/.DS_Store
