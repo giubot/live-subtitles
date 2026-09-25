@@ -10,9 +10,17 @@ Live captions and translation for talks, conferences and live streams. Speakers 
 
 Run it on a computer beside the sound desk, or host it centrally for several rooms. Choose cloud AI with Google Gemini or keep speech recognition and translation on your own machine.
 
-**[Get started](#-get-started)** · **[User manual](docs/manual/README.md)** · **[Downloads](https://github.com/giubot/live-subtitles/releases)** · **[Español](#-en-español)**
+**[▶ Watch the demo](https://www.youtube.com/watch?v=c2VMYqNigqA)** · **[Get started](#-get-started)** · **[User manual](docs/manual/README.md)** · **[Downloads](https://github.com/giubot/live-subtitles/releases)** · **[Español](#-en-español)**
 
-<!-- screenshot: admin dashboard with live sessions, audio levels and viewer counts -->
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=c2VMYqNigqA">
+    <img src="docs/images/live-subtitles-obs-overlay-demo.jpg" width="1000" alt="Live Subtitles dashboard receiving SRT audio alongside OBS displaying Spanish subtitles over a conference talk" />
+  </a>
+  <br />
+  <em>From the sound desk to the stream: SRT audio in, live captions back into OBS.</em>
+  <br />
+  <a href="https://www.youtube.com/watch?v=c2VMYqNigqA">▶ Watch the video demo on YouTube</a>
+</p>
 
 ## ✨ One talk, more ways to follow
 
@@ -24,9 +32,15 @@ Run it on a computer beside the sound desk, or host it centrally for several roo
 | 🎛️ **The operator** | A dashboard for sessions, audio levels, caption latency, viewers and errors. |
 | 🎧 **After the talk** | Recorded audio with a synced transcript, plus subtitle and transcript downloads. |
 
-<!-- screenshot: audience viewer on a phone, Spanish track -->
+<p align="center">
+  <a href="docs/images/live-subtitles-iphone-demo.jpg">
+    <img src="docs/images/live-subtitles-iphone-demo.jpg" width="280" alt="Live captions on an iPhone, with English selected and controls for caption language, text size and theme" />
+  </a>
+  <br />
+  <em>A personal view of the talk: choose your caption language and make the text comfortable to read.</em>
+</p>
+
 <!-- screenshot: stage screen on a projector with the QR corner -->
-<!-- screenshot: OBS with the transparent overlay over the program video -->
 
 ### Captions that fit your event
 
@@ -53,6 +67,58 @@ Prefer containers? Follow the [Docker deployment guide](docs/deployment.md#docke
 
 Open **[localhost:8080/setup](http://localhost:8080/setup)** on the computer running Live Subtitles. Choose your admin PIN, then follow the hardware check, provider setup and first-session steps. You can skip steps after the PIN and return to the settings later.
 
+<details>
+<summary><strong>📸 Explore the six-step setup wizard</strong></summary>
+
+Click any screenshot to view it at full size.
+
+<table>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <p><strong>1. 🔐 Choose your admin PIN</strong></p>
+      <a href="docs/images/setup-step-1.jpg">
+        <img src="docs/images/setup-step-1.jpg" width="420" alt="Setup wizard with interface language, theme and masked admin PIN fields" />
+      </a>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <p><strong>2. 💻 Check your hardware</strong></p>
+      <a href="docs/images/setup-step-2.jpg">
+        <img src="docs/images/setup-step-2.jpg" width="420" alt="Hardware check showing processor, memory, local runtimes and a benchmark option" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <p><strong>3. 📦 Download local models</strong></p>
+      <a href="docs/images/setup-step-3.jpg">
+        <img src="docs/images/setup-step-3.jpg" width="420" alt="Local model downloads with Whisper progress and Gemma availability" />
+      </a>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <p><strong>4. ☁️ Add Gemini if needed</strong></p>
+      <a href="docs/images/setup-step-4.jpg">
+        <img src="docs/images/setup-step-4.jpg" width="420" alt="Optional Google API key step with the key masked" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <p><strong>5. 🎙️ Name your first session</strong></p>
+      <a href="docs/images/setup-step-5.jpg">
+        <img src="docs/images/setup-step-5.jpg" width="420" alt="First session setup with a room name and its audience address" />
+      </a>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <p><strong>6. ✅ Open your session links</strong></p>
+      <a href="docs/images/setup-step-6.jpg">
+        <img src="docs/images/setup-step-6.jpg" width="420" alt="Completed setup with capture and audience links, a capture QR code and a button to open the admin dashboard" />
+      </a>
+    </td>
+  </tr>
+</table>
+
+</details>
+
 | Choose… | What you need |
 |---|---|
 | ☁️ **Google Gemini** | A Google API key saved in **Admin → Providers**, and a reliable internet connection. Audio is processed in the cloud. |
@@ -67,6 +133,14 @@ New sessions use Gemini when a valid Google API key is saved, and the local prov
 3. Allow microphone access, select the correct input and check that the level meter moves when someone speaks.
 4. **Start** the session and open its audience link to check the captions.
 
+<p align="center">
+  <a href="docs/images/new-session.jpg">
+    <img src="docs/images/new-session.jpg" width="760" alt="New session dialog with room name, spoken language, AI provider, caption languages, glossary, audio input and recording controls" />
+  </a>
+  <br />
+  <em>Set up each room with its own languages, provider, glossary and audio source.</em>
+</p>
+
 For browser capture on another computer, use HTTPS. For mixer wiring, input levels and network setup, follow the [event-day runbook](docs/manual/runbook.md).
 
 ### 4. Share the captions
@@ -79,6 +153,14 @@ Use the session's **Links** dialog to copy the right link:
 | **Projector** | Open the stage link on the computer connected to the screen. |
 | **OBS / vMix** | Add the overlay link as a browser source; follow the [broadcast guide](docs/manual/obs-vmix-guide.md). |
 | **After the event** | Share the replay link if recording was enabled, or download the captions. |
+
+<p align="center">
+  <a href="docs/images/sessions-list.jpg">
+    <img src="docs/images/sessions-list.jpg" width="1000" alt="Session dashboard with two idle auditoriums and expanded audience, stage and OBS overlay links, plus an audience QR code" />
+  </a>
+  <br />
+  <em>Manage your rooms in one place and share the right link for every audience.</em>
+</p>
 
 ## 📚 Plan the show
 
