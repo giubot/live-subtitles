@@ -49,7 +49,10 @@ jobs:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12.2
+          version: v2.12.2 # keep in step with GOLANGCI_LINT_VERSION in Taskfile.yml
+      # The recording, file-source, SRT and acceptance tests skip without
+      # ffmpeg; Ubuntu's build has libsrt.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
       - uses: arduino/setup-task@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}

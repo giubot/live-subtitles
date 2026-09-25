@@ -23,7 +23,16 @@ How to run Live Subtitles from source. The [plan](plan.md) covers the architectu
 | `task loadtest SESSIONS=10 VIEWERS=500` | Load test on the mock provider: starts a throwaway server, plays the EN fixture into every session and reports caption delivery, drops, throughput and server CPU/RSS. `ADDR=http://host:port` targets a running server instead. See [scaling.md](scaling.md#load-test). |
 | `task release:snapshot` | GoReleaser dry run: the release archives (`.tar.gz`, `.zip` for Windows) and `checksums.txt` in `dist/`, nothing published. Uses `goreleaser` from `PATH`, else `go run` of the pinned version. |
 
-Every binary reports its version with `livesubs -version`: `git describe` locally, the tag in a release. Pushing a `v*` tag runs `.github/workflows/release.yml`, which makes a **draft** GitHub release with the archives and pushes the container image to GHCR ([deployment](deployment.md)).
+Every binary reports its version with `livesubs -version`: `git describe` locally, the tag without its `v` in a release (`v0.0.1` → `0.0.1`). Pushing a `v*` tag runs `.github/workflows/release.yml`, which makes a **draft** GitHub release with the archives and pushes the container image to GHCR ([deployment](deployment.md)).
+
+To cut a release:
+
+1. Make sure CI is green on the `main` commit you're releasing. The release workflow doesn't run the checks itself. `task release:snapshot` is a local dry run.
+2. Tag that commit and push the tag: `git tag -a v0.0.1 -m "v0.0.1" && git push origin v0.0.1`. A tag with a suffix (`v0.1.0-rc.1`) is marked as a pre-release.
+3. When the **Release** workflow finishes, check the draft on the releases page: six archives, `checksums.txt`, and a changelog built from the commits since the last tag (`docs:`, `test:` and `ci:` commits are left out). Then publish it (**Publish release**, or `gh release edit v0.0.1 --draft=false`).
+4. The image is `ghcr.io/giubot/live-subtitles:0.0.1` (plus `:0.0`). New GHCR packages start private: to let others pull it, change its visibility in the package settings.
+
+If the workflow fails, delete the draft and the tag (`git push --delete origin v0.0.1 && git tag -d v0.0.1`), fix the problem on `main`, and tag again.
 
 Environment variables are listed in [`.env.example`](../.env.example). Flags win over `LIVESUBS_*` variables, which win over defaults (`bin/livesubs -h`).
 

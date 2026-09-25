@@ -66,7 +66,7 @@ func run() error {
 			return errors.New("set LIVESUBS_ADMIN_TOKEN to the server's admin token")
 		}
 	} else {
-		var logw io.Writer = io.Discard
+		logw := io.Discard
 		if *serverLg {
 			logw = os.Stderr
 		}
