@@ -376,7 +376,7 @@ func (s *Selector) readKey(ctx context.Context) (string, error) {
 	key, err := s.opts.APIKey(ctx)
 	if err != nil {
 		// Only the error: the store never puts values in it.
-		s.log.Warn("read the Google API key", "secret", api.GoogleApiKey, "err", err)
+		s.log.Warn("read the Google API key", "name", api.GoogleApiKey, "err", err)
 	}
 	s.mu.Lock()
 	s.key, s.keyErr, s.keyUntil = key, err, s.opts.Now().Add(s.opts.KeyTTL)
@@ -442,7 +442,7 @@ func (s *Selector) check(key string, f *flight) {
 	switch {
 	case err != nil:
 		fresh = keyUnverified
-		s.log.Warn("Google API key couldn't be checked", "secret", api.GoogleApiKey, "err", err)
+		s.log.Warn("Google API key couldn't be checked", "name", api.GoogleApiKey, "err", err)
 	case valid:
 		fresh = keyValid
 	}
@@ -463,7 +463,7 @@ func (s *Selector) check(key string, f *flight) {
 	f.fresh, f.state = fresh, state
 	s.mu.Unlock()
 	if fresh != keyUnverified {
-		s.log.Info("Google API key checked", "secret", api.GoogleApiKey, "valid", fresh == keyValid)
+		s.log.Info("Google API key checked", "name", api.GoogleApiKey, "valid", fresh == keyValid)
 	}
 	// A newer key may have been saved meanwhile; only a check of the
 	// current key moves the default.
