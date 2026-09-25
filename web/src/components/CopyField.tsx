@@ -27,6 +27,11 @@ export interface CopyFieldProps {
   onCopied?: () => void
   /** Pins the copy result on screen; only for /dev/design and tests. */
   forceState?: CopyState
+  /**
+   * `card` (default) is the URL/token card. `command` is a compact block for
+   * a shell command: tighter padding, a small button, spaces kept as typed.
+   */
+  variant?: 'card' | 'command'
   sx?: SxProps<Theme>
 }
 
@@ -43,8 +48,10 @@ export function CopyField({
   disabledReason,
   onCopied,
   forceState,
+  variant = 'card',
   sx,
 }: CopyFieldProps) {
+  const command = variant === 'command'
   const { t } = useTranslation()
   const [copyState, setState] = useState<CopyState>('idle')
   const state = forceState ?? copyState
@@ -90,9 +97,9 @@ export function CopyField({
           backgroundColor: 'var(--color-graphite)',
           color: 'var(--color-graphite-ink)',
           borderRadius: 'var(--radius-card)',
-          padding: 'var(--space-md)',
+          padding: command ? 'var(--space-xs) var(--space-sm)' : 'var(--space-md)',
           display: 'grid',
-          gap: 'var(--space-sm)',
+          gap: command ? 'var(--space-xs)' : 'var(--space-sm)',
           minInlineSize: 0,
           position: 'relative',
         },
@@ -135,6 +142,7 @@ export function CopyField({
             fontSize: 'var(--text-sm)',
             lineHeight: 1.4,
             overflowWrap: 'anywhere',
+            whiteSpace: command ? 'pre-wrap' : undefined,
             '&::selection': {
               backgroundColor: 'var(--color-accent)',
               color: 'var(--color-accent-ink)',
@@ -145,6 +153,7 @@ export function CopyField({
         </Box>
         <Button
           variant="outlined"
+          size={command ? 'small' : undefined}
           onClick={() => void copy()}
           disabled={disabled}
           startIcon={icon}
