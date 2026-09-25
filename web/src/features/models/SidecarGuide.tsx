@@ -10,7 +10,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { createLink } from '@tanstack/react-router'
 import { useId, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import type { Schemas } from '../../api/types'
 import { CopyField } from '../../components/CopyField'
 import { segmentedSx } from '../../components/segmented'
@@ -28,6 +28,15 @@ import {
 
 const RouterLink = createLink(MuiLink)
 
+const external = (href: string) => <MuiLink href={href} target="_blank" rel="noreferrer" />
+
+/** The links the step texts may carry, as <brew>…</brew> tags. */
+const stepLinks = {
+  brew: external('https://brew.sh'),
+  ollama: external('https://ollama.com/download'),
+  releases: external('https://github.com/ggml-org/whisper.cpp/releases'),
+}
+
 export interface SidecarGuideProps {
   report: Schemas['HardwareReport']
   /** The speech model new sessions use; defaults to the recommendation. */
@@ -42,7 +51,7 @@ export interface SidecarGuideProps {
  * Collapsed by default, so it never pushes a step's actions far down.
  */
 export function SidecarGuide({ report, whisperModel, gemmaModel }: SidecarGuideProps) {
-  const { t } = useTranslation('models')
+  const { t, i18n } = useTranslation('models')
   const [open, setOpen] = useState(false)
   const [os, setOs] = useState<GuideOs>(() => osFromReport(report.os))
   const panelId = useId()
@@ -52,6 +61,12 @@ export function SidecarGuide({ report, whisperModel, gemmaModel }: SidecarGuideP
   const name = (n: 'whisper' | 'ollama') => t(`hardware.runtime.${n}`)
   const whisper = whisperModel || report.recommendation.whisperModel
   const gemma = gemmaModel || report.recommendation.gemmaModel
+  // What `brew install` gets, as a list in the UI language ("whisper.cpp and Ollama").
+  const packages = new Intl.ListFormat(i18n.language, { type: 'conjunction' }).format(
+    (missing.length ? missing : (['whisper', 'ollama'] as const)).map((n) =>
+      n === 'whisper' ? 'whisper.cpp' : 'Ollama',
+    ),
+  )
   const steps = guideSteps({
     os,
     whisper: parseAddr(report.runtimes.whisper.url, whisperDefault),
@@ -140,7 +155,12 @@ export function SidecarGuide({ report, whisperModel, gemmaModel }: SidecarGuideP
                 sx={{ display: 'grid', gap: 'var(--space-xs)', minInlineSize: 0 }}
               >
                 <Typography variant="body2">
-                  {t(`guide.step.${s.key}`, { whisper, gemma })}
+                  <Trans
+                    t={t}
+                    i18nKey={`guide.step.${s.key}`}
+                    values={{ whisper, gemma, packages }}
+                    components={stepLinks}
+                  />
                 </Typography>
                 {s.commands.map((c) => (
                   <CopyField key={c} value={c} variant="command" />

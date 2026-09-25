@@ -51,7 +51,8 @@ export function parseAddr(url: string | undefined, fallback: Addr): Addr {
 
 /** The whisper model file on the server, with the OS's separator. */
 export function whisperFile(os: GuideOs, modelsDir: string, model: string) {
-  const sep = os === 'windows' ? '\\' : '/'
+  // Follow the server's own path: a Windows tab read on a Mac server keeps '/'.
+  const sep = os === 'windows' && !modelsDir.includes('/') ? '\\' : '/'
   const dir = modelsDir.length > 1 ? modelsDir.replace(/[\\/]+$/, '') : modelsDir
   return `${dir}${sep}ggml-${model}.bin`
 }
@@ -75,6 +76,7 @@ export type StepKey =
   | 'linux.build'
   | 'windows.download'
   | 'models'
+  | 'modelsAfterOllama'
   | 'check'
 
 export interface GuideStep {
@@ -106,6 +108,11 @@ export function guideSteps(i: GuideInput): GuideStep[] {
   const o = need('ollama')
   const file = whisperFile(i.os, i.modelsDir, i.whisperModel)
   const nativeWhisper = `--host ${i.whisper.host} --port ${i.whisper.port} --model "${file}"`
+  // Gemma downloads through Ollama, so the download step waits for it only when it's down.
+  const models: GuideStep = {
+    key: i.missing.includes('ollama') ? 'modelsAfterOllama' : 'models',
+    commands: [],
+  }
   const steps: (GuideStep | false)[] = []
 
   switch (i.os) {
@@ -124,7 +131,7 @@ export function guideSteps(i: GuideInput): GuideStep[] {
               : `OLLAMA_HOST=${i.ollama.host}:${i.ollama.port} ollama serve`,
           ],
         },
-        { key: 'models', commands: [] },
+        models,
         w && {
           key: 'macos.whisper',
           sidecar: 'whisper',
@@ -139,7 +146,6 @@ export function guideSteps(i: GuideInput): GuideStep[] {
           sidecar: 'ollama',
           commands: ['curl -fsSL https://ollama.com/install.sh | sh'],
         },
-        { key: 'models', commands: [] },
         w && {
           key: 'linux.build',
           sidecar: 'whisper',
@@ -148,6 +154,7 @@ export function guideSteps(i: GuideInput): GuideStep[] {
             'cmake -B build && cmake --build build -j --config Release',
           ],
         },
+        models,
         w && {
           key: 'linux.whisper',
           sidecar: 'whisper',
@@ -162,8 +169,8 @@ export function guideSteps(i: GuideInput): GuideStep[] {
           sidecar: 'ollama',
           commands: ['winget install Ollama.Ollama'],
         },
-        { key: 'models', commands: [] },
         w && { key: 'windows.download', sidecar: 'whisper', commands: [] },
+        models,
         w && {
           key: 'windows.whisper',
           sidecar: 'whisper',
@@ -174,7 +181,7 @@ export function guideSteps(i: GuideInput): GuideStep[] {
     case 'docker':
       steps.push(
         o && { key: 'docker.ollama', sidecar: 'ollama', commands: [dockerOllama(i)] },
-        { key: 'models', commands: [] },
+        models,
         w && { key: 'docker.whisper', sidecar: 'whisper', commands: [dockerWhisper(i)] },
       )
       break

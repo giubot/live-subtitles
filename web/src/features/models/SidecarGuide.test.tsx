@@ -149,11 +149,57 @@ describe('SidecarGuide', () => {
     expect(commands()).toEqual(want)
   })
 
-  it('names the models new sessions use in the download step', async () => {
-    await renderGuide({ report: report(), whisperModel: 'medium', gemmaModel: 'gemma3:1b' })
-    expect(
-      screen.getByText(/Download the speech model medium and the translation model gemma3:1b/),
-    ).toBeInTheDocument()
+  it.each([
+    [
+      'Ollama missing',
+      false,
+      /^With Ollama running, download the speech model medium and the translation model gemma3:1b/,
+    ],
+    [
+      'Ollama running',
+      true,
+      /^Download the speech model medium and the translation model gemma3:1b under Local models\.$/,
+    ],
+  ])('names the models new sessions use in the download step (%s)', async (_, ollama, want) => {
+    await renderGuide({
+      report: report({ runtimes: runtimes(false, ollama) }),
+      whisperModel: 'medium',
+      gemmaModel: 'gemma3:1b',
+    })
+    expect(screen.getByText(want)).toBeInTheDocument()
+  })
+
+  it('installs whisper-server before the model downloads on every tab', async () => {
+    await renderGuide({ report: report({ runtimes: runtimes(false, true) }) })
+    for (const [tab, install] of [
+      ['macOS', /^If Homebrew isn’t installed yet/],
+      ['Linux', /^Build whisper\.cpp from source/],
+      ['Windows', /^Download whisper-bin-x64\.zip/],
+    ] as const) {
+      await pickOs(tab)
+      const items = Array.from(document.querySelectorAll('ol > li')).map(
+        (li) => li.textContent ?? '',
+      )
+      const first = items.findIndex((x) => install.test(x))
+      const models = items.findIndex((x) => x.startsWith('Download the speech model'))
+      expect(first, tab).toBeGreaterThanOrEqual(0)
+      expect(first, tab).toBeLessThan(models)
+    }
+  })
+
+  it('links the install pages and says Homebrew comes first', async () => {
+    await renderGuide({ report: report() })
+    expect(screen.getByRole('link', { name: 'brew.sh' })).toHaveAttribute('href', 'https://brew.sh')
+    expect(screen.getByText(/whisper\.cpp and Ollama with it/)).toBeInTheDocument()
+    await pickOs('Windows')
+    expect(screen.getByRole('link', { name: 'ollama.com/download' })).toHaveAttribute(
+      'href',
+      'https://ollama.com/download',
+    )
+    expect(screen.getByRole('link', { name: /whisper\.cpp’s releases on GitHub/ })).toHaveAttribute(
+      'href',
+      'https://github.com/ggml-org/whisper.cpp/releases',
+    )
   })
 
   it.each([
@@ -213,7 +259,8 @@ describe('SidecarGuide', () => {
       ollama: true,
       tab: 'Windows',
       want: [
-        '.\\whisper-server.exe --host 127.0.0.1 --port 8178 --model "/Users/ana/livesubs/models\\ggml-large-v3-turbo.bin"',
+        // The server is a Mac: its path keeps '/' on the Windows tab too.
+        '.\\whisper-server.exe --host 127.0.0.1 --port 8178 --model "/Users/ana/livesubs/models/ggml-large-v3-turbo.bin"',
       ],
       chip: 'Ollama already running',
     },
