@@ -60,6 +60,20 @@ A running session is one pipeline: audio source → speech recognition → one t
 - Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
 - `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
 
+### Latency and cost
+
+Every caption carries `latencyMs`: the time from when the end of its audio reached the server to when the caption was emitted, so it covers recognition on the `source` track and recognition plus translation on the others (a target equal to the source language passes through untranslated). `SessionStatus.latency` (in `GET /api/sessions/{id}/status` and on `/ws/admin`) has the p50, p95 and last value per track over the last 200 final captions of the current or last run.
+
+`SessionStatus.usage` sums what a session used across its runs since the server started: audio seconds sent to the provider, the tokens the provider reports, and `estimatedCostUsd`. Only Gemini is priced; the local and mock providers cost 0. The prices are **estimates** from Google's published list prices (2025) and go stale, so set your own:
+
+| Flag | Environment | Default (USD) |
+|---|---|---|
+| `--gemini-input-usd-per-mtok` | `LIVESUBS_GEMINI_INPUT_USD_PER_MTOK` | `0.30` per million input text tokens (Gemini 2.5 Flash) |
+| `--gemini-output-usd-per-mtok` | `LIVESUBS_GEMINI_OUTPUT_USD_PER_MTOK` | `2.50` per million output tokens (Gemini 2.5 Flash) |
+| `--gemini-audio-usd-per-min` | `LIVESUBS_GEMINI_AUDIO_USD_PER_MIN` | `0.00576` per minute of audio (Live API: $3.00 per million audio tokens × 32 tokens/s) |
+
+Audio is priced per minute rather than as tokens, so an hour of Gemini captions costs about $0.35 plus the translation tokens. Stats live in memory: a restart resets them.
+
 ## Subtitle files
 
 Final captions of every track can be downloaded while a session runs or afterwards (`lang` is a target language or `source`):

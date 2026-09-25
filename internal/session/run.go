@@ -12,6 +12,7 @@ import (
 
 	"github.com/iencodev/live-subtitles/internal/api"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/metrics"
 )
 
 // run is one running session: the goroutines of its pipeline and its
@@ -47,16 +48,16 @@ type run struct {
 	st          api.SessionState
 	startedAt   time.Time
 	detected    domain.LanguageCode
-	err         api.Error // last error, shown in the status
-	fatal       bool      // err ended the run
-	usage       domain.Usage
+	err         api.Error     // last error, shown in the status
+	fatal       bool          // err ended the run
+	usage       domain.Usage  // reported by the provider during this run
 	sent        time.Duration // audio sent to the provider
-	latency     map[string]*latency
+	prior       totals        // usage of the session's earlier runs
+	latency     map[string]*metrics.Latency
+	arrived     arrivals      // when each frame arrived, for latency
 	base        time.Duration // source T of the first frame
 	hasBase     bool
 	end         time.Duration // session clock at the end of the last frame
-	origin      time.Time     // wall time of session clock 0, for latency
-	hasOrigin   bool
 	sourceEnded bool
 	history     []string // last final source sentences, oldest first
 }
@@ -69,7 +70,7 @@ func newRun(m *Manager, sess domain.Session) *run {
 		ctx: ctx, cancel: cancel, srcCtx: srcCtx, stopSource: stopSource,
 		done:    make(chan struct{}),
 		st:      api.SessionStateStarting,
-		latency: map[string]*latency{},
+		latency: map[string]*metrics.Latency{},
 	}
 }
 
@@ -140,9 +141,7 @@ func (r *run) feed(frames <-chan domain.AudioFrame, in chan<- domain.AudioFrame,
 		}
 		f = domain.AudioFrame{PCM: f.PCM, T: r.offset + f.T - r.base}
 		r.end = f.End()
-		if !r.hasOrigin {
-			r.origin, r.hasOrigin = now.Add(-f.End()), true
-		}
+		r.arrived.add(f.End(), now)
 		paused := r.st == api.SessionStatePaused
 		if !paused {
 			r.sent += f.End() - f.T
@@ -241,10 +240,10 @@ func (r *run) publish(c api.Caption) {
 		r.mu.Lock()
 		l := r.latency[c.Lang]
 		if l == nil {
-			l = &latency{}
+			l = &metrics.Latency{}
 			r.latency[c.Lang] = l
 		}
-		l.add(*c.LatencyMs)
+		l.Add(*c.LatencyMs)
 		r.mu.Unlock()
 	}
 	if st := r.m.opts.Captions; st != nil {
@@ -296,15 +295,19 @@ func (r *run) context(c api.Caption) []string {
 	return ctx
 }
 
-// latencyMs is how long after the end of its audio a caption is emitted.
+// latencyMs is how long after the end of its audio (end, on the session
+// clock) reached the server a caption is emitted now: recognition time for
+// the source track, plus translation time for the others. Nil before any
+// audio arrived.
 func (r *run) latencyMs(end time.Duration) *int {
+	now := r.m.opts.Clock.Now()
 	r.mu.Lock()
-	origin, ok := r.origin, r.hasOrigin
+	arrived, ok := r.arrived.at(end)
 	r.mu.Unlock()
 	if !ok {
 		return nil
 	}
-	ms := int(max(0, r.m.opts.Clock.Now().Sub(origin.Add(end))).Milliseconds())
+	ms := int(max(0, now.Sub(arrived)).Milliseconds())
 	return &ms
 }
 
@@ -414,25 +417,42 @@ func (r *run) status() api.SessionStatus {
 	if r.source != nil {
 		st.Audio = &audio
 	}
-	if len(r.latency) > 0 {
-		lat := make(map[string]api.LatencyStats, len(r.latency))
-		for track, l := range r.latency {
-			lat[track] = l.stats()
-		}
-		st.Latency = &lat
-	}
-	secs := float32(max(r.usage.AudioSeconds, r.sent.Seconds()))
-	usage := api.UsageStats{AudioSeconds: &secs}
-	if r.usage.InputTokens > 0 || r.usage.OutputTokens > 0 {
-		in, out := r.usage.InputTokens, r.usage.OutputTokens
-		usage.InputTokens, usage.OutputTokens = &in, &out
-	}
-	st.Usage = &usage
+	st.Latency = r.latencyStats()
+	st.Usage = r.totals().stats()
 	if r.err.Code != "" {
 		e := r.err
 		st.Error = &e
 	}
 	return st
+}
+
+// latencyStats are the per-track latencies of the finals so far, nil
+// before the first. Called with mu held.
+func (r *run) latencyStats() *map[string]api.LatencyStats {
+	if len(r.latency) == 0 {
+		return nil
+	}
+	lat := make(map[string]api.LatencyStats, len(r.latency))
+	for track, l := range r.latency {
+		lat[track] = l.Stats()
+	}
+	return &lat
+}
+
+// totals is the session's usage including this run, with this run priced
+// for its provider. Called with mu held.
+func (r *run) totals() totals {
+	u := r.usage
+	// Audio is billed for what was sent, whether or not the provider reports it.
+	u.AudioSeconds = max(u.AudioSeconds, r.sent.Seconds())
+	return r.prior.add(u, r.m.pricing.Cost(r.provider, u))
+}
+
+// finalStats are what the session shows once this run has ended.
+func (r *run) finalStats() (totals, *map[string]api.LatencyStats) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.totals(), r.latencyStats()
 }
 
 // errCanceled reports a context cancellation of the run itself (not a

@@ -27,6 +27,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/bus"
 	"github.com/iencodev/live-subtitles/internal/config"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/metrics"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
 	"github.com/iencodev/live-subtitles/internal/provider/mock"
 	"github.com/iencodev/live-subtitles/internal/secrets"
@@ -107,6 +108,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
 		IngestStatus:  a.hub.Status,
 		ReleaseIngest: a.hub.Remove,
+		Pricing:       &metrics.Pricing{Gemini: cfg.GeminiPrices},
 		Logger:        log,
 	})
 	srv.Manager = a.manager
