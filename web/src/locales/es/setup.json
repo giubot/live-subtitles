@@ -1,6 +1,6 @@
 {
   "title": "Configurar Live Subtitles",
-  "intro": "Elegí el PIN que protege las páginas de admin. Quien lo tenga puede iniciar sesiones y cambiar la configuración.",
+  "intro": "Elegí el idioma de la interfaz y el tema arriba; podés cambiar los dos más tarde. Después elegí el PIN que protege las páginas de admin. Quien lo tenga puede iniciar sesiones y cambiar la configuración.",
   "pin": "PIN de admin",
   "pinHelp": "Al menos {{min}} caracteres. Pueden ser números.",
   "pinTooShort": "Usá al menos {{min}} caracteres.",
@@ -8,5 +8,107 @@
   "mismatch": "Los dos PIN no coinciden.",
   "submit": "Guardar PIN y seguir",
   "done": "Este servidor ya está configurado. Ingresá con su PIN de admin.",
-  "toAdmin": "Ir al admin"
+  "toAdmin": "Ir al admin",
+  "stepOf": "Paso {{n}} de {{total}}",
+  "finishLater": "Terminar después",
+  "back": "Volver",
+  "next": "Seguir",
+  "skip": "Saltear este paso",
+  "pinStep": {
+    "heading": "Idioma, tema y PIN de admin"
+  },
+  "hardware": {
+    "heading": "Chequeo del equipo",
+    "intro": "Qué tiene esta computadora y qué modelos locales puede correr. El proveedor local transcribe y traduce sin internet.",
+    "checking": "Revisando esta computadora…",
+    "system": "Sistema",
+    "cpu": "Procesador",
+    "cores_one": "{{count}} núcleo",
+    "cores_other": "{{count}} núcleos",
+    "memory": "Memoria",
+    "gb": "{{value}} GB",
+    "gpu": "Gráficos",
+    "noGpu": "No se encontró",
+    "runtimes": "Programas locales",
+    "runtime": {
+      "whisper": "whisper-server",
+      "ollama": "Ollama",
+      "ffmpeg": "FFmpeg"
+    },
+    "runtimeOk": "{{name}} encontrado",
+    "runtimeMissing": "Falta {{name}}",
+    "recommend": "Modelos recomendados para esta computadora: voz {{whisper}}, traducción {{gemma}}.",
+    "slow": "Puede que los modelos locales no lleguen a tiempo real acá. Agregá una API key de Google en un paso siguiente y se usa Gemini.",
+    "benchmarkHelp": "La prueba corre los modelos locales sobre un audio corto incluido. Tarda más o menos un minuto.",
+    "benchmark": "Correr prueba",
+    "rtf": "Factor de tiempo real",
+    "rtfDetail": "Voz {{asr}} ms · traducción {{translation}} ms",
+    "realtime": "Llega a tiempo real",
+    "notRealtime": "Más lento que tiempo real"
+  },
+  "models": {
+    "heading": "Modelos locales",
+    "intro": "Descargá los modelos de voz y traducción que necesita el proveedor local. Salteá este paso si solo vas a usar Gemini.",
+    "loading": "Cargando la lista de modelos…",
+    "none": "El servidor no ofrece modelos locales para descargar.",
+    "downloadRecommended_one": "Descargar el modelo recomendado",
+    "downloadRecommended_other": "Descargar los {{count}} modelos recomendados",
+    "download": "Descargar",
+    "retry": "Descargar de nuevo",
+    "recommended": "Recomendado",
+    "size": "{{value}} GB",
+    "kind": {
+      "whisper": "Voz (whisper)",
+      "gemma": "Traducción (Gemma)"
+    },
+    "status": {
+      "missing": "Sin descargar",
+      "downloading": "Descargando",
+      "verifying": "Verificando",
+      "ready": "Listo",
+      "error": "Falló"
+    },
+    "progress": "Descargando {{name}}",
+    "background": "Las descargas siguen en el servidor aunque avances o cierres esta página."
+  },
+  "google": {
+    "heading": "API key de Google (opcional)",
+    "intro": "Con una API key de Google, las sesiones usan Gemini, que es rápido y preciso pero manda el audio a Google. Sin ella, todo corre en esta computadora.",
+    "defaultLabel": "Proveedor por defecto",
+    "provider": {
+      "gemini": "Gemini",
+      "local": "Local",
+      "mock": "Simulado (desarrollo)"
+    },
+    "reason": {
+      "google_api_key_valid": "Hay una API key de Google válida guardada.",
+      "no_google_api_key": "No hay una API key de Google guardada.",
+      "google_api_key_invalid": "Google rechazó la API key guardada."
+    },
+    "key": "API key de Google",
+    "keyHelp": "Creala en Google AI Studio. Se guarda en el llavero del sistema y no se vuelve a mostrar.",
+    "saved": "Hay una key guardada. Ingresá otra para reemplazarla.",
+    "savedHint": "Key guardada {{hint}}. Ingresá otra para reemplazarla.",
+    "save": "Guardar y verificar key"
+  },
+  "session": {
+    "heading": "Primera sesión",
+    "intro": "Una sesión es una sala o escenario. Tiene subtítulos en {{languages}} con el proveedor por defecto; podés cambiar todo esto después en el admin.",
+    "name": "Nombre de la sesión",
+    "nameHelp": "Lo que ve el público, por ejemplo “Escenario principal”.",
+    "nameRequired": "Poné un nombre de hasta 120 caracteres.",
+    "slug": "Dirección",
+    "slugHelp": "Parte de los links de la sesión. Minúsculas, números y guiones.",
+    "slugInvalid": "Usá minúsculas, números y guiones, empezando con una letra o un número.",
+    "create": "Crear sesión"
+  },
+  "finish": {
+    "heading": "Listo",
+    "intro": "“{{name}}” está creada. Abrí el link de captura en la computadora que recibe el audio de la sala, elegí la entrada y después iniciá la sesión desde el admin.",
+    "noSession": "La configuración está lista. Creá e iniciá sesiones desde el admin.",
+    "capture": "Link de captura",
+    "captureHint": "El link lleva el token de ingesta de la sesión y solo se muestra ahora. Si lo perdés, generá uno nuevo desde la sesión en el admin.",
+    "viewer": "Link para el público",
+    "qr": "Escaneá para abrir la página de captura en un celular"
+  }
 }
