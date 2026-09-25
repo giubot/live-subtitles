@@ -705,3 +705,75 @@ func TestCancelClosesStream(t *testing.T) {
 		t.Error("connection left open")
 	}
 }
+
+// A forced reconnect (the server drops the connection mid-talk) loses no
+// audio: what arrives while the stream is down reaches the next
+// connection, and captions go on with new segment IDs (SES-5).
+func TestForcedReconnectKeepsAudio(t *testing.T) {
+	const frameBytes = domain.FrameSamples * 2
+	cases := []struct {
+		name        string
+		failedDials int
+		drops       int
+	}{
+		{"one drop", 0, 1},
+		{"a failed dial", 1, 1},
+		{"drops in a row", 0, 3},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			first := newFakeConn()
+			conns := []*fakeConn{first}
+			for range tc.drops {
+				for range tc.failedDials {
+					conns = append(conns, nil)
+				}
+				conns = append(conns, newFakeConn())
+			}
+			d := &fakeDialer{conns: slices.Clone(conns)}
+			in, out, err := testASR(d).Start(t.Context(), domain.ASRConfig{SessionID: "s1", SourceLanguage: api.En})
+			if err != nil {
+				t.Fatal(err)
+			}
+			cur, at := first, time.Duration(0)
+			send := func(n int) {
+				for range n {
+					in <- frame(at)
+					at += domain.FrameDuration
+				}
+			}
+			for i := range tc.drops {
+				send(2)
+				waitFor(t, "audio on the connection", func() bool { return cur.audioBytes() == 2*frameBytes })
+				cur.msgs <- interim(fmt.Sprintf("part %d", i))
+				next(t, out, nil)
+				cur.errs <- errors.New("websocket: close 1011 (internal error)")
+				if ev := next(t, out, nil); !ev.Final || ev.Text != fmt.Sprintf("part %d", i) {
+					t.Fatalf("after drop %d = %+v, want the pending text final", i, ev)
+				}
+				if ev := next(t, out, nil); ev.Err == nil {
+					t.Fatalf("drop %d: no error event", i)
+				}
+				prev := cur
+				cur = conns[(i+1)*(tc.failedDials+1)]
+				send(3) // while down, or right after the reconnect
+				waitFor(t, "the audio on the next connection", func() bool { return cur.audioBytes() == 3*frameBytes })
+				if got := prev.audioBytes(); got != 2*frameBytes {
+					t.Errorf("drop %d: the dropped connection got %d bytes, want %d", i, got, 2*frameBytes)
+				}
+				cur.mu.Lock() // the next round counts from 0
+				cur.audio = 0
+				cur.mu.Unlock()
+			}
+			cur.msgs <- interim("the rest")
+			ev := next(t, out, nil)
+			if want := fmt.Sprintf("g%06d", tc.drops+1); ev.Text != "the rest" || ev.SegmentID != want || ev.Err != nil {
+				t.Errorf("after the reconnects = %+v, want segment %s", ev, want)
+			}
+			end(t, in, out, cur)
+			if got, want := len(d.configs()), len(conns); got != want {
+				t.Errorf("%d dials, want %d", got, want)
+			}
+		})
+	}
+}
