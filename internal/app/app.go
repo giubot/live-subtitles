@@ -35,6 +35,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/netinfo"
 	"github.com/iencodev/live-subtitles/internal/provider/gemini"
 	"github.com/iencodev/live-subtitles/internal/provider/local/gemma"
+	"github.com/iencodev/live-subtitles/internal/provider/local/whisper"
 	"github.com/iencodev/live-subtitles/internal/provider/mock"
 	"github.com/iencodev/live-subtitles/internal/recording"
 	"github.com/iencodev/live-subtitles/internal/secrets"
@@ -145,7 +146,11 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 				ASR:        &gemini.ASR{APIKey: geminiKey, Settings: st.Settings, Logger: log},
 				Translator: &gemini.Translator{APIKey: geminiKey, Settings: st.Settings},
 			},
-			api.ProviderKindLocal: {Translator: &gemma.Translator{Settings: st.Settings}},
+			// Local: whisper-server ASR + Gemma via Ollama.
+			api.ProviderKindLocal: {
+				ASR:        &whisper.Provider{Settings: st.Settings, Logger: log},
+				Translator: &gemma.Translator{Settings: st.Settings},
+			},
 		},
 		IngestSource:  func(id string) domain.AudioSource { return a.hub.Source(id) },
 		IngestStatus:  a.hub.Status,

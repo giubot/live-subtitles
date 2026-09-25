@@ -81,7 +81,8 @@ The answer includes the session's `ingestToken` (shown only here and on rotation
 A running session is one pipeline: audio source → speech recognition → one translator per target language → the caption bus (`/ws/captions/{id}?lang=es&lang=source`) and, for final captions, the database. `POST /api/sessions/{id}/start` uses browser audio from `/ws/ingest/{id}?token=…` (the token comes from `POST /api/sessions/{id}/ingest-token`); `pause` stops feeding the provider without dropping the capture connection, `start` resumes, and `stop` waits for the provider to flush its last sentence.
 
 - Translation (`internal/translate`) runs one queue per target language. Final captions are translated in order and never dropped; interim captions are debounced to the translator's pace (only the newest waits); a target equal to the detected source language shows the original text without a translation call. Each request carries the last `translation.contextSentences` final sentences (default 3) as context. All text translators share one prompt template (`internal/translate/prompt.go`), which also renders the session glossary's terms and do-not-translate list. With Gemini, finals stream in as interims while they're translated; the model is `providers.gemini.translationModel` (default `gemini-2.5-flash-lite`) and the key is the `google_api_key` secret, both read at call time.
-- Until the default-provider rule (P2-07), `provider: default` runs on the **mock provider** (pick `gemini` explicitly for the [Gemini provider](#gemini-provider)): it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
+- A session with provider `gemini` runs on the [Gemini provider](#gemini-provider); provider `local` transcribes with whisper-server and translates with Gemma through Ollama ([Local AI provider](#local-ai-provider)).
+- Provider `mock`, and `default` until the default-provider rule (P2-07), runs on the **mock provider**: it ignores the audio content and "hears" a scripted EN/ES talk at one word per 300 ms of audio, so any sound (or silence) from the capture page produces captions.
 - Caption times are seconds on the **session clock**. Each start continues the clock at least one second after the previous run, so exports never overlap.
 - `/ws/admin` streams `AdminEvent`s: the status of every session on connect, then every state change, plus each running session's status once a second.
 
@@ -181,6 +182,33 @@ GEMMA_MODEL=gemma3:4b go test -tags ollama -run TestLiveLatency -v ./internal/pr
 ```
 
 On an Apple M5 Pro (48 GB, Ollama 0.34, `gemma4:26b`), loading the model took about 7 s. After that, one caption took 270–440 ms (median 330 ms, first token after about 190 ms) for both es→en and en→es.
+
+### How the local provider uses whisper-server
+
+The server reads `providers.local.whisperUrl` and `whisperModel` from the settings when a session starts (defaults `http://127.0.0.1:8178` and `large-v3-turbo`). whisper-server loads its model at launch, so `whisperModel` has to name the model it runs. At start the provider checks `GET /health` and sends one second of silence with `language=es`. If the server doesn't answer or is still loading its model, the session fails with `provider.unavailable`. If the model is English-only, the session fails with `provider.model_english_only`. That can come from the name (`*.en`) or from the probe: an English-only model answers "english" even when asked for Spanish.
+
+whisper-server transcribes files, not streams, so the provider (`internal/provider/local/whisper`) cuts the audio into utterances with an energy VAD. The speech threshold is -55 dBFS, or 12 dB above the tracked noise floor, whichever is higher:
+
+- While someone speaks, the utterance so far is sent to `POST /inference` (WAV, `response_format=verbose_json`) after every 1 s of new audio, for **interim** text. When the server falls behind, interims are skipped; finals never are.
+- A 600 ms pause, or 12 s without one, commits the utterance as **final** under the same segment ID. At 12 s the cut lands on the quietest moment of the last 3 s.
+- Silence and short clicks never reach the server. Text that whisper invents on noise is dropped: `[Música]`, `[BLANK_AUDIO]`, "Thanks for watching", "Subtítulos realizados por la comunidad de Amara.org", and phrases looping three or more times.
+- With source language `auto`, the provider keeps the likelier of `en` and `es` from `language_probabilities` for each utterance. If whisper picked a third language, the utterance is transcribed again in that choice. A pinned source language skips detection. Very short utterances ("OK", "sí") can be misdetected, and smoothing across segments is P2-05. Glossary terms go in whisper's `prompt`.
+
+Final captions arrive about 600 ms (the pause) plus one inference after the speaker stops. Check against a running server (the build tag keeps it out of CI):
+
+```sh
+WHISPER_URL=http://127.0.0.1:8178 WHISPER_MODEL=large-v3-turbo \
+  go test -tags whisper -run Real -v ./internal/provider/local/whisper/
+```
+
+On an Apple M5 Pro (Metal), fed in real time:
+
+| Model | ES fixture WER | EN fixture WER | Final after the audio ends | Language detected |
+|---|---|---|---|---|
+| `large-v3-turbo-q5_0` | 0 % | 10 % ("observ ability") | 0.5 s pinned, 0.7 s `auto` | es / en, correct |
+| `tiny` | 26 % ("encovernetes", "locs", "trases") | 30 % | < 0.1 s | es / en, correct |
+
+The fixtures are about 8 s of synthetic speech each. Measure WER on the real talks (`task audio:fetch`) before relying on these numbers for an event.
 
 ## Test audio
 

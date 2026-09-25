@@ -141,6 +141,11 @@
         "title": "El proveedor de IA informó un error",
         "why": "{{provider}} falló mientras transcribía. Puede faltar un tramo de subtítulos.",
         "fix": "Si sigue pasando, detené y volvé a iniciar la sesión, o cambiá de proveedor."
+      },
+      "model_english_only": {
+        "title": "El modelo de whisper solo entiende inglés",
+        "why": "El reconocimiento de voz local usa {{model}}, un modelo solo en inglés (.en), que no puede transcribir español.",
+        "fix": "Iniciá whisper-server con un modelo multilingüe, como large-v3-turbo, y poné su nombre en los ajustes del proveedor local."
       }
     },
     "auth": {

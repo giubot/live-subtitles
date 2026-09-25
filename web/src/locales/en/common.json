@@ -141,6 +141,11 @@
         "title": "The AI provider reported an error",
         "why": "{{provider}} failed while transcribing. Captions may have a gap.",
         "fix": "If it keeps happening, stop and start the session, or switch provider."
+      },
+      "model_english_only": {
+        "title": "The whisper model only understands English",
+        "why": "Local speech recognition uses {{model}}, an English-only (.en) model that can't transcribe Spanish.",
+        "fix": "Start whisper-server with a multilingual model such as large-v3-turbo, and set its name in the local provider settings."
       }
     },
     "auth": {
