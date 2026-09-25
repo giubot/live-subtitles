@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,6 +33,7 @@ import (
 	"github.com/iencodev/live-subtitles/internal/bus"
 	"github.com/iencodev/live-subtitles/internal/config"
 	"github.com/iencodev/live-subtitles/internal/domain"
+	"github.com/iencodev/live-subtitles/internal/hwcheck"
 	"github.com/iencodev/live-subtitles/internal/metrics"
 	"github.com/iencodev/live-subtitles/internal/netinfo"
 	"github.com/iencodev/live-subtitles/internal/provider/gemini"
@@ -70,6 +72,9 @@ type App struct {
 	rec     *recording.Recorder
 	cc      *streamcc.Service
 }
+
+// Version is the build version, set by cmd/livesubs from its ldflags.
+var Version = "dev"
 
 // New opens the data directory and wires services and routes. dist is the
 // built web app; red, which may be nil, learns secret values so the log
@@ -125,6 +130,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	srv.Glossaries = st
 	srv.Auth = auth.New(st, auth.Options{AdminToken: cfg.AdminToken})
 	srv.TLS = a.tls
+	srv.Build = buildInfo()
 
 	// Realtime: browser audio in (/ws/ingest), sessions, captions out
 	// (/ws/captions) and admin events (/ws/admin).
@@ -163,6 +169,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 		observer = mt
 	}
 	mux.Handle("GET "+MetricsPath, metricsHandler(mt, srv.Auth, log))
+	localASR := &whisper.Provider{Settings: st.Settings, Logger: log}
+	localTranslator := &gemma.Translator{Settings: st.Settings}
 	a.manager = session.New(session.Options{
 		Sessions:        st,
 		Captions:        st,
@@ -178,10 +186,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 				Translator: &gemini.Translator{APIKey: geminiKey, Settings: st.Settings},
 			},
 			// Local: whisper-server ASR + Gemma via Ollama.
-			api.ProviderKindLocal: {
-				ASR:        &whisper.Provider{Settings: st.Settings, Logger: log},
-				Translator: &gemma.Translator{Settings: st.Settings},
-			},
+			api.ProviderKindLocal: {ASR: localASR, Translator: localTranslator},
 		},
 		IngestSource:   func(id string) domain.AudioSource { return a.hub.Source(id) },
 		IngestStatus:   a.hub.Status,
@@ -195,6 +200,11 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 	a.cc.Bind(a.manager.Events().Publish, a.manager.StatusOf)
 	srv.Manager = a.manager
 	rule.Warm(ctx)
+	// Hardware self-check and benchmark (AI-12).
+	hw := hwcheck.New(hwcheck.Options{Settings: st.Settings, FFmpeg: &ffmpeg.Prober{Binary: cfg.FFmpeg},
+		ASR: localASR, Translator: localTranslator, DataDir: cfg.DataDir, Logger: log})
+	srv.Hardware = hw
+	go logHardware(context.WithoutCancel(ctx), hw, log)
 	// Test sources may read files from the data directory and ./testdata.
 	srv.Files = &ffmpeg.Files{Binary: cfg.FFmpeg, Roots: []string{cfg.DataDir, "testdata"}}
 	// SRT ingest (AUD-5): one ffmpeg listener per session, from settings.srt.port up.
@@ -208,6 +218,36 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, dist fs.FS, r
 
 	a.handler = observe(srv.Handler(mux, log), log, mt)
 	return a, nil
+}
+
+// logHardware runs the hardware self-check at startup (AI-12).
+func logHardware(ctx context.Context, hw *hwcheck.Checker, log *slog.Logger) {
+	r := hw.Report(ctx)
+	gpus := make([]string, 0, len(r.Gpus))
+	for _, g := range r.Gpus {
+		gpus = append(gpus, fmt.Sprintf("%s (%s)", g.Name, g.Backend))
+	}
+	log.Info("hardware check", "cpu", r.Cpu.Model, "cores", r.Cpu.Cores, "memory_gib", r.MemoryBytes>>30,
+		"gpus", strings.Join(gpus, ", "), "whisper_server", r.Runtimes.Whisper.Reachable, "ollama", r.Runtimes.Ollama.Reachable,
+		"ffmpeg", r.Runtimes.Ffmpeg.Reachable, "recommended_whisper", r.Recommendation.WhisperModel,
+		"recommended_gemma", r.Recommendation.GemmaModel, "local_realtime_likely", r.Recommendation.LocalRealtimeLikely)
+}
+
+// buildInfo is the version, the VCS commit Go stamped into the binary,
+// and the mode: dev for an unversioned build, edge otherwise.
+func buildInfo() handlers.BuildInfo {
+	b := handlers.BuildInfo{Version: Version, Mode: api.Edge}
+	if Version == "dev" {
+		b.Mode = api.Dev
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range info.Settings {
+			if s.Key == "vcs.revision" && len(s.Value) >= 7 {
+				b.Commit = s.Value[:7]
+			}
+		}
+	}
+	return b
 }
 
 // googleAPIKey reads the Google API key (Gemini) from the secret store

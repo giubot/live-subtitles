@@ -69,6 +69,13 @@ type Server struct {
 	// TLS describes HTTPS and serves the local CA (tls.go); nil: 501.
 	TLS TLSService
 
+	// Hardware is the hardware self-check and benchmark; nil: those
+	// operations answer 501, and health and system info leave out ffmpeg
+	// and the sidecars.
+	Hardware HardwareService
+	// Build is what GetSystemInfo reports.
+	Build BuildInfo
+
 	log *slog.Logger
 }
 

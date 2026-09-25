@@ -308,6 +308,23 @@ On an Apple M5 Pro (Metal), fed in real time:
 
 The fixtures are about 8 s of synthetic speech each. Measure WER on the real talks (`task audio:fetch`) before relying on these numbers for an event.
 
+### Hardware check and benchmark
+
+At startup the server logs a hardware check, and `GET /api/system/hardware` (admin) returns it for the setup wizard: OS, CPU, RAM, GPUs, whether whisper-server, Ollama and ffmpeg answer, and the recommended models (`internal/hwcheck`). GPUs are Metal on Apple Silicon, CUDA from `nvidia-smi` and Vulkan from `vulkaninfo --summary`. Missing tools just leave their part empty. The recommendation comes from a table in `internal/hwcheck/recommend.go`:
+
+| Hardware | whisper | Gemma | Real time likely |
+|---|---|---|---|
+| GPU with 8 GB or more for models (a discrete GPU's own memory, or half the RAM on Apple Silicon and integrated GPUs) | `large-v3-turbo` | `gemma3:4b` | yes |
+| GPU with 4 GB or more | `large-v3-turbo` | `gemma3:1b` | yes |
+| smaller GPU, or CPU with 8+ cores and 16 GB RAM | `small` | `gemma3:1b` | yes |
+| anything else | `small` | `gemma3:1b` | no |
+
+`POST /api/system/benchmark` (admin) runs a bundled 37.6 s clip (the EN and ES fixtures, alternating) through the configured local provider: whisper-server transcribes it, then Gemma translates every final into the other language. The real-time factor is the processing time divided by the clip length. Model loading isn't counted. The audio goes in as fast as whisper takes it, so the benchmark measures finals only. A live session also transcribes interims, so the result counts as `ok` only up to 0.8. Above that, the dashboard should suggest smaller models or a Google API key. The last result is kept in `<data dir>/benchmark.json` and replaces the table's "real time likely" guess. One benchmark runs at a time (409 `benchmark.running`). If whisper-server or Ollama is down, the answer is 422 `benchmark.runtime_unavailable`.
+
+`GET /healthz` lists `database`, `ffmpeg`, `whisper` and `ollama` under `checks`. It reports `degraded` only when the database or ffmpeg fails, since the sidecars matter only to local-provider sessions. `GET /api/system/info` sets `features.srtIngest` when `ffmpeg -protocols` lists `srt` as an input (ffmpeg built with libsrt; Homebrew's default build has no libsrt). Other code can reuse the same probe through `ffmpeg.Probe` or the caching `ffmpeg.Prober`.
+
+On an Apple M5 Pro (48 GB, Metal) with whisper.cpp 1.9.4 (`large-v3-turbo`) and Ollama 0.34.2 (`gemma3:4b`), four runs gave a real-time factor of 0.14 (about 3.4 s of speech recognition and 1.8 s of translation for the 37.6 s clip).
+
 ## Test audio
 
 - **Committed fixtures**: `testdata/audio/fixtures/{en,es}.wav`, about 8 s each, 16 kHz mono s16le. They're synthetic (macOS text-to-speech, `scripts/make-fixtures.sh`) so CI can use them without third-party rights. whisper `tiny` transcribes both and detects the right language.

@@ -538,6 +538,28 @@
         "why": "OBS refused the caption ({{comment}}). Captions only go out while OBS is streaming.",
         "fix": "Start the stream in OBS, then send a test caption."
       }
+    },
+    "benchmark": {
+      "running": {
+        "title": "A benchmark is already running",
+        "why": "Only one benchmark runs at a time, so the numbers aren't skewed.",
+        "fix": "Wait for it to finish; its result shows up here."
+      },
+      "runtime_unavailable": {
+        "title": "The local AI can't run the benchmark",
+        "why": "{{runtime}} isn't running or the server can't reach it.",
+        "fix": "Start whisper-server and Ollama, then run the benchmark again."
+      },
+      "failed": {
+        "title": "The benchmark failed",
+        "why": "The local AI failed while transcribing or translating the test clip.",
+        "fix": "Check that whisper-server and Ollama are running with the chosen models, then try again."
+      },
+      "no_speech": {
+        "title": "The benchmark got no text",
+        "why": "whisper-server answered but transcribed nothing from the test clip.",
+        "fix": "Check that whisper-server runs a multilingual model (for example large-v3-turbo), then try again."
+      }
     }
   }
 }

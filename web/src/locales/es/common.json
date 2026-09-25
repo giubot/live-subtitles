@@ -538,6 +538,28 @@
         "why": "OBS rechazó el subtítulo ({{comment}}). Los subtítulos solo salen mientras OBS está transmitiendo.",
         "fix": "Empezá la transmisión en OBS y después mandá un subtítulo de prueba."
       }
+    },
+    "benchmark": {
+      "running": {
+        "title": "Ya hay una prueba de rendimiento en curso",
+        "why": "Se corre una sola a la vez para que los números no se distorsionen.",
+        "fix": "Esperá a que termine; el resultado aparece acá."
+      },
+      "runtime_unavailable": {
+        "title": "La IA local no puede correr la prueba",
+        "why": "{{runtime}} no está corriendo o el servidor no lo alcanza.",
+        "fix": "Iniciá whisper-server y Ollama, y volvé a correr la prueba."
+      },
+      "failed": {
+        "title": "Falló la prueba de rendimiento",
+        "why": "La IA local falló al transcribir o traducir el audio de prueba.",
+        "fix": "Revisá que whisper-server y Ollama estén corriendo con los modelos elegidos y probá de nuevo."
+      },
+      "no_speech": {
+        "title": "La prueba no obtuvo texto",
+        "why": "whisper-server respondió pero no transcribió nada del audio de prueba.",
+        "fix": "Revisá que whisper-server use un modelo multilingüe (por ejemplo large-v3-turbo) y probá de nuevo."
+      }
     }
   }
 }
