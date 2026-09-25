@@ -248,7 +248,7 @@ task dev:ai:down
 
 ### Gemma translation
 
-The local translator (`internal/provider/local/gemma`) talks to Ollama's `/api/chat` with streaming, using `providers.local.ollamaUrl` and `providers.local.gemmaModel` from the settings (read at call time). When a session starts it loads the model with an empty chat, and every request sends `keep_alive: 30m`, so the first caption doesn't wait for a model load and a pause doesn't unload it. It runs at most 2 requests at once per model and sends `think: false`, so thinking models such as Gemma 4 answer straight away. Measure it on your machine with:
+The local translator (`internal/provider/local/gemma`) talks to Ollama's `/api/chat` with streaming, using `providers.local.ollamaUrl` and `providers.local.gemmaModel` from the settings (read at call time). When a session starts it loads the model with an empty chat, and every request sends `keep_alive: 30m`, so the first caption doesn't wait for a model load and a pause doesn't unload it. It runs at most 2 requests at once per model and sends `think: false`, so thinking models such as Gemma 4 answer straight away. A request that fails before any output (Ollama unreachable, or an HTTP 5xx while it restarts or reloads the model) is retried twice, after about 250 ms and 500 ms, within the 15 s translation timeout. A caption that still fails is missing from that track (`translation.failed`), and the next ones are translated as usual. Measure it on your machine with:
 
 ```sh
 GEMMA_MODEL=gemma3:4b go test -tags ollama -run TestLiveLatency -v ./internal/provider/local/gemma/
@@ -264,6 +264,7 @@ whisper-server transcribes files, not streams, so the provider (`internal/provid
 
 - While someone speaks, the utterance so far is sent to `POST /inference` (WAV, `response_format=verbose_json`) after every 1 s of new audio, for **interim** text. When the server falls behind, interims are skipped; finals never are.
 - A 600 ms pause, or 12 s without one, commits the utterance as **final** under the same segment ID. At 12 s the cut lands on the quietest moment of the last 3 s.
+- If whisper-server stops answering mid-session (a restart, or 503 while it reloads its model), the stream keeps going. A final is retried with backoff, 300 ms doubling to 5 s, up to 6 times (about 15 s), and later audio waits its turn. Failed interims are skipped. If the final still fails, the interim text shown so far becomes final and the session shows a `provider.error`.
 - Silence and short clicks never reach the server. Text that whisper invents on noise is dropped: `[Música]`, `[BLANK_AUDIO]`, "Thanks for watching", "Subtítulos realizados por la comunidad de Amara.org", and phrases looping three or more times.
 - With source language `auto`, the provider keeps the likelier of `en` and `es` from `language_probabilities` for each utterance. If whisper picked a third language, the utterance is transcribed again in that choice. A pinned source language skips detection. Very short utterances ("OK", "sí") can be misdetected; the session keeps its language until four words in the other one (see Translation above). Glossary terms go in whisper's `prompt`.
 

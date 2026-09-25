@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/backoff"
 	"github.com/iencodev/live-subtitles/internal/domain"
 )
 
@@ -326,7 +327,7 @@ func TestServerErrors(t *testing.T) {
 			}
 			return 200, langResponse("english", " Hello.", map[string]float64{"en": 0.9})
 		}}
-		p := &Provider{Settings: settingsFor(f.start(), "")}
+		p := &Provider{Settings: settingsFor(f.start(), ""), FinalBackoff: fastRetry}
 		evs := run(t, p, domain.ASRConfig{}, synth(tone(2500*ms), silence(time.Second), tone(time.Second), silence(time.Second)))
 		var errs, finals int
 		for _, ev := range evs {
@@ -364,6 +365,56 @@ func TestServerErrors(t *testing.T) {
 			t.Errorf("events %+v", evs)
 		}
 	})
+}
+
+// fastRetry keeps the final retries of the tests short.
+var fastRetry = backoff.Policy{Base: time.Millisecond, Max: 2 * time.Millisecond}
+
+// whisper-server restarting (connection errors, then 503 while it loads
+// its model) doesn't lose the final that was in flight.
+func TestFinalRetries(t *testing.T) {
+	tests := []struct {
+		name      string
+		failures  int
+		status    int
+		retries   int
+		wantCalls int
+		wantErr   bool
+	}{
+		{"no failure", 0, 0, 3, 1, false},
+		{"loading after a restart", 4, http.StatusServiceUnavailable, 6, 5, false},
+		{"server error", 2, http.StatusInternalServerError, 3, 3, false},
+		{"down for longer than the retries", 100, http.StatusServiceUnavailable, 2, 3, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			n := 0
+			f := &fakeServer{t: t, respond: func(call) (int, any) {
+				mu.Lock()
+				defer mu.Unlock()
+				if n++; n <= tt.failures {
+					return tt.status, `{"error":"model loading"}`
+				}
+				return 200, langResponse("english", " Hello.", map[string]float64{"en": 0.9})
+			}}
+			p := &Provider{Settings: settingsFor(f.start(), ""), VAD: VADConfig{InterimEvery: time.Hour},
+				FinalRetries: tt.retries, FinalBackoff: fastRetry}
+			evs := run(t, p, domain.ASRConfig{}, synth(tone(time.Second), silence(time.Second)))
+			if got := len(f.seen()); got != tt.wantCalls {
+				t.Errorf("%d inference calls, want %d", got, tt.wantCalls)
+			}
+			if tt.wantErr {
+				if len(evs) != 1 || evs[0].Err == nil {
+					t.Errorf("events %+v, want one error", evs)
+				}
+				return
+			}
+			if len(evs) != 1 || evs[0].Err != nil || !evs[0].Final || evs[0].Text != "Hello." {
+				t.Errorf("events %+v, want the final", evs)
+			}
+		})
+	}
 }
 
 func TestStartRefuses(t *testing.T) {

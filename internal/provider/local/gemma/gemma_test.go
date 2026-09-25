@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/iencodev/live-subtitles/internal/api"
+	"github.com/iencodev/live-subtitles/internal/backoff"
 	"github.com/iencodev/live-subtitles/internal/domain"
 )
 
@@ -28,6 +29,10 @@ type fakeOllama struct {
 	status int    // non-200 answers with {"error": errMsg}
 	errMsg string // with status 200: an error line mid-stream
 	hold   chan struct{}
+	// failFirst answers the first requests with HTTP failStatus.
+	failFirst  int32
+	failStatus int
+	served     atomic.Int32
 
 	mu       sync.Mutex
 	reqs     []chatRequest
@@ -69,6 +74,11 @@ func (f *fakeOllama) serve(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		}
+	}
+	if f.served.Add(1) <= f.failFirst {
+		w.WriteHeader(f.failStatus)
+		_, _ = fmt.Fprint(w, `{"error":"server busy"}`)
+		return
 	}
 	if f.status != 0 {
 		w.WriteHeader(f.status)
@@ -162,9 +172,50 @@ func TestTranslateUnreachable(t *testing.T) {
 	f := newFakeOllama(t, "x")
 	url := f.URL
 	f.Close()
-	_, err := (&Translator{URL: url}).Translate(t.Context(), enToEs)
+	_, err := (&Translator{URL: url, RetryBackoff: fastRetry}).Translate(t.Context(), enToEs)
 	if err == nil || !strings.Contains(err.Error(), "ollama unreachable at "+url) {
 		t.Errorf("err = %v", err)
+	}
+}
+
+// fastRetry keeps retries in tests short.
+var fastRetry = backoff.Policy{Base: time.Millisecond, Max: 2 * time.Millisecond}
+
+// Ollama restarting or briefly failing doesn't lose the caption.
+func TestRetries(t *testing.T) {
+	tests := []struct {
+		name      string
+		failFirst int32
+		status    int
+		retries   int
+		wantCalls int32
+		wantErr   string
+	}{
+		{"recovers from 503", 2, http.StatusServiceUnavailable, 0, 3, ""},
+		{"recovers from 500", 1, http.StatusInternalServerError, 3, 2, ""},
+		{"gives up", 10, http.StatusServiceUnavailable, 2, 3, "server busy (HTTP 503"},
+		{"retries disabled", 1, http.StatusServiceUnavailable, -1, 1, "HTTP 503"},
+		{"a 4xx isn't retried", 1, http.StatusBadRequest, 3, 1, "HTTP 400"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFakeOllama(t, "Hola a todos.")
+			f.failFirst, f.failStatus = tt.failFirst, tt.status
+			tr := &Translator{URL: f.URL, Retries: tt.retries, RetryBackoff: fastRetry}
+			res, err := tr.Translate(t.Context(), enToEs)
+			if got := f.served.Load(); got != tt.wantCalls {
+				t.Errorf("%d requests, want %d", got, tt.wantCalls)
+			}
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("err = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || res.Text != "Hola a todos." {
+				t.Errorf("result %+v, %v", res, err)
+			}
+		})
 	}
 }
 
