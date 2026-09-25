@@ -263,6 +263,8 @@ func TestTranslatorThinking(t *testing.T) {
 		{"gemini-2.5-flash-lite", nil},
 		{"gemini-2.5-flash", &genai.ThinkingConfig{ThinkingBudget: &zero}},
 		{"gemini-3-flash-preview", &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelMinimal}},
+		{"gemini-3.5-flash-lite", &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelMinimal}},
+		{"gemini-3.1-flash-lite", &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelMinimal}},
 		{"gemini-3-pro-preview", &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelLow}},
 		{"gemini-2.5-pro", nil},
 	}

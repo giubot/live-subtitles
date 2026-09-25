@@ -20,8 +20,9 @@ import (
 )
 
 // DefaultTranslationModel is used when Settings.providers.gemini.translationModel
-// is empty: a fast, non-thinking text model suits one-line captions.
-const DefaultTranslationModel = "gemini-2.5-flash-lite"
+// is empty: a fast, low-cost text model suits one-line captions (the 2.5
+// models are only open to projects that already used them).
+const DefaultTranslationModel = "gemini-3.5-flash-lite"
 
 // translatorConfigTTL is how long a resolved API key and model are reused,
 // so a live session doesn't hit the keychain on every caption.
@@ -185,15 +186,16 @@ func translatorRequest(req domain.TranslateRequest, model string) ([]*genai.Cont
 func translatorThinking(model string) *genai.ThinkingConfig {
 	m := strings.ToLower(model)
 	switch {
-	case strings.Contains(m, "flash-lite"):
+	case strings.HasPrefix(m, "gemini-3") && strings.Contains(m, "flash"):
+		// Flash and Flash-Lite 3.x think unless told otherwise.
+		return &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelMinimal}
+	case strings.HasPrefix(m, "gemini-3"):
+		return &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelLow}
+	case strings.Contains(m, "gemini-2.5-flash-lite"):
 		return nil // doesn't think by default
 	case strings.Contains(m, "gemini-2.5-flash"):
 		zero := int32(0)
 		return &genai.ThinkingConfig{ThinkingBudget: &zero}
-	case strings.HasPrefix(m, "gemini-3") && strings.Contains(m, "flash"):
-		return &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelMinimal}
-	case strings.HasPrefix(m, "gemini-3"):
-		return &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelLow}
 	}
 	return nil
 }
