@@ -67,8 +67,7 @@ Prefer containers? Follow the [Docker deployment guide](docs/deployment.md#docke
 
 Open **[localhost:8080/setup](http://localhost:8080/setup)** on the computer running Live Subtitles. Choose your admin PIN, then follow the hardware check, provider setup and first-session steps. You can skip steps after the PIN and return to the settings later.
 
-<details>
-<summary><strong>📸 Explore the six-step setup wizard</strong></summary>
+**📸 The six-step setup wizard**
 
 Click any screenshot to view it at full size.
 
@@ -116,8 +115,6 @@ Click any screenshot to view it at full size.
     </td>
   </tr>
 </table>
-
-</details>
 
 | Choose… | What you need |
 |---|---|
