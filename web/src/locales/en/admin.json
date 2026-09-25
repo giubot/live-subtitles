@@ -237,5 +237,32 @@
       "page": "Page",
       "preference": "Preference"
     }
+  },
+  "corrections": {
+    "open": "Correct",
+    "title": "Correct captions: {{name}}",
+    "close": "Close",
+    "intro": "Fix a line or hide it from viewers. Everyone watching sees the change right away.",
+    "track": "Track",
+    "sourceTrack": "Source",
+    "sourceTrackLang": "Source ({{lang}})",
+    "lines": "Recent lines, {{track}}",
+    "saveHint": "saves",
+    "cancelHint": "cancels",
+    "inProgress": "In progress",
+    "edited": "Edited",
+    "hidden": "Hidden",
+    "edit": "Edit line",
+    "hide": "Hide line from viewers",
+    "unhide": "Show line again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "textLabel": "Caption text",
+    "unavailable": "Correction isn’t available on this server yet, so lines can’t be edited or hidden. Update Live Subtitles to use it.",
+    "reconnecting": "Reconnecting to the captions. New lines will appear when it’s back.",
+    "empty": {
+      "title": "No captions yet",
+      "body": "Final lines appear here as the session is captioned."
+    }
   }
 }

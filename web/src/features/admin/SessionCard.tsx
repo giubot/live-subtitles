@@ -6,6 +6,7 @@ import PauseOutlined from '@mui/icons-material/PauseOutlined'
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined'
 import StopOutlined from '@mui/icons-material/StopOutlined'
 import AudioFileOutlined from '@mui/icons-material/AudioFileOutlined'
+import SpellcheckOutlined from '@mui/icons-material/SpellcheckOutlined'
 import VolumeOffOutlined from '@mui/icons-material/VolumeOffOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -23,6 +24,7 @@ import { Stat } from '../../components/Stat'
 import { StatusChip } from '../../components/StatusChip'
 import { useAdminEventsStore } from '../../realtime/admin'
 import { stateChip } from '../viewer/format'
+import { CaptionEditor } from './CaptionEditor'
 import { FileSourceDialog } from './FileSourceDialog'
 import { SessionLinks } from './SessionLinks'
 import { ccChip, type Session } from './sessionForm'
@@ -85,6 +87,7 @@ export function SessionCard({
     onSettled: refresh,
   })
   const [fileOpen, setFileOpen] = useState(false)
+  const [correcting, setCorrecting] = useState(false)
   const chosenSource = useSessionSource(session.id)
   const actionError: unknown = start.error ?? pause.error ?? stop.error ?? stopFile.error
   const busy = start.isPending || pause.isPending || stop.isPending || stopFile.isPending
@@ -273,6 +276,15 @@ export function SessionCard({
               variant="text"
               color="secondary"
               size="small"
+              startIcon={<SpellcheckOutlined aria-hidden />}
+              onClick={() => setCorrecting(true)}
+            >
+              {t('corrections.open')}
+            </Button>
+            <Button
+              variant="text"
+              color="secondary"
+              size="small"
               startIcon={
                 expanded ? <ExpandLessOutlined aria-hidden /> : <LinkOutlined aria-hidden />
               }
@@ -382,6 +394,7 @@ export function SessionCard({
         {actionError != null && <ErrorAlert error={actionError} />}
 
         {fileOpen && <FileSourceDialog session={session} onClose={() => setFileOpen(false)} />}
+        {correcting && <CaptionEditor session={session} onClose={() => setCorrecting(false)} />}
 
         {expanded && (
           <Box id={linksId}>

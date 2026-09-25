@@ -237,5 +237,32 @@
       "page": "Página",
       "preference": "Preferencia"
     }
+  },
+  "corrections": {
+    "open": "Corregir",
+    "title": "Corregir subtítulos: {{name}}",
+    "close": "Cerrar",
+    "intro": "Corregí una línea u ocultala al público. Quien esté mirando ve el cambio al instante.",
+    "track": "Pista",
+    "sourceTrack": "Original",
+    "sourceTrackLang": "Original ({{lang}})",
+    "lines": "Líneas recientes, {{track}}",
+    "saveHint": "guarda",
+    "cancelHint": "cancela",
+    "inProgress": "En curso",
+    "edited": "Editada",
+    "hidden": "Oculta",
+    "edit": "Editar línea",
+    "hide": "Ocultar línea al público",
+    "unhide": "Volver a mostrar la línea",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "textLabel": "Texto del subtítulo",
+    "unavailable": "La corrección todavía no está disponible en este servidor, así que no se pueden editar ni ocultar líneas. Actualizá Live Subtitles para usarla.",
+    "reconnecting": "Reconectando con los subtítulos. Las líneas nuevas van a aparecer cuando vuelva.",
+    "empty": {
+      "title": "Todavía no hay subtítulos",
+      "body": "Las líneas finales aparecen acá a medida que se subtitula la sesión."
+    }
   }
 }
