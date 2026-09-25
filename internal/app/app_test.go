@@ -14,6 +14,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/iencodev/live-subtitles/internal/api/handlers"
 	"github.com/iencodev/live-subtitles/internal/config"
 )
 
@@ -117,5 +118,26 @@ func TestBanner(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "\x1b[") {
 		t.Error("banner printed a QR code to a non-terminal")
+	}
+}
+
+func TestNetworkFollowsSettings(t *testing.T) {
+	a := newTestApp(t, config.Config{PublicBaseURL: "https://flag.example.com"}, testDist)
+	get := func() string {
+		rec := httptest.NewRecorder()
+		a.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/network", nil))
+		return rec.Body.String()
+	}
+	if body := get(); !strings.Contains(body, `"viewerBaseUrl":"https://flag.example.com"`) {
+		t.Errorf("before saving: %s", body)
+	}
+	st := handlers.DefaultSettings()
+	public := "https://subs.example.com"
+	st.Network.PublicBaseUrl = &public
+	if err := a.store.PutSettings(t.Context(), st); err != nil {
+		t.Fatal(err)
+	}
+	if body := get(); !strings.Contains(body, `"viewerBaseUrl":"https://subs.example.com"`) {
+		t.Errorf("after saving: %s", body)
 	}
 }

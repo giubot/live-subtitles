@@ -202,11 +202,24 @@ func (a *App) network() api.NetworkInfo {
 			a.log.Warn("list network interfaces", "err", err)
 		}
 	}
-	return netinfo.Info(ifs, netinfo.Options{
+	opts := netinfo.Options{
 		HTTPPort:      int(a.port.Load()),
 		HTTPSPort:     a.tls.HTTPSPort(),
 		PublicBaseURL: a.cfg.PublicBaseURL,
-	})
+	}
+	// Settings › Network, read on every call so a save applies at once;
+	// its public URL overrides --public-base-url.
+	if st, err := a.store.Settings(context.Background()); err == nil {
+		if p := st.Network.PublicBaseUrl; p != nil && *p != "" {
+			opts.PublicBaseURL = *p
+		}
+		if p := st.Network.PreferredInterface; p != nil {
+			opts.PreferredInterface = *p
+		}
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		a.log.Warn("read network settings", "err", err)
+	}
+	return netinfo.Info(ifs, opts)
 }
 
 // loopbackOnly reports a listen address the LAN can't reach (127.0.0.1, ::1, localhost).

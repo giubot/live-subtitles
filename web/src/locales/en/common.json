@@ -303,6 +303,33 @@
         "why": "It may have been deleted by an admin or by the automatic clean-up of old recordings, or the link has a typo.",
         "fix": "Pick the recording from the session's list of recordings."
       }
+    },
+    "settings": {
+      "invalid": {
+        "title": "Some settings aren't valid",
+        "why": "The server didn't save anything because several fields have problems.",
+        "fix": "Correct the highlighted fields, then save again."
+      },
+      "invalid_language": {
+        "title": "That language isn't supported",
+        "why": "A default language isn't in the language list, or it can't be the spoken language (only English, Spanish or automatic detection can).",
+        "fix": "Pick the languages from the list, then save again."
+      },
+      "invalid_url": {
+        "title": "That address isn't valid",
+        "why": "It needs to be a full address with its scheme and host, such as http://127.0.0.1:8178 (or ws://127.0.0.1:4455 for OBS), without a query or credentials.",
+        "fix": "Correct the address, then save again."
+      },
+      "out_of_range": {
+        "title": "A number is out of range",
+        "why": "One of the numbers is outside the values the server accepts.",
+        "fix": "Use a value within the range shown under the field, then save again."
+      },
+      "too_long": {
+        "title": "A value is too long",
+        "why": "Model names, the interface name and the glossary are limited to 200 characters.",
+        "fix": "Shorten the value, then save again."
+      }
     }
   }
 }

@@ -303,6 +303,33 @@
         "why": "Puede que la haya borrado un administrador o la limpieza automática de grabaciones viejas, o que el enlace tenga un error.",
         "fix": "Elegí la grabación desde la lista de grabaciones de la sesión."
       }
+    },
+    "settings": {
+      "invalid": {
+        "title": "Hay ajustes que no son válidos",
+        "why": "El servidor no guardó nada porque varios campos tienen problemas.",
+        "fix": "Corregí los campos marcados y volvé a guardar."
+      },
+      "invalid_language": {
+        "title": "Ese idioma no está disponible",
+        "why": "Un idioma predeterminado no está en la lista de idiomas, o no puede ser el idioma hablado (solo inglés, español o la detección automática).",
+        "fix": "Elegí los idiomas de la lista y volvé a guardar."
+      },
+      "invalid_url": {
+        "title": "Esa dirección no es válida",
+        "why": "Tiene que ser una dirección completa con esquema y host, como http://127.0.0.1:8178 (o ws://127.0.0.1:4455 para OBS), sin parámetros ni credenciales.",
+        "fix": "Corregí la dirección y volvé a guardar."
+      },
+      "out_of_range": {
+        "title": "Un número está fuera de rango",
+        "why": "Uno de los números está fuera de los valores que acepta el servidor.",
+        "fix": "Usá un valor dentro del rango que se indica debajo del campo y volvé a guardar."
+      },
+      "too_long": {
+        "title": "Un valor es demasiado largo",
+        "why": "Los nombres de modelo, el nombre de la interfaz y el glosario tienen un máximo de 200 caracteres.",
+        "fix": "Acortá el valor y volvé a guardar."
+      }
     }
   }
 }
