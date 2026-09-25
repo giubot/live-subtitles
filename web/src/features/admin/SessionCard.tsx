@@ -5,12 +5,13 @@ import LinkOutlined from '@mui/icons-material/LinkOutlined'
 import PauseOutlined from '@mui/icons-material/PauseOutlined'
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined'
 import StopOutlined from '@mui/icons-material/StopOutlined'
+import AudioFileOutlined from '@mui/icons-material/AudioFileOutlined'
 import VolumeOffOutlined from '@mui/icons-material/VolumeOffOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useQueryClient } from '@tanstack/react-query'
-import { useId, useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { SessionStatus } from '../../api/types'
@@ -22,6 +23,7 @@ import { Stat } from '../../components/Stat'
 import { StatusChip } from '../../components/StatusChip'
 import { useAdminEventsStore } from '../../realtime/admin'
 import { stateChip } from '../viewer/format'
+import { FileSourceDialog } from './FileSourceDialog'
 import { SessionLinks } from './SessionLinks'
 import { ccChip, type Session } from './sessionForm'
 
@@ -60,13 +62,20 @@ export function SessionCard({
   const start = api.useMutation('post', '/api/sessions/{sessionId}/start', { onSettled: refresh })
   const pause = api.useMutation('post', '/api/sessions/{sessionId}/pause', { onSettled: refresh })
   const stop = api.useMutation('post', '/api/sessions/{sessionId}/stop', { onSettled: refresh })
-  const actionError: unknown = start.error ?? pause.error ?? stop.error
-  const busy = start.isPending || pause.isPending || stop.isPending
+  const stopFile = api.useMutation('delete', '/api/sessions/{sessionId}/sources/file', {
+    onSettled: refresh,
+  })
+  const [fileOpen, setFileOpen] = useState(false)
+  const actionError: unknown = start.error ?? pause.error ?? stop.error ?? stopFile.error
+  const busy = start.isPending || pause.isPending || stop.isPending || stopFile.isPending
 
   const state = status?.state ?? session.state
   const audio = status?.audio
   const srt = status?.srt
   const cc = status?.streamCaptions
+  const usage = status?.usage
+  const running = state === 'live' || state === 'paused' || state === 'starting'
+  const playingFile = running && audio?.source === 'file'
   const logs = useAdminEventsStore((st) => st.logs)
   const recent = useMemo(
     () =>
@@ -88,6 +97,14 @@ export function SessionCard({
       minute: '2-digit',
       second: '2-digit',
     })
+  const usd = (value: number) =>
+    new Intl.NumberFormat(i18n.language, {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: value > 0 && value < 1 ? 4 : 2,
+    }).format(value)
+  const tokens = (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0)
   const latency = Object.entries(status?.latency ?? {}).map(
     ([track, l]) =>
       `${track === 'source' ? t('card.sourceTrack') : track.toUpperCase()} ${t('card.seconds', {
@@ -166,7 +183,7 @@ export function SessionCard({
                 {t('card.pause')}
               </Button>
             )}
-            {(state === 'live' || state === 'paused' || state === 'starting') && (
+            {running && (
               <Button
                 variant="outlined"
                 color="error"
@@ -177,6 +194,31 @@ export function SessionCard({
                 onClick={() => stop.mutate(path)}
               >
                 {t('card.stop')}
+              </Button>
+            )}
+            {(state === 'idle' || state === 'error') && (
+              <Button
+                variant="text"
+                color="secondary"
+                size="small"
+                startIcon={<AudioFileOutlined aria-hidden />}
+                disabled={busy}
+                onClick={() => setFileOpen(true)}
+              >
+                {t('card.playFile')}
+              </Button>
+            )}
+            {playingFile && (
+              <Button
+                variant="text"
+                color="secondary"
+                size="small"
+                startIcon={<StopOutlined aria-hidden />}
+                loading={stopFile.isPending}
+                disabled={busy}
+                onClick={() => stopFile.mutate(path)}
+              >
+                {t('card.stopFile')}
               </Button>
             )}
             <Button
@@ -232,6 +274,19 @@ export function SessionCard({
             />
           )}
           <Stat label={t('card.viewers')} value={String(status?.viewers ?? 0)} />
+          {usage?.estimatedCostUsd != null && (
+            <Stat
+              label={t('card.cost')}
+              value={usd(usage.estimatedCostUsd)}
+              detail={tokens > 0 ? t('card.tokens', { value: num(tokens, 0) }) : undefined}
+            />
+          )}
+          {usage?.audioSeconds != null && (
+            <Stat
+              label={t('card.audio')}
+              value={t('card.minutes', { value: num(usage.audioSeconds / 60) })}
+            />
+          )}
           {srt && (
             <Stat
               label={t('card.srt')}
@@ -279,6 +334,8 @@ export function SessionCard({
           <ErrorAlert key={`${ev.at}-${i}`} error={ev.log} />
         ))}
         {actionError != null && <ErrorAlert error={actionError} />}
+
+        {fileOpen && <FileSourceDialog session={session} onClose={() => setFileOpen(false)} />}
 
         {expanded && (
           <Box id={linksId}>
