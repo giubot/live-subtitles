@@ -1,6 +1,8 @@
-# Event-day runbook
+# 🎛️ Event-day runbook
 
-How to set up a room and keep it running during an event. It assumes the **edge** layout ([deployment modes](deployment.md#deployment-modes)): one mini PC per room, next to the sound desk, running Live Subtitles, the capture page and, if there is one, the stage screen on a projector. For OBS, vMix and YouTube, see the [OBS / vMix / YouTube guide](obs-vmix-guide.md).
+[← User manual](README.md) · [Live Subtitles](../../README.md)
+
+How to set up a room and keep it running during an event. It assumes the **edge** layout ([deployment modes](../deployment.md#deployment-modes)): one mini PC per room, next to the sound desk, running Live Subtitles, the capture page and, if there is one, the stage screen on a projector. For OBS, vMix and YouTube, see the [OBS / vMix / YouTube guide](obs-vmix-guide.md).
 
 <!-- screenshot: a mini PC wired to the mixer's aux out, with the projector and the stage screen -->
 
@@ -22,7 +24,7 @@ Do this once per machine, ideally the week before.
 ### Hardware and AI provider
 
 - With **Gemini**, any mini PC works: the box captures, encodes and serves, and the AI runs in the cloud. It needs a reliable internet uplink: the audio goes to Google as 16 kHz PCM, about 256 kbit/s per session. The audience traffic stays on the LAN.
-- With the **local provider** (whisper.cpp + Gemma), real time needs roughly an Apple Silicon Mac mini, or a mini PC with a recent GPU. Run the hardware check and the benchmark in `/setup` (or `POST /api/system/benchmark`); a real-time factor up to 0.8 is `ok`. On slower machines use smaller models (whisper `small`, `gemma3:1b`) or a Google API key. Sidecar setup per OS is in [dev.md § Local AI provider](dev.md#local-ai-provider).
+- With the **local provider** (whisper.cpp + Gemma), real time needs roughly an Apple Silicon Mac mini, or a mini PC with a recent GPU. Run the hardware check and the benchmark in `/setup` (or `POST /api/system/benchmark`); a real-time factor up to 0.8 is `ok`. On slower machines use smaller models (whisper `small`, `gemma3:1b`) or a Google API key. Sidecar setup per OS is in [dev.md § Local AI provider](../dev.md#local-ai-provider).
 - Download the models before the event, on a good connection: the setup wizard (`/setup`, the models step), `POST /api/models/{id}/download`, or `task models:pull` from a source checkout. Once downloaded, the local provider needs no internet.
 
 ### Audio input (3.5 mm line-in)
@@ -184,7 +186,7 @@ curl -s -H "Authorization: Bearer $LIVESUBS_ADMIN_TOKEN" http://localhost:8080/m
   | grep -E '^livesubs_(sessions|session_viewers|session_errors_total|ws_clients)'
 ```
 
-`livesubs_session_errors_total` by `code` shows what went wrong, `livesubs_caption_latency_seconds` the latency per provider and track, and `livesubs_recordings_free_bytes` the disk left. The full list is in [dev.md § Logs and metrics](dev.md#logs-and-metrics).
+`livesubs_session_errors_total` by `code` shows what went wrong, `livesubs_caption_latency_seconds` the latency per provider and track, and `livesubs_recordings_free_bytes` the disk left. The full list is in [dev.md § Logs and metrics](../dev.md#logs-and-metrics).
 
 ### Logs
 
